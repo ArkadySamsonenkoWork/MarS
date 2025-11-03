@@ -833,5 +833,3 @@ class SampleVary:
                          vary_parameters: list[ParamSpec], fixed_parameters: dict[str, float]):
         self._process_interaction_type(spin_system_nuc_nuc, vary_nuc_nuc, 'nuc_nuc',
                                        vary_parameters, fixed_parameters)
-
-

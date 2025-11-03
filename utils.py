@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import wraps
 
 import torch
 
@@ -39,15 +40,6 @@ def apply_single_rotation(R: torch.Tensor, T: torch.Tensor):
     rotated_T = torch.matmul(RT, R.transpose(-2, -1))
 
     return rotated_T
-
-
-def _apply_expanded_rotations(R: torch.Tensor, T: torch.Tensor):
-    """
-    Rotate tensor T with respect to rotation matrices R according formula T' = RTR'
-    :param R: the rotation matrices. The shape is [*rotation_dims, 3, 3]
-    :param T: tensor that must be rotated. The shape is [... 3, 3]
-    :return: The rotated tensors with the shape [..., *rotation_dims, 3, 3]
-    """
 
 
 def calculate_deriv_max(g_tensors_el: torch.Tensor, g_factors_nuc: torch.Tensor,
@@ -250,3 +242,15 @@ def get_canonical_orientations(angles: torch.Tensor):
     new_Rs = torch.matmul(R_align_expanded, Rs)
 
     return rotation_matrix_to_euler_angles(new_Rs)
+
+
+def float_to_complex_dtype(dtype: torch.dtype):
+    if dtype is torch.float16:
+        return torch.complex32
+    elif dtype is torch.float32:
+        return torch.complex64
+    elif dtype is torch.float64:
+        return torch.complex128
+    else:
+        raise NotImplementedError("dtype must be float")
+

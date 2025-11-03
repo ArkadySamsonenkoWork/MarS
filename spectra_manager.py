@@ -1,13 +1,8 @@
 import math
-import warnings
 import typing as tp
+from functools import wraps
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-
-from spectral_integration import BaseSpectraIntegrator,\
-    SpectraIntegratorEasySpinLike,\
-    SpectraIntegratorEasySpinLikeTimeResolved, MeanIntegrator, AxialSpectraIntegratorEasySpinLike
-from population import BaseTimeDependantPopulator, StationaryPopulator
 
 import torch
 import torch.fft as fft
@@ -18,7 +13,10 @@ import mesher
 import res_field_algorithm
 import res_freq_algorithm
 import spin_system
-
+from spectral_integration import BaseSpectraIntegrator,\
+    SpectraIntegratorEasySpinLike,\
+    SpectraIntegratorEasySpinLikeTimeResolved, MeanIntegrator, AxialSpectraIntegratorEasySpinLike
+from population import BaseTimeDependantPopulator, StationaryPopulator
 
 
 def compute_matrix_element(vector_down: torch.Tensor, vector_up: torch.Tensor, G: torch.Tensor):
@@ -582,7 +580,6 @@ class TimeResolvedIntensitiesCalculator(BaseIntensityCalculator):
         return self.populator(time, res_fields, lvl_down,
                               lvl_up, resonance_energies, vector_down, vector_up, *args, **kwargs)
 
-
 class MultiSampleIntensitiesCalculator(BaseIntensityCalculator):
     def __init__(self,
                  spin_system_dim: int | list[int],
@@ -633,6 +630,7 @@ class BaseSpectraCreator(nn.Module, ABC):
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
                  integration_chunk_size: int = 128,
+                 inference_mode: bool = True,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -674,6 +672,9 @@ class BaseSpectraCreator(nn.Module, ABC):
             For whole set of resonance lines chunk size of spectral freq/field is computed.
             Increasing the size increases the integration speed, but also increases the required memory allocation.
 
+        :param inference_mode: bool
+            If inference_mode is True, then forward method will be performed under with torch.inference_mode():
+
         :param dtype: float32 / float64
         Base dtype for all types of operations. If complex parameters is used,
         they will be converted in complex64, complex128
@@ -703,7 +704,12 @@ class BaseSpectraCreator(nn.Module, ABC):
                                                               device=device, dtype=dtype)
         self.recompute_spin_parameters = recompute_spin_parameters
         self._init_cached_parameters()
+
+        if inference_mode:
+            self.forward = self._wrap_with_inference_mode(self.forward)
+
         self.to(device)
+        self.to(dtype)
 
     def _init_cached_parameters(self):
         if not self.recompute_spin_parameters:
@@ -719,6 +725,15 @@ class BaseSpectraCreator(nn.Module, ABC):
 
         else:
             self._resfield_method = self._recomputed_resfield
+
+
+    def _wrap_with_inference_mode(self, forward_fn):
+        @wraps(forward_fn)
+        def wrapper(*args, **kwargs):
+            with torch.inference_mode():
+                return forward_fn(*args, **kwargs)
+        return wrapper
+
 
     def _init_res_algorithm(self, device: torch.device, dtype: torch.dtype):
         return res_field_algorithm.ResField(
@@ -979,6 +994,7 @@ class StationarySpectraCreator(BaseSpectraCreator):
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
                  integration_chunk_size: int = 128,
+                 inference_mode: bool = True,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1023,11 +1039,15 @@ class StationarySpectraCreator(BaseSpectraCreator):
             Chunk Size of integration process. Current implementation of powder integration is iterative.
             For whole set of resonance lines chunk size of spectral freq/field is computed.
             Increasing the size increases the integration speed, but also increases the required memory allocation.
+
+        :param inference_mode: bool
+            If inference_mode is True, then forward method will be performed under with torch.inference_mode():
         """
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
                          integration_chunk_size=integration_chunk_size,
+                         inference_mode=inference_mode,
                          device=device, dtype=dtype)
 
     def _postcompute_batch_data(self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
@@ -1088,6 +1108,8 @@ class TruncatedSpectraCreatorTimeResolved(BaseSpectraCreator):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = False,
+                 integration_chunk_size: int = 128,
+                 inference_mode: bool = True,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1131,10 +1153,21 @@ class TruncatedSpectraCreatorTimeResolved(BaseSpectraCreator):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For time resolved spectra creator is False
 
+        :param integration_chunk_size:
+            Chunk Size of integration process. Current implementation of powder integration is iterative.
+            For whole set of resonance lines chunk size of spectral freq/field is computed.
+            Increasing the size increases the integration speed, but also increases the required memory allocation.
+
+        :param inference_mode: bool
+            If inference_mode is True, then forward method will be performed under with torch.inference_mode():
+
         """
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator, populator,
                          spectra_integrator, harmonic, post_spectra_processor,
-                         temperature, recompute_spin_parameters, device=device, dtype=dtype)
+                         temperature, recompute_spin_parameters,
+                         integration_chunk_size,
+                         inference_mode,
+                         device=device, dtype=dtype)
 
     def __call__(self, sample: spin_system.MultiOrientedSample, field: torch.Tensor, time: torch.Tensor, **kwargs) ->\
             torch.Tensor:
@@ -1380,6 +1413,8 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
+                 integration_chunk_size: int = 128,
+                 inference_mode: bool = True,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32
                  ):
@@ -1420,10 +1455,21 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For stationary creator is True.
 
+        :param integration_chunk_size:
+            Chunk Size of integration process. Current implementation of powder integration is iterative.
+            For whole set of resonance lines chunk size of spectral freq/field is computed.
+            Increasing the size increases the integration speed, but also increases the required memory allocation.
+
+        :param inference_mode: bool
+            If inference_mode is True, then forward method will be performed under with torch.inference_mode():
+
         """
         super().__init__(field, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
-                         temperature, recompute_spin_parameters, device=device, dtype=dtype)
+                         temperature, recompute_spin_parameters,
+                         integration_chunk_size,
+                         inference_mode,
+                         device=device, dtype=dtype)
 
     def _init_res_algorithm(self, device, dtype: torch.dtype):
         return res_freq_algorithm.ResFreq(
@@ -1522,4 +1568,5 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
         )
 
         return res_fields, intensities, width, *extras
+
 

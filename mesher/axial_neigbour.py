@@ -12,8 +12,11 @@ from .general_mesh import BaseMesh, BaseMeshAxial
 
 
 
-class MeshProcessorAxial:
-    def __init__(self, init_grid_frequency, device: torch.device = torch.device("cpu")):
+class MeshProcessorAxial(nn.Module):
+    def __init__(self, init_grid_frequency, device: torch.device = torch.device("cpu"),
+                 dtype: torch.dtype = torch.float32
+                 ):
+        super().__init__()
         self.init_grid_frequency = init_grid_frequency
 
     def _triangulate(self, grid_frequency):
@@ -21,8 +24,8 @@ class MeshProcessorAxial:
 
 
 class SkipMeshProcessor(MeshProcessorAxial):
-    def __init__(self, device: torch.device = torch.device("cpu"), *args, **kwargs):
-        super().__init__(device=device, *args, **kwargs)
+    def __init__(self, device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32, *args, **kwargs):
+        super().__init__(device=device, dtype=dtype, *args, **kwargs)
         self.final_vertices, self.simplices = self._get_post_mesh()
         self.init_vertices = torch.linspace(0.0, torch.pi / 2, self.init_grid_frequency).unsqueeze(-1)
 
@@ -31,20 +34,22 @@ class SkipMeshProcessor(MeshProcessorAxial):
         simplices = self._triangulate(self.init_grid_frequency)
         return vertices, simplices
 
-    def post_process(self, f_values: torch.Tensor):
+    def forward(self, f_values: torch.Tensor):
         return f_values
 
 
 def mesh_processor_factory(init_grid_frequency,
                            interpolate_grid_frequency,
-                           interpolate=False):
+                           interpolate=False,
+                           device=torch.device("cpu"),
+                           dtype=torch.float32):
 
     if interpolate:
         raise NotImplementedError
 
     else:
         return SkipMeshProcessor(
-            init_grid_frequency,
+            device=device, dtype=dtype, init_grid_frequency=init_grid_frequency
         )
 
 
@@ -53,7 +58,8 @@ class AxialMeshNeighbour(BaseMeshAxial):
                  eps: float = 1e-7,
                  initial_grid_frequency: int = 20,
                  interpolation_grid_frequency: int = 40,
-                 interpolate=False, device: torch.device = torch.device("cpu")):
+                 interpolate=False, device: torch.device = torch.device("cpu"),
+                 dtype: torch.dtype = torch.float32):
         """
         Initialize Delaunay mesh parameters.
 
@@ -62,14 +68,17 @@ class AxialMeshNeighbour(BaseMeshAxial):
             initial_grid_frequency: Resolution of initial grid
             interpolation_grid_frequency: Resolution of interpolation grid
         """
-        super().__init__(device=device)
+        super().__init__(device=device, dtype=dtype)
+        self.dtype = dtype
         if interpolate:
             raise NotImplementedError("Interpolation for axial case is not implemented")
         self.eps = eps
         self.initial_grid_frequency = initial_grid_frequency
         self.interpolation_grid_frequency = interpolation_grid_frequency
 
-        self.mesh_processor = mesh_processor_factory(initial_grid_frequency, interpolation_grid_frequency, interpolate)
+        self.mesh_processor = mesh_processor_factory(initial_grid_frequency, interpolation_grid_frequency,
+                                                     interpolate, device=device, dtype=dtype
+                                                     )
 
         (
         initial_grid,
@@ -85,8 +94,8 @@ class AxialMeshNeighbour(BaseMeshAxial):
     def create_initial_cache_data(self, device: torch.device) -> tuple:
         """Create and cache initial mesh data structures."""
         return (
-            torch.as_tensor(self.mesh_processor.init_vertices, dtype=torch.float32, device=device),
-            torch.as_tensor(self.mesh_processor.final_vertices, dtype=torch.float32, device=device),
+            torch.as_tensor(self.mesh_processor.init_vertices, dtype=self.dtype, device=device),
+            torch.as_tensor(self.mesh_processor.final_vertices, dtype=self.dtype, device=device),
             torch.as_tensor(self.mesh_processor.simplices, device=device)
         )
 
@@ -114,7 +123,7 @@ class AxialMeshNeighbour(BaseMeshAxial):
         """
         return f_post[..., simplices]
 
-    def post_process(self,
+    def forward(self,
                     f_init: torch.Tensor) -> torch.Tensor:
         """
         Format interpolated values for Delaunay representation.
@@ -125,4 +134,4 @@ class AxialMeshNeighbour(BaseMeshAxial):
         Returns:
             torch.Tensor: Values formatted for Delaunay triangulation
         """
-        return self.mesh_processor.post_process(f_init)
+        return self.mesh_processor(f_init)

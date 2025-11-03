@@ -16,7 +16,7 @@ import spin_system
 sys.path.append("..")
 from spectra_processing import normalize_spectrum
 from optimization import objectives
-
+from optuna_dashboard import run_server
 
 class TrialResult(tp.TypedDict):
     trial_number: int
@@ -242,6 +242,7 @@ class ParamSpec:
 
 class ParameterSpace:
     print_precision: int = 4
+
     def __init__(self, specs: tp.Sequence[ParamSpec],
                  fixed_params: tp.Optional[tp.Dict[str, float]] = None):
         """
@@ -701,7 +702,6 @@ class SpectrumFitter:
         ]
         return ng_trials
 
-
     def fit_optuna(
         self,
         show_progress: bool,
@@ -713,6 +713,7 @@ class SpectrumFitter:
         n_jobs: int = 1,
         sampler: tp.Optional[optuna.samplers.BaseSampler] = None,
         study_name: tp.Optional[str] = None,
+        run_dashboard: bool = True,
         **kwargs,
     ) -> FitResult:
         """Fit using Optuna.
@@ -725,16 +726,27 @@ class SpectrumFitter:
             return loss
 
         if sampler is None:
-            sampler = optuna.samplers.CmaEsSampler(
-                seed=seed,
-                n_startup_trials=50)
-            #sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
+            #sampler = optuna.samplers.CmaEsSampler(
+            #    seed=seed,
+            #    n_startup_trials=50,
+            #    restart_strategy="ipop")
+            sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
 
-
-        study = optuna.create_study(direction="minimize", sampler=sampler, study_name=study_name, load_if_exists=True)
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        study.optimize(
-            loss_function, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs, show_progress_bar=show_progress)
+        
+        if run_dashboard:
+            storage = optuna.storages.InMemoryStorage()
+            study = optuna.create_study(direction="minimize", sampler=sampler,
+                                        study_name=study_name,  load_if_exists=True, storage=storage)
+            study.optimize(
+                loss_function, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs, show_progress_bar=show_progress)
+            run_server(storage)
+        else:
+            study = optuna.create_study(direction="minimize", sampler=sampler,
+                                        study_name=study_name,  load_if_exists=True)
+            study.optimize(
+                loss_function, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs, show_progress_bar=show_progress)
+
 
         best_params = {k: float(v) for k, v in study.best_params.items()}
         best_spec = None
@@ -854,7 +866,7 @@ class SpaceSearcher:
             that sets the acceptable loss of trial. Default is 1
         :param top_k: Returns only top_k lowest-loss trials.
         :param distance_fraction: Among all 'good' trials with low loss it
-            accepts only trials with Euclidean distance in scaled (-1, 1) parameters < distance_fraction * max_distance
+            accepts only trials with Euclidean distance in scaled (-1, 1) parameters > distance_fraction * max_distance
 
             To compute distance the parameters are scaled to (-1, 1)
         """
@@ -948,7 +960,7 @@ class SpaceSearcher:
         max_dist = max(distances)
         if self.distance_fraction > 0:
             thresh = self.distance_fraction * max_dist
-            within_thresh = [i for i in sorted_idx if distances[i] <= thresh]
+            within_thresh = [i for i in sorted_idx if distances[i] >= thresh]
             if within_thresh:
                 chosen_idx = within_thresh[: self.top_k]
             else:
