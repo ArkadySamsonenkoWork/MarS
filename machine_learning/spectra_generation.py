@@ -55,16 +55,24 @@ class GenerationIntegrationProcessorPowder(IntegrationProcessorPowder):
                  num_points: int = 4_000,
                  spectral_width_part: float = 0.6,
                  width_factor: float = 3.0,
+                 min_exp_field:float = 0.0,
+                 max_exp_field: float = 2.0,
+                 width_cutoff: float = 0.5
                  ):
         super().__init__(mesh, spectra_integrator, harmonic, post_spectra_processor,
                          chunk_size=chunk_size, device=device, dtype=dtype)
         self.register_buffer("num_points", torch.tensor(num_points, device=device))
         self.register_buffer("spectral_width_part", torch.tensor(spectral_width_part, device=device, dtype=dtype))
         self.register_buffer("width_factor", torch.tensor(width_factor, device=device, dtype=dtype))
-
+        self.register_buffer("min_exp_field", torch.tensor(min_exp_field, device=device, dtype=dtype))
+        self.register_buffer("max_exp_field", torch.tensor(max_exp_field, device=device, dtype=dtype))
+        self.register_buffer("width_cutoff", torch.tensor(width_cutoff, device=device, dtype=dtype))
         self.to(device)
 
-    def _get_new_field(self, res_fields: torch.Tensor, width: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_new_field(
+            self, res_fields: torch.Tensor,
+            width: torch.Tensor, intensities: torch.Tensor
+                       ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         dims = res_fields.dim()
         batch_dims = tuple(range(max(dims-2, 0), dims))
 
@@ -72,11 +80,17 @@ class GenerationIntegrationProcessorPowder(IntegrationProcessorPowder):
         max_pos_batch = torch.amax(res_fields, dim=batch_dims)
         mean_pos = (max_pos_batch + min_pos_batch) / 2
 
-        max_orient_width = torch.amax(width, dim=-1)
+        width_criteria = width.clone()
+        width_criteria[width > self.width_cutoff] = 0.0
+        max_orient_width = torch.amax(width_criteria, dim=-1)
+
         nature_spectra_width = torch.max(max_pos_batch - min_pos_batch, max_orient_width * self.width_factor)
 
         min_pos_batch = mean_pos - nature_spectra_width / (2 * self.spectral_width_part)
         max_pos_batch = mean_pos + nature_spectra_width / (2 * self.spectral_width_part)
+
+        min_pos_batch = torch.max(min_pos_batch, self.min_exp_field)
+        max_pos_batch = torch.min(max_pos_batch, self.max_exp_field)
 
         steps = torch.linspace(0, 1, self.num_points, device=res_fields.device, dtype=res_fields.dtype)
         fields = steps * (max_pos_batch - min_pos_batch).unsqueeze(-1) + min_pos_batch.unsqueeze(-1)
@@ -96,7 +110,7 @@ class GenerationIntegrationProcessorPowder(IntegrationProcessorPowder):
                 res_fields, intensities, width
             )
         )
-        fields, min_pos_batch, max_pos_batch = self._get_new_field(res_fields, width)
+        fields, min_pos_batch, max_pos_batch = self._get_new_field(res_fields, width, intensities)
         res_fields, width, intensities, areas = self._final_mask(res_fields, width, intensities, areas)
         spec = self.spectra_integrator(
             res_fields, width, intensities, areas, fields

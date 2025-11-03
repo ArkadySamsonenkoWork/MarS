@@ -1,4 +1,5 @@
 import random
+import json
 from enum import Enum
 import typing as tp
 import sys
@@ -955,7 +956,6 @@ class SampleGenerator:
                 dipolar_components = self._convert_DE_to_tensor_components(
                     D_dipolar[:, i], E_dipolar[:, i]
                 )
-                dipolar_components_list = []
                 dipolar_components += J_values[:, i].unsqueeze(-1)
                 dipolar_components_list.append(dipolar_components)
 
@@ -1053,7 +1053,7 @@ class SampleGenerator:
         return multi_oriented_sample, temperatures, system_inf
 
 
-class DataFullGenerator:
+class DataGenerator:
     def __init__(self,
                  path: str,
                  struct_generator: RandomStructureGenerator,
@@ -1111,6 +1111,165 @@ class DataFullGenerator:
         self.alarm_time = alarm_time
         self.freq_generator = freq_generator
         self.fields_base_range = torch.tensor([fields_base_range[0], fields_base_range[1]], device=device, dtype=dtype)
+        self.save_init_params(file_path=self.base_path/"generation_meta.json")
+
+    def save_init_params(self, file_path: tp.Union[str, pathlib.Path] = None) -> None:
+        """
+        Save all initialization parameters to a JSON file.
+
+        Args:
+            file_path: Path where to save the parameters. If None, saves to base_path/init_params.json
+        """
+        if file_path is None:
+            file_path = self.base_path / "init_params.json"
+        else:
+            file_path = pathlib.Path(file_path)
+
+        # Create directory if it doesn't exist
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        init_params = self._collect_init_params()
+
+        # Convert to JSON-serializable format
+        serializable_params = self._make_serializable(init_params)
+
+        with open(file_path, 'w') as f:
+            json.dump(serializable_params, f, indent=2, default=str)
+
+        print(f"Initialization parameters saved to: {file_path}")
+
+    def _collect_init_params(self) -> tp.Dict[str, tp.Any]:
+        """Collect all initialization parameters."""
+        return {
+            "path": str(self.base_path),
+            "struct_generator": self._get_structure_generator_config(self.struct_generator),
+            "mesh": self._get_mesh_config(self.mesh),
+            "freq_generator": self._get_generator_config(self.freq_generator),
+            "temperature_generator": self._get_generator_config(self.temperature_gen),
+            "hamiltonian_strain_generator": self._get_generator_config(self.hamiltonian_strain_gen),
+            "g_tensor_components_generator": self._get_generator_config(self.g_components_gen),
+            "g_tensor_orientation_generator": self._get_generator_config(self.g_orientation_gen),
+            "hyperfine_coupling_generator": {
+                key: self._get_generator_config(gen)
+                for key, gen in self.hyperfine_coupling_gen.items()
+            },
+            "hyperfine_orientation_generator": self._get_generator_config(self.hyperfine_orientation_gen),
+            "exchange_coupling_generator": self._get_generator_config(self.exchange_coupling_gen),
+            "dipolar_coupling_generator": self._get_generator_config(self.dipolar_coupling_gen),
+            "zero_field_splitting_generator": self._get_generator_config(self.zfs_gen),
+            "electron_electron_orientation_generator": self._get_generator_config(
+                self.electron_electron_orientation_gen),
+            "alarm_time": self.alarm_time,
+            "nuclear_coupling_generator": self._get_generator_config(
+                self.nuclear_coupling_gen) if self.nuclear_coupling_gen else None,
+            "nuclear_orientation_generator": self._get_generator_config(
+                self.nuclear_orientation_gen) if self.nuclear_orientation_gen else None,
+            "num_temperature_points": self.num_temp_points,
+            "num_hamiltonian_strains": self.num_ham_strains,
+            "same_freq_for_structure": self.same_freq_for_structure,
+            "fields_base_range": self.fields_base_range.tolist(),
+            "device": str(self.fields_base_range.device),
+            "dtype": str(self.fields_base_range.dtype)
+        }
+
+    def _get_structure_generator_config(self, generator) -> tp.Dict[str, tp.Any]:
+        """Extract configuration from a RandomStructureGenerator."""
+        if generator is None:
+            return None
+
+        config = {
+            "type": generator.__class__.__name__,
+            "max_num_electrons": generator.max_num_electrons,
+            "min_num_electrons": generator.min_num_electrons,
+            "max_num_nuclei": generator.max_num_nuclei,
+            "min_num_nuclei": generator.min_num_nuclei,
+            "max_dim": generator.max_dim,
+            "max_interactions": generator.max_interactions,
+            "electron_allowed_spins": generator.electron_allowed_spins,
+            "electron_spin_weights": generator.electron_spin_weights,
+            "nucleus_allowed_labels": generator.nucleus_allowed_labels,
+            "nucleus_labels_weights": generator.nucleus_labels_weights,
+            "ion_spin_defaults": generator.ion_spin_defaults,
+            "ion_spin_usage_prob": generator.ion_spin_usage_prob,
+            "electron_nuc_interaction_prob": generator.electron_nuc_interaction_prob,
+            "electron_electron_prob": generator.electron_electron_prob,
+            "zfs_probability": generator.zfs_probability,
+        }
+
+        return config
+
+    def _get_generator_config(self, generator) -> tp.Dict[str, tp.Any]:
+        """Extract configuration from a MultiDimensionalTensorGenerator."""
+        if generator is None:
+            return None
+
+        config = {
+            "type": generator.__class__.__name__,
+            "mode": generator.mode.value if hasattr(generator.mode, 'value') else str(generator.mode),
+            "output_dims": generator.output_dims,
+            "probabilities": generator.probabilities,
+            "levels": []
+        }
+
+        # Extract level configurations
+        for level in generator.levels:
+            level_config = {
+                "type": level.__class__.__name__,
+                "attributes": {}
+            }
+
+            # Get all attributes that don't start with underscore
+            for attr_name in dir(level):
+                if not attr_name.startswith('_') and not callable(getattr(level, attr_name)):
+                    try:
+                        attr_value = getattr(level, attr_name)
+                        level_config["attributes"][attr_name] = attr_value
+                    except (AttributeError, TypeError):
+                        level_config["attributes"][attr_name] = str(attr_value)
+
+            config["levels"].append(level_config)
+
+        return config
+
+    def _get_mesh_config(self, mesh) -> tp.Dict[str, tp.Any]:
+        """Extract configuration from mesh object."""
+        if mesh is None:
+            return None
+
+        config = {
+            "type": mesh.__class__.__name__
+        }
+
+        # Add mesh-specific attributes
+        for attr_name in ['points', 'simplices']:  # Add other relevant mesh attributes
+            if hasattr(mesh, attr_name):
+                try:
+                    attr_value = getattr(mesh, attr_name)
+                    if hasattr(attr_value, 'tolist'):  # For numpy arrays, tensors, etc.
+                        config[attr_name] = attr_value.tolist()
+                    else:
+                        config[attr_name] = attr_value
+                except (AttributeError, TypeError):
+                    config[attr_name] = str(attr_value)
+
+        return config
+
+    def _make_serializable(self, obj: tp.Any) -> tp.Any:
+        """Recursively convert object to JSON-serializable format."""
+        if obj is None:
+            return None
+        elif isinstance(obj, (str, int, float, bool)):
+            return obj
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_serializable(item) for item in obj]
+        elif isinstance(obj, dict):
+            return {key: self._make_serializable(value) for key, value in obj.items()}
+        elif hasattr(obj, 'tolist'):  # For tensors, numpy arrays
+            return obj.tolist()
+        elif hasattr(obj, '__dict__'):  # For objects
+            return self._make_serializable(obj.__dict__)
+        else:
+            return str(obj)
 
     def _ensure_dir(self, p: tp.Union[str, pathlib.Path]):
         p = pathlib.Path(p)

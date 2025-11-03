@@ -7,8 +7,6 @@ import torch.nn as nn
 import torch
 
 sys.path.append("..")
-
-import utils
 import constants
 import spectra_manager
 
@@ -21,29 +19,61 @@ def vector_to_de(vector: torch.Tensor):
     return torch.cat([mean, D, E], dim=-1)
 
 
+def de_to_vector(de_vector: torch.Tensor):
+    Dx = -1 / 3 * de_vector[..., -2] + de_vector[..., -1]  + de_vector[..., -3]
+    Dy = -1 / 3 * de_vector[..., -2] - de_vector[..., -1] + de_vector[..., -3]
+    Dz = 2 / 3 * de_vector[..., -2] + de_vector[..., -3]
+    return torch.stack([Dx, Dy, Dz], dim=-1)
+
+
 class ComponentsTransform:
-    def __init__(self, freq_factor: float = 200.0, temp_factor: float = 50.0):
-        self.freq_factor = torch.tensor(freq_factor)
-        self.temp_factor = torch.tensor(temp_factor)
+    def __init__(self, freq_factor: float = 1.0, temp_factor: float = 5.0):
+        self.freq_shift = torch.tensor([3.8375e+08,  2.8735e+10,  3.7846e+09])
+        self.freq_std = torch.tensor([1.0216e+12, 1.6933e+12, 2.8727e+11])
+        #self.freq_std = torch.tensor([1.0, 1.0, 1.0])
+
+        self.temp_shift = torch.tensor([3.7256e+07,  4.5698e+08, 7.5622e+07])
+        self.temp_std = torch.tensor([2.5768e+10, 4.4681e+10, 7.3604e+09])
+        #self.temp_std = torch.tensor([1.0, 1.0, 1.0])
 
     def __call__(self, components, temperature):
         components = vector_to_de(components)
-        components_feat_freq = constants.PLANCK * components / (2.00 * constants.BOHR)
-        components_feat_temp = components / constants.unit_converter(temperature, "K_to_Hz").unsqueeze(0)
-        return components_feat_freq / self.freq_factor, components_feat_temp / self.temp_factor
+        components_feat_freq = components
+        components_feat_temp = components / temperature.unsqueeze(0)
+
+        components_feat_freq = components_feat_freq - self.freq_shift
+        components_feat_freq = components_feat_freq / self.freq_std
+
+        components_feat_temp = components_feat_temp - self.temp_shift
+        components_feat_temp = components_feat_temp / self.temp_std
+
+        return components_feat_freq, components_feat_temp
+
+    def unbatch(self, components: torch.Tensor):
+        components_feat_freq = components[..., :3] * self.freq_std + self.freq_shift
+        components_feat_temp = components[..., 3:] * self.temp_std + self.temp_shift
+        temp = components_feat_freq / components_feat_temp
+        return de_to_vector(components_feat_freq), temp
+        #return components_feat_freq, temp
 
 
 class AnglesTransform:
     def __call__(self, angles: torch.Tensor):
-        angles = utils.get_canonical_orientations(angles.transpose(0, -2)).transpose(0, -2)
+        #angles = utils.get_canonical_orientations(angles.transpose(0, -2)).transpose(0, -2)
         angles[..., 0] = angles[..., 0] / (2 * torch.pi)
         angles[..., 1] = angles[..., 1] / torch.pi
         angles[..., 2] = angles[..., 2] / (2 * torch.pi)
         return angles
 
+    def unbatch(self, angles: torch.Tensor):
+        angles[..., 0] = angles[..., 0] * (2 * torch.pi)
+        angles[..., 1] = angles[..., 1] * torch.pi
+        angles[..., 2] = angles[..., 2] * (2 * torch.pi)
+        return angles
 
-class SpinTranform:
-    def __init__(self, shift: float = 1.0, std: float = 2.0):
+
+class SpinTransform:
+    def __init__(self, shift: float = 1.0, std: float = 1.0):
         self.shift = torch.tensor(shift)
         self.std = torch.tensor(std)
 
@@ -53,16 +83,18 @@ class SpinTranform:
         types_batched = types[(slice(None),) + (0,) * (types.ndim - 1)]
         mask_particles = (types_batched != 2)
         spins_feature[mask_particles, ...] = spins
-
         spins_feature = (spins_feature - self.shift) / self.std
         return spins_feature
+
+    def unbatch(self, spins):
+        return spins * self.std + self.shift
 
 
 class ComponentsAnglesTransform:
     def __init__(self):
         self.angles_transform = AnglesTransform()
         self.components_transform = ComponentsTransform()
-        self.spin_transform = SpinTranform()
+        self.spin_transform = SpinTransform()
 
     def __call__(
             self, components: torch.Tensor, temperature: torch.Tensor,
@@ -73,35 +105,49 @@ class ComponentsAnglesTransform:
         spins = self.spin_transform(spins, types).unsqueeze(-1)
         return torch.cat((components_feat_freq, components_feat_temp, angles, spins), dim=-1)
 
+    def unbatch(self, node_embed: torch.Tensor):
+        components, temp = self.components_transform.unbatch(node_embed[..., :6])
+        angles = self.angles_transform.unbatch(node_embed[..., 6:9])
+        spins = self.spin_transform.unbatch(node_embed[..., 9])
+        return components, temp, angles, spins
+
+
+
 
 class SpecTransformField:
     def __init__(self, g_tensor_shift: float = 2.0, freq_shift: float = 20.0 * 1e9, freq_deriv: float = 20.0 * 1e9):
         self.g_tensor_shift = torch.tensor(g_tensor_shift)
         self.freq_shift = freq_shift
         self.freq_deriv = freq_deriv
+        self.eps = 1e-3
+        self.cut_off = 1e-2
 
     def __call__(self, field: torch.Tensor, freq: torch.Tensor):
-
-        g_tensors = (constants.PLANCK * freq.unsqueeze(-1)) / (constants.BOHR * field)
-        g_tensors = torch.flip(g_tensors, dims=(-1,))
+        deriv_field = torch.where(field+self.eps >= self.cut_off, field, field+self.eps)
+        g_tensors = (constants.PLANCK * freq.unsqueeze(-1)) / (constants.BOHR * (deriv_field+self.eps))
+        # g_tensors = torch.flip(g_tensors, dims=(-1,))
         g_feature = g_tensors - self.g_tensor_shift
         freq_feature = (freq - self.freq_shift) / self.freq_deriv
         return g_feature, freq_feature
 
+    def unbatch(self, freq_feature: torch.Tensor):
+        freq = (freq_feature * self.freq_deriv + self.freq_shift)
+        return freq
+
 
 class SpecTransformSpecIntensity:
+    def __init__(self):
+        self.eps = 1e-7
     def __call__(self, spec: torch.Tensor):
-        spec = torch.flip(spec, dims=(-1,))
-        spec = spec / torch.max(spec, dim=-1, keepdim=True)[0]
+        spec = spec / (torch.max(spec, dim=-1, keepdim=True)[0] + self.eps)
         return spec
-
 
 
 class BroadTransform:
     def __init__(self, shift: float = constants.unit_converter(0.5e-1, "T_to_Hz_e"),
                  std: float = constants.unit_converter(1e-1, "T_to_Hz_e")):
-        self.shift = torch.tensor(shift)
-        self.std = torch.tensor(std)
+        self.shift = torch.tensor([3.6182e+08, -5.1052e+04, 2.2607e+04, 1.7761e+08, 1.7803e+08])
+        self.std = torch.tensor([2.0223e+08, 4.4778e+06, 2.5379e+06, 2.0138e+08, 2.0170e+08])
 
     def __call__(self, ham_strain: torch.Tensor, lorentz: torch.Tensor, gauss: torch.Tensor):
         ham_strain = vector_to_de(ham_strain)
@@ -110,15 +156,23 @@ class BroadTransform:
 
         return (torch.cat((ham_strain, lorentz.unsqueeze(-1), gauss.unsqueeze(-1)), dim=-1) - self.shift) / self.std
 
+    def unbatch(self, features: torch.Tensor):
+        out = features * self.std + self.shift
+        ham_strain = de_to_vector(out[..., :3])
+        lorentz = out[..., 3] * constants.PLANCK / constants.BOHR
+        gauss = out[..., 4] * constants.PLANCK / constants.BOHR
+
+        return ham_strain, lorentz, gauss
+
 
 class SpecFieldPrepare(nn.Module):
     def __init__(self,
                  min_width: float = 1e-4,
                  max_width: float = 1e-1,
-                 init_interpolation_points: int = 2000,
-                 max_add_points: int = 2000,
+                 init_interpolation_points: int = 3000,
+                 max_add_points: int = 4000,
                  out_points: int = 1000,
-                 spectral_width_factor: float = 4,
+                 spectral_width_factor: float = 5,
                  rng_generator: tp.Optional[random.Random] = None):
         """
         Prepare magnetic field, spectra, Gaussian and Lorentzian tensors using the following procedure:
@@ -150,6 +204,7 @@ class SpecFieldPrepare(nn.Module):
         self.spectral_width_factor = spectral_width_factor
 
         self.post_processor = spectra_manager.PostSpectraProcessing()
+        self.eps = 1e-7
 
         if rng_generator is None:
             self.rng = random.Random(None)
@@ -200,12 +255,12 @@ class SpecFieldPrepare(nn.Module):
         batch_shape = spec.shape[:-1]
         N = spec.shape[-1]
         add_points_right = self.rng.randint(0, self.max_add_points)
-
         spectral_width = max_field_pos - min_field_pos
         field_step = spectral_width / (N - 1)
         max_points_left = torch.min(min_field_pos / field_step)
 
-        max_points_left = int(max_points_left.item()) - 1
+
+        max_points_left = max(int(max_points_left.item()) - 1, 0)
         add_points_left = min(self.rng.randint(0, self.max_add_points), max_points_left)
 
         target_points = self.init_interpolation_points + add_points_left + add_points_right
@@ -255,7 +310,7 @@ class SpecFieldPrepare(nn.Module):
         field, spec = self._init_data_to_covolution(min_field_pos, max_field_pos, spec)
         spec = self.post_processor(gauss, lorentz, field, spec)
         field, spec = self._interpolate_data_after_conv(field, spec)
-        spec = spec / torch.max(abs(spec), dim=-1, keepdim=True)[0]
+        spec = spec / (torch.max(abs(spec), dim=-1, keepdim=True)[0] + self.eps)
         return field, spec, gauss, lorentz
 
 
@@ -333,9 +388,8 @@ class SpectraDistortion(nn.Module):
         noise = torch.randn_like(spec) * noise_max_level.unsqueeze(-1)
         distorted_spec = spec + baseline + noise
         if self.correct_baseline:
-            dims = list(range(1, distorted_spec.dim()))
-            baseline = (torch.mean(distorted_spec[..., :self.baseline_points], dim=dims) + torch.mean(
-                distorted_spec[..., -self.baseline_points:], dim=dims)) / 2
+            baseline = (torch.mean(distorted_spec[..., :self.baseline_points], dim=-1) + torch.mean(
+                distorted_spec[..., -self.baseline_points:], dim=-1)) / 2
             distorted_spec = distorted_spec - baseline.unsqueeze(-1)
         return distorted_spec
 
