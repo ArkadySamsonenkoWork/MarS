@@ -3,14 +3,14 @@ import torch
 import torch.nn as nn
 from torchdiffeq import odeint
 
-
 import constants
 import typing as tp
 
 
 class BaseMatrixGenerator(ABC):
     @abstractmethod
-    def __init__(self, context: tp.Any, device: torch.device = torch.device("cpu"), *args, **kwargs):
+    def __init__(self, context: tp.Any,
+                 device: torch.device = torch.device("cpu"), *args, **kwargs):
         """
         :param context: Metadata describing the relaxation process. It is recommended to use dataclass
         :param args:
@@ -67,7 +67,8 @@ class TransitionMatrixGenerator(BaseMatrixGenerator):
     Note!
     Computation of energy-temperature factor should occur in evolution matrix.
     """
-    def __init__(self, context: tp.Any, device: torch.device = torch.device("cpu"), *args, **kwargs):
+    def __init__(self, context: tp.Any,
+                 device: torch.device = torch.device("cpu"), *args, **kwargs):
         """
         :param context: Metadata describing the relaxation process. It is recommended to use dataclass
         :param args:

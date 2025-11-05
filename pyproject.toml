@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MarS"
+version = "0.0.1"
+authors = [
+    {name = "Arkady Samsonenko", email = "a.samsonenko@tomo.nsc.ru"},
+]
+description = "A library for computation CW and time resolved spectra"
+readme = "README.md"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICENSE.md"]
+requires-python = ">=3.8"
+
+[project.urls]
+"Homepage" = "https://github.com/ArkadySamsonenkoWork/MarS.git"
+"Telegram" = "@Arkady_Samsonenko"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

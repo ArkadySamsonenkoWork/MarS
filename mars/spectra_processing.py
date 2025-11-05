@@ -2,11 +2,10 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 import torch
 import numpy as np
-from scipy.ndimage import uniform_filter1d
 
 import typing as tp
 
-def normalize_spectrum(B: torch.Tensor,
+def normalize_spectrum(x: torch.Tensor,
                        y: torch.Tensor,
                        mode: str = "integral") -> torch.Tensor:
     """Normalize a spectrum tensor y defined on field values B.
@@ -18,7 +17,7 @@ def normalize_spectrum(B: torch.Tensor,
     """
     if mode is None or mode == "none":
         return y.clone()
-    step = float(B[1] - B[0]) if B.numel() > 1 else 1.0
+    step = float(x[1] - x[0]) if x.numel() > 1 else 1.0
     if mode == "max":
         denom = float(y.abs().max())
         if denom == 0:
@@ -26,6 +25,35 @@ def normalize_spectrum(B: torch.Tensor,
         return y / denom
     if mode == "integral":
         denom = float((y.abs().sum() * step).item())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    raise ValueError(f"Unknown norm mode: {mode}")
+
+
+def normalize_spectrum2d(
+        x1: torch.Tensor,
+        x2: torch.Tensor,
+        y: torch.Tensor,
+        mode: str = "integral") -> torch.Tensor:
+    """Normalize a spectrum tensor y defined on field values B.
+
+    Modes supported:
+      - 'integral': integrate absolute values (Riemann) and divide
+      - 'max': divide by max absolute value
+      - None or 'none': return copy
+    """
+    if mode is None or mode == "none":
+        return y.clone()
+    step_1 = float(x1[1] - x1[0]) if x1.numel() > 1 else 1.0
+    step_2 = float(x2[1] - x2[0]) if x2.numel() > 1 else 1.0
+    if mode == "max":
+        denom = float(y.abs().max())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    if mode == "integral":
+        denom = float((y.abs().sum() * step_1 * step_2).item())
         if denom == 0:
             return y.clone()
         return y / denom

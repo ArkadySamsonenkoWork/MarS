@@ -534,7 +534,7 @@ class StationaryIntensitiesCalculator(BaseIntensityCalculator):
     def compute_intensity(self, Gx, Gy, Gz, vector_down, vector_up, lvl_down, lvl_up, resonance_energies,
                           resonance_manifold, full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
         """Base method to compute intensity (to be overridden)."""
-        intensity = self.populator(resonance_energies, lvl_down, lvl_up, *args, **kwargs) * (
+        intensity = self.populator(resonance_energies, lvl_down, lvl_up, full_system_vectors, *args, **kwargs) * (
                 self._compute_magnitization_part(Gx, Gy, Gz, vector_down, vector_up)
         )
         return intensity
@@ -575,10 +575,13 @@ class TimeResolvedIntensitiesCalculator(BaseIntensityCalculator):
     def calculate_population_evolution(self, time: torch.Tensor,
                                        res_fields, lvl_down, lvl_up,
                                        resonance_energies, vector_down, vector_up,
+                                       full_system_vectors: tp.Optional[torch.Tensor],
                                        *args, **kwargs):
 
         return self.populator(time, res_fields, lvl_down,
-                              lvl_up, resonance_energies, vector_down, vector_up, *args, **kwargs)
+                              lvl_up, resonance_energies,
+                              vector_down, vector_up,
+                              full_system_vectors, *args, **kwargs)
 
 class MultiSampleIntensitiesCalculator(BaseIntensityCalculator):
     def __init__(self,
@@ -794,7 +797,7 @@ class BaseSpectraCreator(nn.Module, ABC):
     def _get_param_specs(self) -> list[ParamSpec]:
         """
         :return: list[ParamSpec]. The number of parameters and
-        their order must coincide with output of method _mask_additional
+        their order must coincide with output of method _add_to_mask_additional
         """
         return []
 
@@ -837,19 +840,22 @@ class BaseSpectraCreator(nn.Module, ABC):
 
         F, Gx, Gy, Gz = sample.get_hamiltonian_terms()
 
-        (vectors_u, vectors_v), (valid_lvl_down, valid_lvl_up), res_fields, \
-            resonance_energies, full_eigen_vectors = self._resfield_method(sample, B_low, B_high, F, Gz)
-        if (vectors_u.shape[-2] == 0):
+        (vector_down, vector_up), (lvl_down, lvl_up), res_fields, \
+            resonance_energies, full_system_vectors = self._resfield_method(sample, B_low, B_high, F, Gz)
+
+        if (vector_down.shape[-2] == 0):
             return torch.zeros_like(fields)
-        res_fields, intensities, width, *extras = self.compute_parameters(sample, F, Gx, Gy, Gz,
-                                              vectors_u, vectors_v,
-                                              valid_lvl_down, valid_lvl_up,
-                                              res_fields,
-                                              resonance_energies,
-                                              full_eigen_vectors)
+
+        res_fields, intensities, width, full_system_vectors, *extras =\
+            self.compute_parameters(sample, F, Gx, Gy, Gz,
+                                    vector_down, vector_up,
+                                    lvl_down, lvl_up,
+                                    res_fields,
+                                    resonance_energies,
+                                    full_system_vectors)
 
         res_fields, intensities, width = self._postcompute_batch_data(
-            res_fields, intensities, width, F, Gx, Gy, Gz, time, *extras, **kwargs
+            res_fields, intensities, width, F, Gx, Gy, Gz, full_system_vectors, time, *extras, **kwargs
         )
 
         gauss = sample.gauss
@@ -859,7 +865,9 @@ class BaseSpectraCreator(nn.Module, ABC):
 
     def _postcompute_batch_data(self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
-                                Gz: torch.Tensor, time: tp.Optional[torch.Tensor], *extras,  **kwargs):
+                                Gz: torch.Tensor,
+                                full_system_vectors: tp.Optional[torch.Tensor],
+                                time: tp.Optional[torch.Tensor], *extras,  **kwargs):
         return res_fields, intensities, width
 
     def _finalize(self,
@@ -884,18 +892,28 @@ class BaseSpectraCreator(nn.Module, ABC):
                 updated_extras.append(extras[idx][..., intensities_mask, :, :])
         return updated_extras
 
-    def _mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
+    def _add_to_mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
                            lvl_down: torch.Tensor, lvl_up: torch.Tensor,
-                           resonance_energies: torch.Tensor,
-                           full_system_vectors: tp.Optional[torch.Tensor],):
+                           resonance_energies: torch.Tensor):
         return ()
+
+    def _mask_full_system_eigenvectors(
+            self,
+            mask: torch.Tensor,
+            full_system_vectors: tp.Optional[torch.Tensor]
+    ):
+        if full_system_vectors is not None:
+            return full_system_vectors[..., mask, :, :]
+        else:
+            return full_system_vectors
 
     def _compute_additional(self,
                            sample: spin_system.MultiOrientedSample,
                            F: torch.Tensor,
                            Gx: torch.Tensor,
                            Gy: torch.Tensor,
-                           Gz: torch.Tensor, *extras):
+                           Gz: torch.Tensor,
+                           full_system_vectors: tp.Optional[torch.Tensor], *extras):
         return extras
 
     def compute_parameters(self, sample: spin_system.MultiOrientedSample,
@@ -908,7 +926,7 @@ class BaseSpectraCreator(nn.Module, ABC):
                            res_fields: torch.Tensor,
                            resonance_energies: torch.Tensor,
                            full_system_vectors: tp.Optional[torch.Tensor]) ->\
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor, tuple[tp.Any]]:
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor, tp.Optional[torch.Tensor], tuple[tp.Any]]:
         """
         :param sample: The sample which transitions must be found
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G
@@ -939,12 +957,14 @@ class BaseSpectraCreator(nn.Module, ABC):
 
         :param res_fields: Resonance fields. The shape os [..., N]
 
-        :param full_system_vectors: Eigen vector of each level of a spin system. The shape os [..., N, N]
+        :param full_system_vectors: Eigen vector of each level of a spin system. The shape os [..., N, N]. If
+        output_eigen_vectors == False, then it will be None
 
         :return: tuple of the next data
          - Resonance fields
          - Intensities of transitions
          - Width of transition lines
+         - Full system eigen vectors or None
          - extras parameters computed in _compute_additional
         """
         intensities = self.intensity_calculator.compute_intensity(
@@ -954,11 +974,10 @@ class BaseSpectraCreator(nn.Module, ABC):
         intensities_mask = (intensities / intensities.abs().max() > self.threshold).any(dim=lines_dimension)
         intensities = intensities[..., intensities_mask]
 
-        extras = self._mask_additional(vector_down,
-            vector_up, lvl_down, lvl_up, resonance_energies,
-            full_system_vectors)
-
+        extras = self._add_to_mask_additional(vector_down,
+            vector_up, lvl_down, lvl_up, resonance_energies)
         extras = self._mask_components(intensities_mask, *extras)
+        full_system_vectors = self._mask_full_system_eigenvectors(intensities_mask, full_system_vectors)
 
         res_fields = res_fields[..., intensities_mask]
         vector_u = vector_down[..., intensities_mask, :]
@@ -970,10 +989,9 @@ class BaseSpectraCreator(nn.Module, ABC):
         width = self.broader(sample, vector_u, vector_v, res_fields) * freq_to_field
 
         extras = self._compute_additional(
-            sample, F, Gx, Gy, Gz, *extras
+            sample, F, Gx, Gy, Gz, full_system_vectors, *extras
         )
-
-        return res_fields, intensities, width, *extras
+        return res_fields, intensities, width, full_system_vectors, *extras
 
 
 class StationarySpectraCreator(BaseSpectraCreator):
@@ -1052,6 +1070,7 @@ class StationarySpectraCreator(BaseSpectraCreator):
 
     def _postcompute_batch_data(self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
+                                full_system_vectors: tp.Optional[torch.Tensor],
                                 time: tp.Optional[torch.Tensor],  *extras, **kwargs):
         return res_fields, intensities, width
 
@@ -1107,7 +1126,7 @@ class TruncatedSpectraCreatorTimeResolved(BaseSpectraCreator):
                  harmonic: int = 0,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
-                 recompute_spin_parameters: bool = False,
+                 recompute_spin_parameters: bool = True,
                  integration_chunk_size: int = 128,
                  inference_mode: bool = True,
                  device: torch.device = torch.device("cpu"),
@@ -1209,20 +1228,21 @@ class TruncatedSpectraCreatorTimeResolved(BaseSpectraCreator):
             ]
         return params
 
-    def _mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
+    def _add_to_mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
                         lvl_down: torch.Tensor, lvl_up: torch.Tensor,
-                        resonance_energies: torch.Tensor,
-                        full_system_vectors: tp.Optional[torch.Tensor]):
+                        resonance_energies: torch.Tensor):
 
         return lvl_down, lvl_up, resonance_energies, vector_down, vector_up
 
     def _postcompute_batch_data(self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
-                                Gz: torch.Tensor, time: torch.Tensor, *extras, **kwargs):
+                                Gz: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor],
+                                time: torch.Tensor, *extras, **kwargs):
         lvl_down, lvl_up, resonance_energies, vector_down, vectors_up, *extras = extras
 
         population = self.intensity_calculator.calculate_population_evolution(
-            time, res_fields, lvl_down, lvl_up, resonance_energies, vector_down, vectors_up, *extras
+            time, res_fields, lvl_down, lvl_up,
+            resonance_energies, vector_down, vectors_up, full_system_vectors, *extras
         )
         intensities = (intensities.unsqueeze(0) * population)
         return res_fields, intensities, width
@@ -1275,23 +1295,24 @@ class CoupledSpectraCreatorTimeResolved(TruncatedSpectraCreatorTimeResolved):
             ParamSpec("vector", torch.complex64),
 
             ParamSpec("vector", torch.complex64),
-            ParamSpec("matrix", torch.complex64)
             ]
         return params
 
-    def _mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
-                           lvl_down: torch.Tensor, lvl_up: torch.Tensor,
-                           resonance_energies: torch.Tensor,
-                           full_system_vectors: tp.Optional[torch.Tensor]):
+    def _add_to_mask_additional(
+            self, vector_down: torch.Tensor, vector_up: torch.Tensor,
+            lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+            resonance_energies: torch.Tensor):
 
-        return lvl_down, lvl_up, resonance_energies, vector_down, vector_up, full_system_vectors
+        return lvl_down, lvl_up, resonance_energies, vector_down, vector_up
 
-    def _compute_additional(self, sample: spin_system.MultiOrientedSample,
-                           F: torch.Tensor,
-                           Gx: torch.Tensor,
-                           Gy: torch.Tensor,
-                           Gz: torch.Tensor,
-                           *args):
+    def _compute_additional(self,
+                        sample: spin_system.MultiOrientedSample,
+                        F: torch.Tensor,
+                        Gx: torch.Tensor,
+                        Gy: torch.Tensor,
+                        Gz: torch.Tensor,
+                        full_system_vectors: tp.Optional[torch.Tensor],
+                        *args):
         return args
 
 
@@ -1503,7 +1524,7 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
                            res_freq: torch.Tensor,
                            resonance_energies: torch.Tensor,
                            full_system_vectors: tp.Optional[torch.Tensor]) ->\
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor, tuple[tp.Any]]:
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor, tp.Optional[torch.Tensor], tuple[tp.Any]]:
         """
         :param sample: The sample which transitions must be found
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G
@@ -1540,6 +1561,7 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
          - Resonance fields
          - Intensities of transitions
          - Width of transition lines
+         - Eigen vectors of all system levels or None
          - extras parameters computed in _compute_additional
         """
 
@@ -1550,11 +1572,11 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
         intensities_mask = (intensities / intensities.abs().max() > self.threshold).any(dim=lines_dimension)
         intensities = intensities[..., intensities_mask]
 
-        extras = self._mask_additional(vector_down,
-            vector_up, lvl_down, lvl_up, resonance_energies,
-            full_system_vectors)
+        extras = self._add_to_mask_additional(vector_down,
+            vector_up, lvl_down, lvl_up, resonance_energies)
 
         extras = self._mask_components(intensities_mask, *extras)
+        full_system_vectors = self._mask_full_system_eigenvectors(intensities_mask, full_system_vectors)
 
         res_fields = res_freq[..., intensities_mask]
         vector_u = vector_down[..., intensities_mask, :]
@@ -1567,6 +1589,6 @@ class StationarySpectraCreatorFreq(StationarySpectraCreator):
             sample, F, Gx, Gy, Gz, *extras
         )
 
-        return res_fields, intensities, width, *extras
+        return res_fields, intensities, width, full_system_vectors, *extras
 
 
