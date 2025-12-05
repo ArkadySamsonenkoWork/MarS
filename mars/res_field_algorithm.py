@@ -1123,14 +1123,25 @@ class BaseResonanceLocator(nn.Module):
         return result
 
     def _get_resonance_data(self, resonance_field_data, mask_triu, mask_trans, row_indexes):
-        result = [
-            (mask_triu_new, row_indexes_new, pattern_local_indices, pattern_true_indices, step_B)
-            for step_B, mask_trans_i in resonance_field_data
-            for mask_triu_new, row_indexes_new, pattern_local_indices, pattern_true_indices in (
-                lambda mask_trans_updated, mask_triu_updated, step_B_updated:
-                self._split_batch(mask_trans_updated, mask_triu_updated, row_indexes)
-            )(*self._apply_roots_valid_mask(mask_trans, mask_trans_i, mask_triu, step_B))
-        ]
+        result = []
+        for step_B, mask_trans_i in resonance_field_data:
+            mask_trans_updated, mask_triu_updated, step_B_updated = self._apply_roots_valid_mask(
+                mask_trans, mask_trans_i, mask_triu, step_B
+            )
+
+            batch_items = self._split_batch(
+                mask_trans_updated, mask_triu_updated, row_indexes
+            )
+
+            for item in batch_items:
+                mask_triu_new, row_indexes_new, pattern_local_indices, pattern_true_indices = item
+                result.append((
+                    mask_triu_new,
+                    row_indexes_new,
+                    pattern_local_indices,
+                    pattern_true_indices,
+                    step_B_updated
+                ))
         return result
 
     def _iterate_batch(self,
@@ -1703,6 +1714,7 @@ class ResField(nn.Module):
         out = self._combine_resonance_data(dtype=resonance_frequency.dtype,
                                            device=Gz.device, batches=batches, resonance_frequency=resonance_frequency)
         return out
+
 
 
 
