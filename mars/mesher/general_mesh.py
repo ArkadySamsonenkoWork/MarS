@@ -1,13 +1,11 @@
 from abc import ABC, abstractmethod
-import sys
 import typing as tp
 from matplotlib import pyplot as plt
 
 import torch
 import torch.nn as nn
 
-sys.path.append("..")
-import utils
+from .. import utils
 
 
 class BaseMesh(nn.Module, ABC):

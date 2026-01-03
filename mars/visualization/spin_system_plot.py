@@ -3,11 +3,6 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import torch
-from typing import Optional, Dict, Any, Tuple, List
-import matplotlib.patches as patches
-from matplotlib.widgets import Button
-import textwrap
 
 import plotly.graph_objs as go
 

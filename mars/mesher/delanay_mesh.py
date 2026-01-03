@@ -17,8 +17,6 @@ class MeshProcessor:
         self.base_vertices, self.extended_vertices, self.idx_mask = self._preprocess()
 
         self.base_tri = self._triangulate(self.base_vertices)
-
-
         self.extended_tri = self._triangulate(self.extended_vertices)
 
 

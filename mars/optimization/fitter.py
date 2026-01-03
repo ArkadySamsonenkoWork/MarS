@@ -1,7 +1,6 @@
 import copy
 from dataclasses import dataclass
 import typing as tp
-import sys
 import math
 
 import nevergrad as ng
@@ -11,11 +10,8 @@ import optuna
 from scipy.spatial.distance import cdist
 from sklearn.preprocessing import StandardScaler
 
-import spin_system
-
-sys.path.append("..")
-from spectra_processing import normalize_spectrum, normalize_spectrum2d
-from optimization import objectives
+from ..spectra_processing import normalize_spectrum, normalize_spectrum2d
+from . import objectives
 from optuna_dashboard import run_server
 
 class TrialResult(tp.TypedDict):

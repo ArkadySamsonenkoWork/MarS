@@ -7,7 +7,7 @@ import typing as tp
 import torch
 from torch import nn
 
-import spin_system
+from . import spin_system
 
 
 class ViewIndexator(nn.Module):
@@ -64,7 +64,8 @@ class EighEigenSolver(BaseEigenSolver):
     Default eigen solver based on torch.linalg.eigh.
     """
     def forward(self, Hamiltonian: torch.Tensor):
-        return torch.linalg.eigh(Hamiltonian)
+        vals, vecs = torch.linalg.eigh(Hamiltonian)
+        return vals, vecs
 
     def compute_eigenvalues(self, F: torch.Tensor, G: torch.Tensor, B: torch.Tensor):
         return torch.linalg.eigvalsh(F + G * B)
@@ -139,7 +140,6 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         self.max_iterations = torch.tensor(max_iterations)
         self.spin_dim = spin_dim
         self._triu_indices = torch.triu_indices(spin_dim, spin_dim, offset=1, device=device)
-        self.view_indexator = ViewIndexator()
 
     def _compute_resonance_functions(self, eig_values_low: torch.Tensor, eig_values_high: torch.Tensor,
                                     resonance_frequency: torch.Tensor) -> (torch.Tensor, torch.Tensor):
@@ -878,7 +878,6 @@ class BaseResonanceLocator(nn.Module):
 
         vec_high_aligned = vec_high * phase.conj()
         vec = vec_low * weights_low + vec_high_aligned * weights_high
-
         return vec
 
     def _split_mask(self, mask_res: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -998,6 +997,7 @@ class BaseResonanceLocator(nn.Module):
         weights_low, weights_high = self._compute_linear_interpolation_weights(step_B)
         vectors_u, vectors_v = self._compute_eigenvectors_transitions(eig_vectors_low, eig_vectors_high,
                                                                       lvl_down, lvl_up, weights_low, weights_high)
+
         if self.output_full_eigenvector:
             vector_full_system = self._compute_eigenvector_full_system(eig_vectors_low, eig_vectors_high,
                                                                        lvl_down, lvl_up, weights_low, weights_high)
@@ -1081,10 +1081,7 @@ class BaseResonanceLocator(nn.Module):
                                                                     return_counts=True)
             use_bitpack = False
 
-        # Pre-compute mask_triu true positions for efficiency
         triu_true_positions = torch.where(mask_triu)[0]
-        #indexes_true_positions = torch.where(indexes)[0]
-
         num_unique = len(counts)
         result = []
         for pattern_idx in range(num_unique):
@@ -1100,26 +1097,17 @@ class BaseResonanceLocator(nn.Module):
                     continue
                 pattern_true_indices = torch.where(current_pattern)[0]
 
-            # Get local indices without sorting
             pattern_local_indices = torch.where(inverse_indices == pattern_idx)[0]
             if len(pattern_local_indices) == 0:
                 continue
 
-            # Map to global indices
             row_global_pattern_indices = row_indexes.index_select(0, pattern_local_indices)
 
-            # Create updated mask_triu efficiently
             mask_triu_updated = torch.zeros_like(mask_triu)
             if len(pattern_true_indices) > 0:
                 pos_to_set = triu_true_positions[pattern_true_indices]
                 mask_triu_updated[pos_to_set] = True
             result.append((mask_triu_updated, row_global_pattern_indices, pattern_local_indices, pattern_true_indices))
-            # Select batches using integer indices to avoid bool masking
-
-            #batches_selected = \
-            #    [batch[pattern_local_indices].index_select(dim=len(original_shape) - 1, index=pattern_true_indices) for batch in batches_triu] + \
-            #    [batch[pattern_local_indices] for batch in batches_general]
-
         return result
 
     def _get_resonance_data(self, resonance_field_data, mask_triu, mask_trans, row_indexes):
@@ -1215,6 +1203,7 @@ class BaseResonanceLocator(nn.Module):
             step_B_new = step_B[tuple(idx)]
             Bres = Bres[tuple(idx)]
 
+
             eig_vectors_low_new = eig_vectors_low[pattern_local_indices]
             eig_vectors_high_new = eig_vectors_high[pattern_local_indices]
 
@@ -1223,7 +1212,6 @@ class BaseResonanceLocator(nn.Module):
 
             (vectors_u, vectors_v), vector_full_system = self._compute_eigenvectors(
                 eig_vectors_low_new, eig_vectors_high_new, valid_lvl_down, valid_lvl_up, step_B_new)
-
             out_res = (
                 (vectors_u, vectors_v),
                 (valid_lvl_down, valid_lvl_up),
@@ -1319,7 +1307,6 @@ class GeneralResonanceLocator(BaseResonanceLocator):
 
         full_roots[mask_one_root, 0] = one_root.squeeze(-1)
         valid = full_roots.ge(0.0) & full_roots.le(1.0)
-        #valid = (full_roots >= 0.0) & (full_roots <= 1.0)
         result = []
         for i in range(valid.shape[-1]):
             mask = valid[:, i]  # shape [B]
@@ -1443,7 +1430,6 @@ class GeneralResonanceLocator(BaseResonanceLocator):
         filtered_mask_trans = combined_mask[..., active_transitions]
         filtered_step_B = step_B[..., active_transitions]
         mask_triu_updated[mask_triu] = active_transitions
-
         return filtered_mask_trans, mask_triu_updated, filtered_step_B
 
 
@@ -1713,6 +1699,9 @@ class ResField(nn.Module):
         batches = locator(batches, resonance_frequency / resonance_frequency, *args)
         out = self._combine_resonance_data(dtype=resonance_frequency.dtype,
                                            device=Gz.device, batches=batches, resonance_frequency=resonance_frequency)
+        #print(out[0])
+        #print(out[1])
+        #print(out[-1])
         return out
 
 

@@ -5,61 +5,6 @@ import numpy as np
 
 import typing as tp
 
-def normalize_spectrum(x: torch.Tensor,
-                       y: torch.Tensor,
-                       mode: str = "integral") -> torch.Tensor:
-    """Normalize a spectrum tensor y defined on field values B.
-
-    Modes supported:
-      - 'integral': integrate absolute values (Riemann) and divide
-      - 'max': divide by max absolute value
-      - None or 'none': return copy
-    """
-    if mode is None or mode == "none":
-        return y.clone()
-    step = float(x[1] - x[0]) if x.numel() > 1 else 1.0
-    if mode == "max":
-        denom = float(y.abs().max())
-        if denom == 0:
-            return y.clone()
-        return y / denom
-    if mode == "integral":
-        denom = float((y.abs().sum() * step).item())
-        if denom == 0:
-            return y.clone()
-        return y / denom
-    raise ValueError(f"Unknown norm mode: {mode}")
-
-
-def normalize_spectrum2d(
-        x1: torch.Tensor,
-        x2: torch.Tensor,
-        y: torch.Tensor,
-        mode: str = "integral") -> torch.Tensor:
-    """Normalize a spectrum tensor y defined on field values B.
-
-    Modes supported:
-      - 'integral': integrate absolute values (Riemann) and divide
-      - 'max': divide by max absolute value
-      - None or 'none': return copy
-    """
-    if mode is None or mode == "none":
-        return y.clone()
-    step_1 = float(x1[1] - x1[0]) if x1.numel() > 1 else 1.0
-    step_2 = float(x2[1] - x2[0]) if x2.numel() > 1 else 1.0
-    if mode == "max":
-        denom = float(y.abs().max())
-        if denom == 0:
-            return y.clone()
-        return y / denom
-    if mode == "integral":
-        denom = float((y.abs().sum() * step_1 * step_2).item())
-        if denom == 0:
-            return y.clone()
-        return y / denom
-    raise ValueError(f"Unknown norm mode: {mode}")
-
-
 def signal_to_amplitude(y_vals):
     """ Rotate the signal so that the mean imaginary part is zero, then compute amplitude. """
 
@@ -103,7 +48,6 @@ def correct_baseline_polynomial(x_vals: np.ndarray, y_vals: np.ndarray, mask: np
     """
     Remove baseline by fitting polynomial to regions excluding the peak
     """
-
     coeffs = np.polyfit(x_vals[mask], y_vals[mask], poly_order)
     baseline = np.polyval(coeffs, x_vals)
     y_corrected = y_vals - baseline
@@ -170,16 +114,12 @@ def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
         window_size = len(y_vals) // 20
 
     baseline_mask = np.zeros(len(y_vals), dtype=bool)
-
-    # Calculate local percentiles using sliding window
     half_window = window_size // 2
     for i in range(len(y_vals)):
         start = max(0, i - half_window)
         end = min(len(y_vals), i + half_window + 1)
 
         local_percentile = np.percentile(y_vals[start:end], percentile)
-
-        # Check if current point is close to local percentile
         if y_vals[i] <= local_percentile * (1 + proximity_threshold):
             baseline_mask[i] = True
 
@@ -189,6 +129,36 @@ def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
 def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
                      baseline_areas: tp.Optional[list[tuple[float, float]]] = None,
                      method="poly", poly_order=0, lam=2e7, p=0.05, niter=10, sat_last_indexes=10):
+    """
+    Correct baseline line in spectral data.
+    :param x_vals: np.ndarray
+           X-axis coordinates (e.g., fields or time points).
+    :param y_vals:np.ndarray
+           Raw spectral signal values (Y-axis).
+    :param baseline_areas: list of (float, float) tuples, optional
+           Regions to use for baseline estimation. Each tuple defines (start_x, end_x).
+           If None, automatically detects baseline regions using percentile analysis.
+    :param method: str, default="poly"
+           Baseline correction method:
+           - "poly": Polynomial fitting (order controlled by `poly_order`)
+           - "als" : Asymmetric Least Squares (robust for complex baselines)
+           - "saturation": Constant baseline from signal saturation region
+    :param poly_order: int, default=0
+           Polynomial order for "poly" method (0 = constant offset).
+    :param lam: float, default=2e7
+           Smoothness parameter for "als" method (higher = smoother baseline).
+    :param p: float, default=0.05
+           Asymmetry parameter for "als" method (0 < p < 1; smaller = more under-estimation).
+    :param niter: int, default=10
+           Max iterations for "als" convergence.
+    :param sat_last_indexes: int, default=10
+           Number of trailing points to average for saturation baseline ("saturation" method).
+    :return:
+       y_corrected : np.ndarray
+           Baseline-corrected signal (y_vals - baseline).
+       baseline : np.ndarray
+           Estimated baseline values across all x_vals.
+    """
     if method is "saturation":
         y_corrected, baseline = correct_baseline_saturation(y_vals, sat_last_indexes=sat_last_indexes)
     else:
@@ -202,7 +172,88 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
             y_corrected, baseline = correct_baseline_als(y_vals, mask, lam=lam, p=p, niter=niter)
         else:
             raise ValueError("Wrong method. It must be 'poly' or 'als'")
-
     return y_corrected, baseline
 
 
+def normalize_spectrum(x: tp.Union[torch.Tensor, np.ndarray],
+                       y: tp.Union[torch.Tensor, np.ndarray],
+                       mode: str = "integral") -> tp.Union[torch.Tensor, np.ndarray]:
+    """
+    Normalize a 1D spectrum
+
+    :param x:  tp.Union[torch.Tensor, np.ndarray]
+        X-axis coordinates (e.g., magnetic field values).
+    :param y: tp.Union[torch.Tensor, np.ndarray]
+        Spectrum amplitudes (Y-axis values).
+    :param mode: str, default="integral"
+        Normalization method:
+        - "integral": Scale so area under |y| curve = 1
+        - "max"     : Scale so maximum |y| value = 1
+        - "none"    : Return unmodified copy
+
+    :return:
+    torch.Tensor
+        Normalized spectrum (same shape as input y).
+    Notes:
+    ------
+    Uses trapezoidal integration for "integral" mode.
+    Returns copy of y unchanged if normalization factor is zero.
+    """
+    if mode is None or mode == "none":
+        return y.clone()
+    step = float(x[1] - x[0]) if x.numel() > 1 else 1.0
+    if mode == "max":
+        denom = float(y.abs().max())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    if mode == "integral":
+        denom = float((y.abs().sum() * step).item())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    raise ValueError(f"Unknown norm mode: {mode}")
+
+
+def normalize_spectrum2d(
+        x1: tp.Union[torch.Tensor, np.ndarray],
+        x2: tp.Union[torch.Tensor, np.ndarray],
+        y: tp.Union[torch.Tensor, np.ndarray],
+        mode: str = "integral") -> torch.Tensor:
+    """
+    Normalize a 2D spectrum
+
+    :param x1:  tp.Union[torch.Tensor, np.ndarray]
+        X1-axis coordinates (e.g., magnetic field values).
+    :param x2:  tp.Union[torch.Tensor, np.ndarray]
+        X1-axis coordinates (e.g., magnetic field values).
+    :param y: tp.Union[torch.Tensor, np.ndarray]
+        Spectrum amplitudes (Y-axis values).
+    :param mode: str, default="integral"
+        Normalization method:
+        - "integral": Scale so area under |y| curve = 1
+        - "max"     : Scale so maximum |y| value = 1
+        - "none"    : Return unmodified copy
+    :return:
+    torch.Tensor
+        Normalized spectrum (same shape as input y).
+    Notes:
+    ------
+    Uses rectangular integration (Riemann sum) for "integral" mode.
+    Returns copy of y unchanged if normalization factor is zero.
+    """
+    if mode is None or mode == "none":
+        return y.clone()
+    step_1 = float(x1[1] - x1[0]) if x1.numel() > 1 else 1.0
+    step_2 = float(x2[1] - x2[0]) if x2.numel() > 1 else 1.0
+    if mode == "max":
+        denom = float(y.abs().max())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    if mode == "integral":
+        denom = float((y.abs().sum() * step_1 * step_2).item())
+        if denom == 0:
+            return y.clone()
+        return y / denom
+    raise ValueError(f"Unknown norm mode: {mode}")

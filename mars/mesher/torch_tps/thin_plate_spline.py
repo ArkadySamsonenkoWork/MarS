@@ -114,7 +114,8 @@ class ThinPlateSpline:
 
     eps = 0  # Relaxed orthogonality constraints by setting it to 1e-6 ?
 
-    def __init__(self, init_vertices, extended_vertices, alpha=0.2, order=1, enforce_tps_kernel=False, device="cpu") ->\
+    def __init__(self, init_vertices, extended_vertices, alpha=0.2, order=1, enforce_tps_kernel=False,
+                 device="cpu", dtype: torch.dtype = torch.float32) ->\
             None:
         self._fitted = False
         self._polynomial_features = PolynomialFeatures(order - 1)
@@ -127,8 +128,8 @@ class ThinPlateSpline:
         self.enforce_tps_kernel = enforce_tps_kernel
         self.device = torch.device(device)
 
-        self.parameters = torch.tensor([], dtype=torch.float32)
-        self.control_points = torch.tensor([], dtype=torch.float32)
+        self.parameters = torch.tensor([], dtype=dtype)
+        self.control_points = torch.tensor([], dtype=dtype)
 
         self._precompute(self.init_vertices, self.extended_vertices)
 
@@ -185,7 +186,6 @@ class ThinPlateSpline:
             [Y, torch.zeros((self.X_p_shape[1], Y.shape[1]), dtype=Y.dtype, device=self.device)]
         )
         self.parameters = torch.linalg.solve(self.A, B)  # pylint: disable=not-callable
-        #self.parameters = self.L @ B
 
         return self.X_aug_expand @ self.parameters  # (n', v)
 

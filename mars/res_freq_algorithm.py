@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import spin_system
+from . import spin_system
 
 ### The energy computation is not effective due to the usage of common interface for population computation
 ### It should be rebuild without expand operation

@@ -1,15 +1,12 @@
-import sys
 import typing as tp
 import copy
 
 import torch
 
-import spin_system
+from .. import spin_system
 
-sys.path.append("..")
-from spin_system import BaseSample
+from ..spin_system import BaseSample
 from .fitter import ParamSpec, ParameterSpace
-import particles
 
 
 class VaryInteraction:

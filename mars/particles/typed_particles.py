@@ -3,10 +3,6 @@ import os
 import pickle
 import torch
 import math
-from torch import nn
-
-import constants
-import utils
 
 @dataclass(frozen=True)
 class SpinMatricesHalf:

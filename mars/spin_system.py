@@ -4,21 +4,15 @@ from abc import ABC, abstractmethod
 import copy
 import typing as tp
 import math
-import pickle
-import json
-from pathlib import Path
-import yaml
 
-import numpy as np
 import torch
 import torch.nn as nn
-import scipy
 
-import constants
-import mesher
-import particles
-import utils
-from mesher import BaseMesh
+from . import constants
+from . import mesher
+from . import particles
+from . import utils
+from .mesher import BaseMesh
 
 
 # Подумать над изменением логики.
@@ -371,7 +365,7 @@ class Interaction(BaseInteraction):
         self.register_buffer("_rot_matrix", _rot_matrix)
 
     def euler_to_rotmat(self, euler_angles: torch.Tensor):
-        return utils.euler_angles_to_matrix(euler_angles).to(torch.complex64)
+        return utils.euler_angles_to_matrix(euler_angles)
 
     def _tensor(self):
         """
@@ -699,13 +693,25 @@ class SpinSystem(nn.Module):
     def electron_nuclei(self):
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.en_indices, self.electron_nuclei_interactions)]
 
+    @electron_nuclei.setter
+    def electron_nuclei(self, interactions: list[tuple[int, int, BaseInteraction]] | None):
+        self._register_interactions(interactions, self.electron_nuclei_interactions, self.en_indices)
+
     @property
     def electron_electron(self):
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.ee_indices, self.electron_electron_interactions)]
 
+    @electron_electron.setter
+    def electron_electron(self, interactions: list[tuple[int, int, BaseInteraction]] | None):
+        self._register_interactions(interactions, self.electron_electron_interactions, self.ee_indices)
+
     @property
     def nuclei_nuclei(self):
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.nn_indices, self.nuclei_nuclei_interactions)]
+
+    @nuclei_nuclei.setter
+    def nuclei_nuclei(self, interactions: list[tuple[int, int, BaseInteraction]] | None):
+        self._register_interactions(interactions, self.nuclei_nuclei_interactions, self.nn_indices)
 
     @property
     def operator_cache(self):
@@ -725,23 +731,174 @@ class SpinSystem(nn.Module):
                                                                      # расчёт взаимодействией не оптимальный
         return torch.stack(operator_cache, dim=0)
 
-    def get_Sz(self):
+    def get_electron_z_operator(self) -> torch.Tensor:
         """
-        :return: operator Sz as torch.tensor with shape [spin_dim, spin_dim]
+        Compute the total Sz operator for all electron spins in the system.
+        This method sums the individual Sz operators from each electron spin operator
+        cache to produce the total spin projection operator along the z-axis.
+
+        :return: The total Sz operator with shape [spin_dim, spin_dim], where spin_dim is the
+        total dimension of the spin system Hilbert space.
+
+        Examples
+        --------
+        For a system with one spin-1/2 electron:
+            Returns a 2x2 matrix representing the Pauli Sz operator.
+        For a system with two spin-1/2 electrons:
+        Returns a 4x4 matrix representing the sum of both Sz operators.
         """
         Sz = 0
         for idx in range(len(self.electrons)):
             Sz += self.operator_cache[idx][2, :, :]
         return Sz
 
-    def get_S_sq(self):
+    def get_electron_squared_operator(self) -> torch.Tensor:
         """
-        :return: operator S**2 as torch.tensor with shape [spin_dim, spin_dim]
+        Compute the total S² operator for all electron spins in the system.
+        This method calculates S² = Sx² + Sy² + Sz² by first summing the individual
+        spin vector operators from each electron, then computing the dot product of
+        the total spin vector with itself.
+
+        :return: The total S² operator with shape [spin_dim, spin_dim], where spin_dim is the
+        total dimension of the spin system Hilbert space.
+
+        Examples
+        --------
+        For a system with two spin-1/2 electrons:
+            Eigenvalues correspond to singlet (S=0) and triplet (S=1) states.
         """
         S_vector = 0
         for idx in range(len(self.electrons)):
             S_vector += self.operator_cache[idx]
         return torch.matmul(S_vector, S_vector).sum(dim=-3)
+
+    def get_spin_multiplet_basis(self) -> torch.Tensor:
+        """
+        Compute eigenvector in the |S, M⟩ basis (total spin and projection basis).
+        This method diagonalizes a combination of sS² and Sz operators to obtain
+        eigenvectors ordered by total spin quantum number S, then by magnetic
+        quantum number M (spin projection).
+
+        :return: torch.Tensor
+        Matrix of eigenvectors with shape [spin_dim, spin_dim], where each column
+        represents an eigenstate. States are ordered in ascending order of S,
+        then in ascending order of M within each S manifold.
+
+        Examples
+        --------
+        For two spin-1/2 electrons:
+            Returns basis ordered as: |S=0, M=0⟩, |S=1, M=-1⟩, |S=1, M=0⟩, |S=1, M=1⟩
+        """
+        C = self.get_electron_squared_operator() + 1j * self.get_electron_z_operator()
+        values, vectors = torch.linalg.eig(C)
+        sorting_key = values.real * (values.imag.abs().max() + 1) + values.imag
+        indices = torch.argsort(sorting_key)
+        return vectors[:, indices]
+
+    def get_product_state_basis(self) -> torch.Tensor:
+        """
+        Return the identity matrix representing the computational product state basis.
+        The product state basis is |ms1, ms2, ..., msk, is1, ..., ism⟩ where:
+        - ms1, ms2, ..., msk are magnetic quantum numbers for electrons through k
+        - is1, is2, ..., ism are magnetic quantum numbers for nuclei through m
+        Each state corresponds to a definite spin projection for each particle.
+        :return: torch.Tensor
+        Identity matrix with shape [spin_system_dim, spin_system_dim]. The identity
+        matrix indicates that the current representation is already in the product
+        state basis.
+
+        Examples
+        --------
+        For one spin-1/2 electron and one spin-1/2 nucleus:
+            Basis states: |↑, ↑⟩, |↑, ↓⟩, |↓, ↑⟩, |↓, ↓⟩
+        """
+        return torch.ones((self.spin_system_dim, self.spin_system_dim), device=self.device, dtype=self.dtype)
+
+    def get_total_projections(self) -> torch.Tensor:
+        """
+        Compute the total magnetic quantum number M for each product state.
+        This method calculates M = Σmsi + Σisj (sum of all electron and nuclear
+        spin projections) for each basis state in the product state representation.
+
+        :return: torch.Tensor
+        1D tensor with shape [spin_dim] containing the total spin projection
+        (magnetic quantum number) for each product state basis vector.
+
+        Examples
+        --------
+        For one spin-1/2 electron:
+            Returns tensor([0.5, -0.5])
+
+        For one spin-1/2 electron and one spin-1/2 nucleus:
+            Returns tensor([1.0, 0.0, 0.0, -1.0])
+            Corresponding to states: |↑↑⟩, |↑↓⟩, |↓↑⟩, |↓↓⟩
+
+        For two spin-1/2 electrons:
+            Returns tensor([1.0, 0.0, 0.0, -1.0])
+            Corresponding to states: |↑↑⟩, |↑↓⟩, |↓↑⟩, |↓↓⟩
+        """
+        all_projections = []
+        for particle in self.electrons:
+            s = particle.spin
+            num_vals = int(round(2 * s)) + 1
+            m_vals = torch.linspace(-s, s, num_vals).tolist()
+            all_projections.append(m_vals)
+
+        for particle in self.nuclei:
+            s = particle.spin
+            num_vals = int(round(2 * s)) + 1
+            m_vals = torch.linspace(-s, s, num_vals).tolist()
+            all_projections.append(m_vals)
+
+        total_projections = []
+        for combination in itertools.product(*all_projections):
+            total_projections.append(sum(combination))
+
+        return torch.tensor(total_projections, dtype=self.dtype, device=self.device)
+
+    def get_electron_projections(self) -> torch.Tensor:
+        """
+        Compute the electron-only spin projection for each product state.
+
+        This method calculates Me = Σmsi (sum of electron spin projections only)
+        for each basis state, ignoring nuclear spin contributions.
+
+        :return: torch.Tensor
+        1D tensor with shape [spin_dim] containing the total electron spin
+        projection for each product state basis vector. Nuclear contributions
+        are set to zero.
+
+        Examples
+        --------
+        For one spin-1/2 electron:
+            Returns tensor([0.5, -0.5])
+
+        For one spin-1/2 electron and one spin-1/2 nucleus:
+            Returns tensor([0.5, 0.5, -0.5, -0.5])
+            Nuclear spins don't contribute, so we get: |↑_e,↑_n⟩, |↑_e,↓_n⟩, |↓_e,↑_n⟩, |↓_e,↓_n⟩
+
+        For two spin-1/2 electrons:
+            Returns tensor([1.0, 0.0, 0.0, -1.0])
+            Corresponding to: |↑↑⟩, |↑↓⟩, |↓↑⟩, |↓↓⟩
+        """
+        all_projections = []
+        for particle in self.electrons:
+            s = particle.spin
+            num_vals = int(round(2 * s)) + 1
+            m_vals = torch.linspace(-s, s, num_vals).tolist()
+            all_projections.append(m_vals)
+
+        for particle in self.nuclei:
+            s = particle.spin
+            num_vals = int(round(2 * s)) + 1
+            m_vals = [0] * num_vals
+            all_projections.append(m_vals)
+
+        total_projections = []
+        for combination in itertools.product(*all_projections):
+            total_projections.append(sum(combination))
+
+        return torch.tensor(total_projections, dtype=self.dtype, device=self.device)
 
     def update(self,
                g_tensors: list[BaseInteraction] = None,
@@ -833,7 +990,6 @@ class SpinSystem(nn.Module):
         lines.append(f"Hilbert space dimension: {self.spin_system_dim}")
         lines.append(f"Configuration shape: {tuple(self.config_shape)}")
 
-        # Interactions section
         total_interactions = (len(self.electron_nuclei) +
                               len(self.electron_electron) +
                               len(self.nuclei_nuclei))
@@ -908,6 +1064,7 @@ class BaseSample(nn.Module):
         :param kwargs:
         """
         super().__init__()
+        print(gauss)
         self.base_spin_system = spin_system
         self.modified_spin_system = copy.deepcopy(spin_system)
         self.register_buffer("_ham_strain", self._init_ham_str(ham_strain, device, dtype))
@@ -915,6 +1072,7 @@ class BaseSample(nn.Module):
         self.base_ham_strain = copy.deepcopy(self._ham_strain)
         self.register_buffer("gauss", self._init_gauss_lorentz(gauss, device, dtype))
         self.register_buffer("lorentz", self._init_gauss_lorentz(lorentz, device, dtype))
+        self.register_buffer("secular_threshold", torch.tensor(1e-9, device=device, dtype=dtype))
 
         self.to(device)
         self.to(dtype)
@@ -940,7 +1098,7 @@ class BaseSample(nn.Module):
             width = torch.zeros(
                 self.base_spin_system.config_shape, device=device, dtype=dtype)
         else:
-            width = torch.tensor(width, device=device)
+            width = torch.tensor(width, device=device, dtype=dtype)
             if width.shape != self.base_spin_system.config_shape:
                 raise ValueError(f"width batch shape must be equel to base_spin_system config shape")
         return width
@@ -1083,6 +1241,24 @@ class BaseSample(nn.Module):
         """
         return self.build_zero_field_term(), *self.build_zeeman_terms()
 
+    def get_hamiltonian_terms_secular(self) -> tuple:
+        """
+        Returns F0, Gx, Gy, Gz.
+        F0 is a part of magnetic field free term, which commutes with Gz
+        Gx, Gy, Gz are terms multiplied to Bx, By, Bz respectively
+
+        The next approach for computation is used:
+
+        1) The mask M is created
+                m = diag(Sz)  # shape (.., n)
+                M[i,j] = 1 if m[i] == m[j], else 0
+        2) Then F0 = F * M is used
+        """
+        Gx, Gy, Gz = self.build_zeeman_terms()
+        diag = torch.diagonal(Gz, dim1=-2, dim2=-1).real
+        mask = abs(diag[..., :, None] - diag[..., None, :]) < self.secular_threshold
+        return self.build_zero_field_term() * mask, *(Gx, Gy, Gz)
+
     def build_field_dep_straine(self):
         """
         Calculate electron Zeeman field dependant strained part
@@ -1144,8 +1320,6 @@ class BaseSample(nn.Module):
         lines.append("GENERAL INFO: ")
         lines.append("=" * 60)
 
-        # Check if we're dealing with batched tensors
-
         is_batched = self.base_spin_system.config_shape
 
         if is_batched:
@@ -1189,7 +1363,7 @@ class SpinSystemOrientator:
         spin_system = self.transform_spin_system_to_oriented(copy.deepcopy(spin_system), rotation_matrices)
         return spin_system
 
-    def interactions_to_multioriented(self, interactions: list[BaseInteraction], rotation_matrices: torch.Tensor):
+    def interactions_to_multioriented(self, interactions: list[nn.Module], rotation_matrices: torch.Tensor):
         interactions_tensors = torch.stack([interaction.tensor for interaction in interactions], dim=0)
         interactions_tensors = utils.apply_expanded_rotations(rotation_matrices, interactions_tensors)
         not_none_strained = [
@@ -1251,6 +1425,7 @@ class MultiOrientedSample(BaseSample):
                  gauss: torch.Tensor = None,
                  lorentz: torch.Tensor = None,
                  mesh: tp.Optional[BaseMesh] = None,
+                 spin_system_frame: tp.Optional[torch.Tensor] = None,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1258,6 +1433,17 @@ class MultiOrientedSample(BaseSample):
         :param spin_system:
         SpinSystem
             The spin system describing electrons, nuclei, and their interactions.
+
+        :param spin_system_frame:
+        torch.Tensor | Sequence[float] optional
+            Orientation of the spin system. Can be provided as:
+              - A 1D tensor of shape (3,) representing Euler angles in ZYZ' convention.
+              - A 2D tensor of shape (3, 3) representing a rotation matrix.
+            Default is `None`, meaning lab frame.
+
+        This parameter has meaning for tasks when there are other samples in the system and you try to create some
+        complex system. For example, you have two triplets connected by dipole-dipole interaction
+        but initial populations of the triplet states you set at the basises of individual triplets.
 
         :param ham_strain:
         torch.Tensor, optional
@@ -1278,24 +1464,60 @@ class MultiOrientedSample(BaseSample):
             contributions (e.g., due to relaxation). Default is `None`
 
         :param mesh: The mesh to perform rotations.
-        If it is None it wiil be initialize as DelaunayMeshNeighbour with initialsize = 20
+        If it is None it will be initialize as DelaunayMeshNeighbour with initialsize = 20
 
         :param device: device to compute (cpu / gpu)
         """
 
         super().__init__(spin_system, ham_strain, gauss, lorentz, device=device, dtype=dtype)
         self.mesh = self._init_mesh(mesh, device=device, dtype=dtype)
+        self._construct_spin_system_rot_matrix(frame=spin_system_frame, dtype=dtype, device=device)
         rotation_matrices = self.mesh.rotation_matrices
 
         self._ham_strain = self._expand_hamiltonian_strain(
             self.base_ham_strain,
             self.orientation_vector(rotation_matrices)
         )
-        self.modified_spin_system = SpinSystemOrientator()(spin_system, rotation_matrices)
+        if spin_system_frame is None:
+            self.modified_spin_system = SpinSystemOrientator()(spin_system, rotation_matrices)
+        else:
+            self.modified_spin_system = SpinSystemOrientator()(
+                spin_system, torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
+            )
+
+    def _construct_spin_system_rot_matrix(
+            self, frame: tp.Optional[torch.tensor],
+            device: torch.device,
+            dtype: torch.dtype
+    ):
+        if frame is None:
+            _frame = None
+            _rot_matrix = None
+
+        else:
+            if not isinstance(frame, torch.Tensor):
+                raise TypeError("frame must be a torch.Tensor or None.")
+            if frame.shape[-2:] == (3, 3):
+                _frame = utils.rotation_matrix_to_euler_angles(frame)
+                _rot_matrix = frame.to(dtype).to(device)
+
+            elif frame.shape == (3, ):
+                _frame = frame.to(dtype)
+                _rot_matrix = self.euler_to_rotmat(_frame).to(dtype).to(device)
+
+            else:
+                raise ValueError(
+                    "frame must be either:\n"
+                    "  • None (→ identity rotation),\n"
+                    "  • a tensor of Euler angles with shape batch×3,\n"
+                    "  • or a tensor of rotation matrices with shape batch×3×3."
+                )
+        self.register_buffer("_spin_system_frame", _frame)
+        self.register_buffer("_spin_system_rot_matrix", _rot_matrix)
 
     def _init_mesh(self, mesh: tp.Optional[BaseMesh], device: torch.device, dtype: torch.dtype):
         if mesh is None:
-            mesh = mesher.DelaunayMeshNeighbour(interpolate=True,
+            mesh = mesher.DelaunayMeshNeighbour(interpolate=False,
                                                 initial_grid_frequency=20,
                                                 interpolation_grid_frequency=40, device=device, dtype=dtype)
         return mesh.to(device, dtype)
@@ -1377,7 +1599,13 @@ class MultiOrientedSample(BaseSample):
                 self.base_ham_strain,
                 self.orientation_vector(rotation_matrices)
             )
+
         self.gauss = self._init_gauss_lorentz(gauss, self.device, self.dtype)
         self.lorentz = self._init_gauss_lorentz(lorentz, self.device, self.dtype)
 
-        self.modified_spin_system = SpinSystemOrientator()(self.base_spin_system, rotation_matrices)
+        if self._spin_system_frame is None:
+            self.modified_spin_system = SpinSystemOrientator()(self.base_spin_system, rotation_matrices)
+        else:
+            self.modified_spin_system = SpinSystemOrientator()(
+                self.base_spin_system, torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
+            )
