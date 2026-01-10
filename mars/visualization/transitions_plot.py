@@ -7,6 +7,7 @@ import seaborn as sns
 
 x_delta = 0.2
 
+
 def _get_energy_positions(E: np.ndarray, power: float = 1/2):
     order = np.argsort(E)
     E_sorted = E[order]

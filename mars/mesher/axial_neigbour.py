@@ -1,12 +1,6 @@
-import numpy as np
-import math
-
-from scipy.spatial import ConvexHull
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
-from sklearn.neighbors import BallTree
 
 from .general_mesh import BaseMesh, BaseMeshAxial
 

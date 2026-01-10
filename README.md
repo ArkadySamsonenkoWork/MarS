@@ -1,72 +1,200 @@
-MarS
+# MarS
 
-A toolkit for researchers to simulate, analyze, and explore EPR systems efficiently.
+**A toolkit for researchers to simulate, analyze, and explore EPR systems efficiently.**
 
-🚀 Overview
+---
 
-MarS is a comprehensive toolkit designed for modeling, simulation, and analysis of Electron Paramagnetic Resonance (EPR) systems.
-It enables researchers to efficiently study quantum spin dynamics, generate spectra, and integrate machine learning methods into EPR analysis.
+## 🚀 Overview
 
-Core Capabilities
+**MarS** is a Python library for constructing spin systems (electrons and nuclei), defining their magnetic interactions, and simulating Electron Paramagnetic Resonance (EPR) spectra.
 
--Quantum Spin System Modeling
-Simulate multi-particle spin systems involving both electrons and nuclei.
+It supports a wide range of interaction models, efficient batched computations on CPU and GPU, flexible numerical precision (`float32` / `float64`), and tools for both stationary and time-resolved EPR experiments.
 
--EPR Spectroscopy Simulation
-Generate continuous-wave (CW) and time-resolved EPR spectra.
+MarS is designed for research-oriented workflows, including rapid prototyping, large-scale parameter scans, and automated parameter fitting.
 
--Resonance Field Calculations
-Compute resonance conditions using advanced numerical algorithms.
+---
 
--Machine Learning Integration
-Employ neural networks for spectra generation, prediction, and feature extraction.
+## 🔑 Core Capabilities
 
--Optimization Framework
-Fit simulation parameters using state-of-the-art optimization libraries like Optuna and Nevergrad.
+### Interaction Support
+MarS allows users to construct spin systems with the most widely used magnetic interactions:
+- Zeeman interaction  
+- Exchange interaction  
+- Dipolar interaction  
+- Zero-field splitting (ZFS)  
+- Hyperfine interaction  
 
-⚙️ Features
+Both **isotropic** and **anisotropic** parameters are supported.
 
-🧠 General Capabilities
+---
 
--Construction of Hamiltonians for spin systems, including:
-Zeeman, Exchange, Hyperfine, Dipole–Dipole, and Zero-Field Splitting interactions
+### Orientation Support
+- Arbitrary orientation of interaction tensors using **Euler angles**
 
--Support for common strain distributions
+---
 
--Simulation of disordered samples (powder, glassy states)
+### Broadening Support
+MarS provides several mechanisms to model experimental linewidths:
+- Gaussian and Lorentzian line broadening  
+- Hamiltonian broadening  
+- Broadening due to distributions of Hamiltonian parameters  (so-called strains)
 
--Simulation of oriented samples
+---
 
--Powerful spectra simulation and parameter search using Optuna / Nevergrad
+### EPR Spectroscopy Simulation
+- Simulation of **continuous-wave (CW) EPR spectra**
+- Support for **powder** and **single-crystal** samples
+- Field-domain and frequency-domain simulations
 
--Full support for:
-float32 / complex64 and float64 / complex128 data types
-CPU and GPU computation backends
+---
 
-⏱️ Time-Resolved Capabilities
+### Radiation Polarization Support
+- Simulation of spectra under **polarized microwave radiation**
+- Polarization-dependent transition probabilities
 
--Define arbitrary relaxation processes based on eigenvectors and eigenvalues
+---
 
--General framework for basis transformations
+### Numerical Precision Control
+- Support for `float64` and `float32` precision
 
--Support for temperature-dependent effects
+---
 
--Partial support for density matrix formalism
+### CPU / CUDA Support
+- Support execution on **CPU** and **CUDA-enabled GPUs**
+---
 
-🤖 Machine Learning Features
+### Optimization Framework
+- Parameter fitting using **Optuna** and **Nevergrad** libraries
+---
 
--Extensive tools for spectra and dataset generation
+### Post-Fitting Analysis
+- Tools for analyzing alternative solutions
+- Exploration of parameter correlations and degeneracies
 
--Encoding methods for spin systems and spectra
+---
 
--Integrated training workflows for ML-based analysis and prediction
+# ⏱️ Time-Resolved Capabilities
 
-📂 Examples
+MarS is a comprehensive framework for modeling **time-resolved EPR experiments** with two complementary computational paradigms.
 
-The examples/ folder contains a collection of practical tutorials demonstrating:
--Spin system construction
--EPR spectra simulation (CW and time-resolved)
--Parameter fitting and optimization
--Machine learning workflows for spectra analysis
+### Relaxation Paradigms
+- **Population relaxation (Kinetic approach)**: Evolution of diagonal density matrix elements (population vectors)
+- **Density matrix relaxation**: Full quantum evolution of all density matrix elements. It includes two methods of computations:
+  - Rotating frame approximation method
+  - Direct propagator calculation method
+
+---
+
+### Flexible Relaxation Factrors Definition
+MarS provides powerful tools for defining complex relaxation processes:
+- **Population losses** (e.g., phosphorescence from triplet states)
+- **Spontaneous transitions** (free transitions satisfying detailed balance)
+- **Induced transitions** (driven transitions)
+- **Decoherence** (for density matrix formalism)
+
+All mechanisms can be specified in any of several predefined bases or custom transformation matrices.
+
+---
+
+### Basis Transformation Framework
+Comprehensive support for relaxation parameter specification in multiple bases:
+- **Eigenbasis** (`eigen`): Hamiltonian eigenstates in magnetic field
+- **Zero-field splitting basis** (`zfs`): Eigenstates of the ZFS operator
+- **Multiplet basis** (`multiplet`): Total spin and projection states |S, M⟩
+- **Product basis** (`product`): Individual spin projections
+- **Custom bases**: User-defined transformation matrices
+
+Automatic transformation of kinetic matrices and relaxation superoperators between bases.
+
+---
+
+### Relaxation Algebra
+- **Summation**: Combine multiple relaxation mechanisms defined in different bases
+- **Tensor product**: Construct composite quantum systems with independent subsystem dynamics
+- Enables modeling of complex multi-component systems and multi-pathway relaxation
+
+---
+
+### Liouville Space Formalism
+- Full support for Liouvillian relaxation superoperators
+- Implementation via **Lindblad equation** for general Markovian evolution
+- Automatic enforcement of detailed balance for spontaneous transitions
+---
+
+### Numerical Solvers
+Multiple solution strategies optimized for different scenarios:
+
+**Population kinetics:**
+- Stationary solution via matrix exponentiation (for time-independent systems)
+- Quasi-stationary iterative solution (for time-dependent rates)
+- Adaptive ODE integration (via `torchdiffeq`, for general time dependence)
+
+**Density matrix evolution:**
+- Rotating frame approximation (computationally efficient, limited to isotropic g-factors)
+- Propagator computation approach (fully general, supports arbitrary anisotropy and relaxation)
+
+---
+
+## ▶️ Getting Started
+
+### Installation
+
+```bash
+git clone https://github.com/ArkadySamsonenkoWork/MarS.git
+cd mars
+pip install -e <folder>
+
+```
+### Code Example
+```bash
 
 
+import torch
+import matplotlib.pyplot as plt
+from mars import spin_system, spectra_manager
+
+# Select device and precision
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+dtype = torch.float64
+
+# Define a simple electron spin system
+g_tensor = spin_system.Interaction((2.02, 2.04, 2.06), dtype=dtype, device=device)
+
+system = spin_system.SpinSystem(
+    electrons=[0.5],
+    g_tensors=[g_tensor],
+    dtype=dtype,
+    device=device
+)
+
+# Create a powder sample
+sample = spin_system.MultiOrientedSample(
+    spin_system=system,
+    gauss=0.001,
+    lorentz=0.001,
+    dtype=dtype,
+    device=device
+)
+
+# Create spectrum calculator
+spectra = spectra_manager.StationarySpectra(
+    freq=9.8e9,
+    sample=sample,
+    dtype=dtype,
+    device=device
+)
+
+# Magnetic field range
+fields = torch.linspace(0.3, 0.4, 1000, device=device, dtype=dtype)
+
+# Compute spectrum
+intensity = spectra(sample, fields)
+
+# Plot result
+plt.plot(fields.cpu(), intensity.cpu())
+plt.xlabel("Magnetic field (T)")
+plt.ylabel("Intensity (a.u.)")
+plt.title("Simulated CW EPR Spectrum")
+plt.show()
+
+```

@@ -1,16 +1,13 @@
 import numpy as np
 import math
 
-from scipy.spatial import ConvexHull, Delaunay
-import matplotlib.pyplot as plt
+from scipy.spatial import Delaunay
 import torch
 import torch.nn as nn
 
 from sklearn.neighbors import BallTree
 from sklearn.metrics import pairwise_distances
-from .general_mesh import BaseMesh, BaseMeshPowder
-
-from .torch_tps import ThinPlateSpline
+from .general_mesh import BaseMeshPowder
 
 
 class BoundaryHandler:

@@ -1,5 +1,0 @@
-numpy>=1.19.4
-torch>=2.3
-scipy>=1.14
-optuna>=4.3
-nevergrad>=1.0.12

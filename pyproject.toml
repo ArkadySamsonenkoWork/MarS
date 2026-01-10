@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -18,10 +18,19 @@ classifiers = [
 license = "MIT"
 license-files = ["LICENSE.md"]
 requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.19.4",
+    "torch>=2.2",
+    "scipy>=1.14",
+    "sklearn",
+    "torchdiffeq"
+]
+
+[project.optional-dependencies]
+opt = ["optuna>=4.3", "nevergrad>=1.0.12", "optuna_dashboard"]
+plot = ["seaborn", "plotly"]
 
 [project.urls]
-"Homepage" = "https://github.com/ArkadySamsonenkoWork/MarS.git"
+"Homepage" = "https://github.com/ArkadySamsonenkoWork/MarS"
 "Telegram" = "@Arkady_Samsonenko"
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+"Mail" = "a.samsonenko@tomo.nsc.ru"
