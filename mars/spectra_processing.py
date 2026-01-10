@@ -5,6 +5,7 @@ import numpy as np
 
 import typing as tp
 
+
 def signal_to_amplitude(y_vals):
     """ Rotate the signal so that the mean imaginary part is zero, then compute amplitude. """
 
@@ -159,7 +160,7 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
        baseline : np.ndarray
            Estimated baseline values across all x_vals.
     """
-    if method is "saturation":
+    if method == "saturation":
         y_corrected, baseline = correct_baseline_saturation(y_vals, sat_last_indexes=sat_last_indexes)
     else:
         if baseline_areas is None:

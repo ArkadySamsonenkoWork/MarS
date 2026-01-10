@@ -20,18 +20,19 @@ def transform_to_complex(vector):
 
 class BaseContext(nn.Module, ABC):
     """
-    Abstract base class defining how a spin-system 'context' exposes
-    state transformations and transition probabilities.
+    Abstract base class defining the interface for a spin-system "Context".
 
-    A "context" encapsulates:
-      - a basis or basis-selection rule for transforming vectors/matrices
-        between the full-system basis and the working basis,
-      - the set of transition probabilities (free/driven/out-of-system),
-      - an initial population vector,
-      - an optional time-dependence profile for parameters.
+    A Context encapsulates the physical model of relaxation and initial state in time-resolved EPR.
+    It specifies:
+      - The basis in which relaxation parameters (transition probabilities, loss rates, etc.) are defined,
+      - The initial population vector or density matrix,
+      - Time-dependence profiles for any parameter
+      - Transformation rules to map all quantities into the field-dependent Hamiltonian eigenbasis.
 
-    Concrete subclasses must implement methods that return transformed
-    objects suitable for use by higher-level code that computes dynamics."""
+    MarS distinguishes two relaxation paradigms:
+      1. **Population-based**: Only diagonal elements (populations) evolve; off-diagonal coherences are neglected.
+      2. **Density-matrix-based**: Full dynamic including coherences and decoherence.
+    """
     def __init__(self, time_dimension: int = -3,
                  dtype: torch.dtype = torch.float32,
                  device: torch.device = torch.device("cpu")):
@@ -45,19 +46,20 @@ class BaseContext(nn.Module, ABC):
 
     @property
     @abstractmethod
-    def time_dependant(self):
+    def time_dependant(self) -> bool:
+        """Indicates whether any relaxation parameter depends explicitly on time."""
         pass
 
     @property
     @abstractmethod
-    def contexted_init_population(self):
+    def contexted_init_population(self) -> bool:
+        """True if the Context provides explicit initial populations (not thermal equilibrium)."""
         pass
 
     @abstractmethod
     def get_time_dependent_values(self, time: torch.Tensor) -> torch.Tensor | None:
         """
         Evaluate time-dependent profile at specified time points
-        Evaluate time-dependent values at specified time points.
         :param time: Time points tensor for evaluation
         :return: Profile values shaped for broadcasting along the specified time dimension.
         """
@@ -70,8 +72,7 @@ class BaseContext(nn.Module, ABC):
         """
         :param full_system_vectors:
         :param normalize: If True (default) the returned populations are normalized along the last axis
-            so they sum to 1 (useful for probabilities). If False, populations are returned
-            as-is.
+            so they sum to 1 (useful for probabilities). If False, populations are returned as-is.
         :return: Transformed populations with shape `[..., N]` (or `None` if no populations
             were provided).
         """
@@ -81,6 +82,8 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_init_density(
             self, full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """
+        Return initial density matrix transformed into the Hamiltonian eigenbasis
+
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
@@ -95,12 +98,31 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_free_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        :param time:
-        :return:
+        Return spontaneous (thermal) transition probabilities in the eigenbasis.
+
+        These transitions are constrained by detailed balance at the specified temperature.
+        Examples include spin-lattice relaxation (T1 processes) that drive the system toward
+        thermal equilibrium.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time: Optional time points for evaluation if transition probabilities are
+            time-dependent.
+
+        :return: Transition rate matrix W with shape [..., N, N], where W_{ij} (i≠j) is the
+            rate from state j to state i. Diagonal elements are not used directly but are
+            computed internally to ensure probability conservation.
+
+        Transformation rule for rates:
+        If W^old is defined in the working basis, then in the eigenbasis:
+            W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}
+
+        Thermal correction (detailed balance):
+        After transformation, rates are modified to satisfy:
+            W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)
+        where E_i are eigenenergies and T is the temperature.
         """
         pass
 
@@ -108,36 +130,155 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_driven_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None
     ):
+        """
+        Return induced (non-thermal) transition probabilities in the eigenbasis.
+        These transitions are **not** subject to detailed balance.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian at each orientation/field,
+                        shape [..., M, N, N], where M is number of transitions, N is number of levels.
+        :param time: Time points tensor for evaluation
+        :return: Matrix of shape [..., N, N].
+        """
         pass
 
     @abstractmethod
     def get_transformed_out_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time: tp.Optional[torch.Tensor] = None
-    ):
+            time_dep_values: tp.Optional[torch.Tensor] = None
+    ) -> tp.Optional[torch.Tensor]:
+        """
+        Return loss (out-of-system) probabilities in the eigenbasis.
+
+        These represent irreversible decay processes that remove population from the spin
+        system entirely. Examples include:
+        - Phosphorescence decay from triplet states
+        - Chemical reaction products leaving the observed spin system
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :return: Loss rate vector O with shape [..., N], where O_i is the rate at which
+            population is lost from state i.
+
+        Transformation rule:
+            O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k
+
+        Physical constraint: Loss rates must be non-negative (O_i ≥ 0).
+        """
         pass
 
     @abstractmethod
     def get_transformed_free_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time: tp.Optional[torch.Tensor] = None
-    ):
+            time_dep_values: tp.Optional[torch.Tensor] = None) -> tp.Optional[torch.Tensor]:
+        """
+        Return the spontaneous relaxation superoperator in Liouville space.
+
+        This superoperator includes all spontaneous processes (thermal transitions, losses,
+        decoherence) and is transformed to the eigenbasis. It is subsequently modified to
+        obey detailed balance at the specified temperature.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :return: Superoperator R_free with shape [..., N², N²], where N is the number of
+            energy levels. This superoperator acts on vectorized density matrices.
+
+        Construction method:
+        The superoperator is built using Lindblad formalism from the constituent processes:
+        1. Loss terms: L_k = √O_k |k⟩⟨k|
+        2. Thermal transitions: L_{kl} = √W_{kl} |k⟩⟨l|
+        3. Decoherence terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
+
+        Transformation rule:
+            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        Thermal correction:
+        After transformation, diagonal elements corresponding to population transfer are
+        modified to satisfy detailed balance:
+            R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
+            R_{jjii}^new = R_{jjii}^old · 1 / (1 + exp(-(E_i-E_j)/k_B·T))
+
+        where E_i are eigenenergies and T is temperature.
+        """
         pass
 
     @abstractmethod
     def get_transformed_driven_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time: tp.Optional[torch.Tensor] = None
-    ):
+            time_dep_values: tp.Optional[torch.Tensor] = None
+    ) -> tp.Optional[torch.Tensor]:
+        """
+        Return the induced relaxation superoperator in Liouville space.
+
+        This superoperator contains only non-thermal (driven) processes that are NOT
+        constrained by detailed balance. It is transformed to the eigenbasis without
+        thermal correction.
+
+        Construction method:
+        Built using Lindblad formalism from induced transition rates:
+            L_{kl} = √D_{kl} |k⟩⟨l|
+
+        Transformation rule:
+            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :return: Superoperator R_driven with shape [..., N², N²].
+
+        Unlike the free superoperator, NO thermal correction is applied to these elements,
+        as they represent processes that actively drive the system away from equilibrium.
+
+        Note: If a user provides a complete superoperator directly (bypassing individual
+        rates), it is interpreted as an induced superoperator and no thermal correction
+        is applied.
+        """
         pass
 
+
 class TransformedContext(BaseContext):
+    """
+    Concrete base class implementing basis transformation logic for Context subclasses.
+
+    This class provides the machinery to transform physical quantities between different
+    basis representations. The core assumption is that relaxation parameters (transition
+    rates, initial populations, etc.) are often most naturally defined in a basis that
+    differs from the field-dependent eigenbasis required for dynamics calculations.
+
+    Supported transformations:
+    1. Vector transformation: For initial populations and loss rates
+    2. Matrix transformation: For transition probability matrices
+    3. Density matrix transformation: For initial quantum states
+    4. Superoperator transformation: For Liouville-space relaxation operators
+
+    Basis specification:
+    - Can be provided as explicit transformation matrices or as string identifiers:
+        * "eigen": Hamiltonian eigenbasis at the resonance field (no transformation needed)
+        * "zfs": Zero-field splitting basis (eigenvectors of the field-independent part)
+        * "multiplet": Total spin multiplet basis |S, M⟩
+        * "product": Product basis of individual spin projections |m_s1, m_s2, ...⟩
+
+    The class automatically selects appropriate transformation methods based on basis type
+    and caches transformation coefficients to avoid redundant computations.
+    """
     def _setup_transformers(self):
+        """
+        Configure transformation methods based on the specified basis.
+
+        This method sets up the appropriate transformation functions for vectors, matrices,
+        density matrices, and superoperators based on whether a basis transformation is
+        needed (self.basis is not None).
+
+        When no transformation is needed (eigenbasis):
+        - All transformation methods become identity operations (_transformed_skip)
+        """
         if self.basis is None:
             self.transformed_vector = self._transformed_skip
             self.transformed_matrix = self._transformed_skip
@@ -196,15 +337,28 @@ class TransformedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to calculate these vectors
+        Return spontaneous (thermal) transition probabilities in the eigenbasis.
 
-        :param time_dep_values:
-        :return: torch.Tensor or None
-            Transformed free probabilities shaped `[..., N, N]` or `[..., R, M, N, N]`.
+        These transitions are constrained by detailed balance at the specified temperature.
+        Examples include spin-lattice relaxation (T1 processes) that drive the system toward
+        thermal equilibrium.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time: Optional time points for evaluation if transition probabilities are
+            time-dependent.
+
+        :return: Transition rate matrix W with shape [..., N, N], where W_{ij} (i≠j) is the
+            rate from state j to state i. Diagonal elements are not used directly but are
+            computed internally to ensure probability conservation.
+
+        Transformation rule for rates:
+        If W^old is defined in the working basis, then in the eigenbasis:
+            W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}
+
+        Thermal correction (detailed balance):
+        After transformation, rates are modified to satisfy:
+            W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)
+        where E_i are eigenenergies and T is the temperature.
         """
         _free_probs = self._get_free_probs_tensor(time_dep_values)
         return self.transformed_matrix(_free_probs, full_system_vectors)
@@ -215,14 +369,23 @@ class TransformedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-            forces the creator to compute these vectors
+        Return induced (non-thermal) transition probabilities in the eigenbasis.
 
-        :param time_dep_values: the values computed at get_time_dependent_values
-        :return: driven probability of transition.
+        These transitions are NOT constrained by detailed balance and represent external
+        driving forces or non-equilibrium processes.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time: Optional time points for evaluation if transition probabilities are
+            time-dependent.
+
+        :return: Transition rate matrix D with shape [..., N, N], where D_{ij} (i≠j) is the
+            non-thermal rate from state j to state i.
+
+        Transformation rule is the same as for free probabilities:
+            D^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · D^old_{kl}
+
+        Note: No thermal correction is applied to these rates as they represent non-equilibrium
+        processes that actively drive the system away from thermal equilibrium.
         """
         _driven_probs = self._get_driven_probs_tensor(time_dep_values)
         return self.transformed_matrix(_driven_probs, full_system_vectors)
@@ -233,15 +396,23 @@ class TransformedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to calculate these vectors
+        Return loss (out-of-system) probabilities in the eigenbasis.
 
-        :param time_dep_values: the values computed at get_time_dependent_values
-        :return: torch.Tensor or None
-            Transformed out probabilities shaped `[..., N]` or `[..., R, M, N]`.
+        These represent irreversible decay processes that remove population from the spin
+        system entirely. Examples include:
+        - Phosphorescence decay from triplet states
+        - Chemical reaction products leaving the observed spin system
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :return: Loss rate vector O with shape [..., N], where O_i is the rate at which
+            population is lost from state i.
+
+        Transformation rule:
+            O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k
+
+        Physical constraint: Loss rates must be non-negative (O_i ≥ 0).
         """
         _out_probs = self._get_out_probs_tensor(time_dep_values)
         return self.transformed_vector(_out_probs, full_system_vectors)
@@ -270,17 +441,35 @@ class TransformedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to compute these vectors
+        Return the spontaneous relaxation superoperator in Liouville space.
 
-        :param time_dep_values: the values computed at get_time_dependent_values
-        :return: relaxation superoperator with shape [... N^2, N^2].
-        After all transofrmation the next rule is applied to superoperator:
-        Riijj_new = Riijj * exp(-(Ei - Ej)) / 1 + exp(-(Ei - Ej))
-        Rjjii_new = Rjjii * 1 / 1 + exp(Ei - Ej)
+        This superoperator includes all spontaneous processes (thermal transitions, losses,
+        decoherence) and is transformed to the eigenbasis. It is subsequently modified to
+        obey detailed balance at the specified temperature.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :return: Superoperator R_free with shape [..., N², N²], where N is the number of
+            energy levels. This superoperator acts on vectorized density matrices.
+
+        Construction method:
+        The superoperator is built using Lindblad formalism from the constituent processes:
+        1. Loss terms: L_k = √O_k |k⟩⟨k|
+        2. Thermal transitions: L_{kl} = √W_{kl} |k⟩⟨l|
+        3. Decoherence terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
+
+        Transformation rule:
+            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        Thermal correction:
+        After transformation, diagonal elements corresponding to population transfer are
+        modified to satisfy detailed balance:
+            R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
+            R_{jjii}^new = R_{jjii}^old · 1 / (1 + exp(-(E_i-E_j)/k_B·T))
+
+        where E_i are eigenenergies and T is temperature.
         """
         _relaxation_superop = self._get_free_superop_tensor(time_dep_values)
         return self.transformed_superop(_relaxation_superop, full_system_vectors)
@@ -291,14 +480,32 @@ class TransformedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to compute these vectors
+        Return the induced relaxation superoperator in Liouville space.
 
-        :param time_dep_values: the values computed at get_time_dependent_values
-        :return: relaxation superoperator with shape [... N^2, N^2].
+        This superoperator contains only non-thermal (driven) processes that are NOT
+        constrained by detailed balance. It is transformed to the eigenbasis without
+        thermal correction.
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :return: Superoperator R_driven with shape [..., N², N²].
+
+        Construction method:
+        Built using Lindblad formalism from induced transition rates:
+            L_{kl} = √D_{kl} |k⟩⟨l|
+        If the initial superoperator is given then it is used as superoperator
+
+        Transformation rule:
+            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        Unlike the free superoperator, NO thermal correction is applied to these elements,
+        as they represent processes that actively drive the system away from equilibrium.
+
+        Note: If a user provides a complete superoperator directly (bypassing individual
+        rates), it is interpreted as an induced superoperator and no thermal correction
+        is applied.
         """
         _relaxation_superop = self._get_driven_superop_tensor(time_dep_values)
         return self.transformed_superop(_relaxation_superop, full_system_vectors)
@@ -359,6 +566,34 @@ class TransformedContext(BaseContext):
 
 
 class Context(TransformedContext):
+    """
+    Primary implementation of a spin relaxation context for a sample
+
+    This class provides a flexible interface for specifying relaxation models through:
+    - Basis specification (explicit matrix or string identifier)
+    - Initial state definition (populations or full density matrix)
+    - Transition rate matrices (spontaneous, induced, loss terms)
+    - Decoherence rates (for density-matrix paradigm)
+    - Time-dependent profile functions
+
+    Physical interpretation of parameters:
+    - free_probs: Thermal (Boltzmann-weighted) transition rates between states
+    - driven_probs: Non-thermal transition rates not constrained by detailed balance
+    - out_probs: Irreversible loss rates from states (e.g., phosphorescence)
+    - decoherences: Rates of quantum coherence decay between states
+    - init_populations: Initial state populations in the working basis
+    - init_density: Complete initial quantum state (includes coherences)
+
+    The class supports both simple constant rates and time-dependent functions for all
+    rate parameters, enabling modeling of complex time-evolving systems.
+
+    Algebraic operations:
+    - Addition (+): Combines multiple relaxation mechanisms acting on the SAME system
+    - Tensor product (@): Combines independent subsystems into a composite quantum system
+
+    These operations follow the physical rules described in the MarS documentation and
+    enable construction of sophisticated relaxation models from simpler components.
+    """
     def __init__(
             self,
             basis: tp.Optional[torch.Tensor | str | None] = None,
@@ -433,16 +668,16 @@ class Context(TransformedContext):
 
         :param decoherences: torch.Tensor or callable or None, optional
             decoherences relaxation rates with shape [N].
-            Each element set the INCREASING of the non-diagonal matrix elements of density matrix
+            Each element set the Decreasing of the non-diagonal matrix elements of density matrix
             d <i|rho|j> / dt = -(decoherences[i] + decoherences[j]) / 2 * <i|rho|j>
             If relaxation_superop is given, then this parameter is ignored
-
         For implementation of decoherences, out_probs, driven_probs, free_probs we use Lindblad form of relaxation.
 
         :param relaxation_superop: torch.Tensor or callable or None, optional
             Full superoperator of relaxation rates for density matrix
             with shape [N*N, N*N]. Any elements can be given.
-            If it is given then decoherences, out_probs, driven_probs, free_probs are ignored
+            If it is given then  driven_probs are ignored
+            but free_probs, decoherences, out_probs are computed
             After transformation the thermal correction is not used for this term
 
         :param profile: callable or None, optional
@@ -615,16 +850,18 @@ class Context(TransformedContext):
             coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
             return transform.transform_liouville_superop(transform_to_complex(relaxation_superop), coeffs)
 
-    def _create_basis_from_string(self, basis_type: str, sample):
+    def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_system.MultiOrientedSample]):
         """Factory method to create basis from string identifier."""
         if basis_type == "zfs":
             zero_field_term = sample.build_zero_field_term()
             _, zfs_eigenvectors = torch.linalg.eigh(zero_field_term)
             return zfs_eigenvectors.unsqueeze(-3)
         elif basis_type == "multiplet":
-            return sample.base_spin_system.get_spin_multiplet_basis().unsqueeze(-3).unsqueeze(-4)
+            return sample.base_spin_system.get_spin_multiplet_basis()\
+                .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
         elif basis_type == "product":
-            return sample.base_spin_system.get_product_state_basis().unsqueeze(-3).unsqueeze(-4)
+            return sample.base_spin_system.get_product_state_basis()\
+                .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
         elif basis_type == "eigen":
             return None
         else:
@@ -675,11 +912,21 @@ class Context(TransformedContext):
             self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True
     ) -> tp.Optional[torch.Tensor]:
         """
+        Return initial populations transformed into the field-dependent Hamiltonian eigenbasis.
+        This method handles the critical transformation from the working basis (where initial
+        populations are defined) to the eigenbasis of the field-dependent Hamiltonian (where
+        dynamics are computed).
+
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
         For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
         forces the creator to compute these vectors
+
+        Transformation rule:
+        If |ψ_k^old> are basis states in working basis and |ψ_j^new> in eigenbasis, then:
+            p_j^new = Σ_k |<ψ_j^new|ψ_k^old>|² · p_k^old
+        This ensures conservation of probability under basis change.
 
         :param normalize: If True (default) the returned populations are normalized along the last axis
         so they sum to 1 (useful for probabilities). If False, populations are returned
@@ -695,13 +942,26 @@ class Context(TransformedContext):
     def get_transformed_init_density(
             self, full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """
+        Return initial density matrix transformed into the field-dependent eigenbasis.
+        This method is used in the density-matrix paradigm where full quantum state evolution
+        is computed, including coherences between energy levels.
+
+        Physical interpretation:
+        - Diagonal elements represent populations
+        - Off-diagonal elements represent quantum coherences between states
+
+        Transformation rule:
+        If U is the unitary transformation matrix between bases (U_{jk} = <ψ_j^new|ψ_k^old>),
+            ρ^new = U · ρ^old · U⁺
+        where U⁺ is the conjugate transpose of U.
+
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
         For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
         forces the creator to compute these vectors
 
-        :return: density matrix  populations with shape [... N, N]
+        :return: Initial densities with shape [...N, N]
         """
         return self.transformed_density(self.init_density, full_system_vectors)
 
@@ -725,10 +985,49 @@ class Context(TransformedContext):
 
 
 class CompositeContext(TransformedContext):
+    """
+    Context representing a composite quantum system formed by tensor product of subsystems.
+
+    This class models a quantum system consisting of multiple interacting or non-interacting
+    subsystems (e.g., electron-nuclear spin systems, multiple chromophores). Each subsystem
+    is described by its own context, and the composite system follows quantum mechanical
+    tensor product rules.
+
+    Key physical principles:
+    1. State space: The Hilbert space of the composite system is the tensor product of
+       subsystem Hilbert spaces: H = H₁ ⊗ H₂ ⊗ ... ⊗ Hₙ
+    2. Initial state: The initial density matrix is the tensor product of subsystem states:
+       ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ
+    3. Dynamics: Each subsystem evolves according to its own Hamiltonian and relaxation
+       operators, which are embedded into the composite space using tensor products with
+       identity operators.
+
+    Transformation rules:
+    - Basis transformations use Clebsch-Gordan coefficients to map between product bases
+      and coupled bases
+    - Initial populations are transformed using tensor products of transformation matrices
+    - Relaxation superoperators are transformed using Kronecker products of basis
+      transformation matrices
+
+    Composite contexts can be created using the @ operator:
+        composite_context = context1 @ context2 @ context3
+    """
     def __init__(self,
                  contexts: list[TransformedContext],
                  time_dimension: int = -3,
                  ):
+        """
+        Initialize a composite context from multiple subsystem contexts.
+
+        :param contexts: List of contexts representing subsystems. The order matters as it
+            defines the tensor product structure (first context is leftmost in tensor products).
+        :param time_dimension: Dimension index for time broadcasting.
+
+        Note: All subsystem contexts should be compatible in terms of:
+        - Time dependence properties (all time-dependent or all stationary)
+        - Data types and computational devices
+        - Dimensional compatibility for tensor products
+        """
         super().__init__(time_dimension=time_dimension)
         self.component_contexts = nn.ModuleList(contexts)
         self.transformation_basis_coeff = None
@@ -757,7 +1056,20 @@ class CompositeContext(TransformedContext):
             return False
 
     def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """Compute and cache basis transformation coefficients."""
+        """
+        Compute Clebsch-Gordan transformation coefficients for composite system.
+
+        :param full_system_vectors: Eigenvectors of the full composite Hamiltonian.
+        :return: Transformation coefficients that can be used to transform vectors, matrices,
+            and operators between bases.
+
+        Mathematical formulation:
+        If |α⟩ are basis states of subsystem 1 and |β⟩ of subsystem 2, and |γ⟩ are eigenstates
+        of the composite system, then the transformation coefficients are:
+            C_{γ,(α,β)} = ⟨γ|α,β⟩
+
+        These coefficients are cached after computation to avoid redundant calculations.
+        """
         if self.transformation_basis_coeff is not None:
             return self.transformation_basis_coeff
         else:
@@ -903,11 +1215,25 @@ class CompositeContext(TransformedContext):
 
     def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True):
         """
+        Return initial populations transformed into the field-dependent Hamiltonian eigenbasis.
+        This method handles the critical transformation from the working basis (where initial
+        populations are defined) to the eigenbasis of the field-dependent Hamiltonian (where
+        dynamics are computed).
+
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
         For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
         forces the creator to compute these vectors
+
+        Transformation rule:
+        1) Firstly, the initial populations in kronecker basis is created:
+        n = n1 ⊗ n2 ⊗ n3 ... ⊗ n_k
+
+        2) Then the transformation to the field-dependent Hamiltonian eigenbasis. is performed
+        If |ψ_k^old> are basis states in working basis and |ψ_j^new> in eigenbasis, then:
+            p_j^new = Σ_k |<ψ_j^new|ψ_k^old>|² · p_k^old
+        This ensures conservation of probability under basis change.
 
         :param normalize: If True (default) the returned populations are normalized along the last axis
         so they sum to 1 (useful for probabilities). If False, populations are returned
@@ -925,6 +1251,23 @@ class CompositeContext(TransformedContext):
 
     def get_transformed_init_density(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """
+        Return initial density matrix transformed into the field-dependent eigenbasis.
+        This method is used in the density-matrix paradigm where full quantum state evolution
+        is computed, including coherences between energy levels.
+
+
+        Physical interpretation:
+        - Diagonal elements represent populations
+        - Off-diagonal elements represent quantum coherences between states
+
+        Transformation rule:
+        1) Firstly, the initial populations in kronecker basis is created:
+        ρ = ρ1 ⊗ ρ2 ⊗ ρ3 ... ρ n_k
+
+        2) Then, if U is the unitary transformation matrix between bases (U_{jk} = <ψ_j^new|ψ_k^old>),
+            ρ^new = U · ρ^old · U⁺
+        where U⁺ is the conjugate transpose of U.
+
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
@@ -956,7 +1299,39 @@ class CompositeContext(TransformedContext):
 
 
 class SummedContext(BaseContext):
+    """
+    Context representing the sum of multiple relaxation mechanisms acting on the same system.
+
+    This class models scenarios where multiple independent physical processes contribute to
+    relaxation of a single quantum system. Examples include:
+
+    Mathematical formulation:
+    The total relaxation is described by the sum of individual contributions:
+        K_total = K₁ + K₂ + ... + Kₙ    (for population dynamics)
+        R_total = R₁ + R₂ + ... + Rₙ    (for density matrix dynamics)
+
+    Key properties:
+    1. All component contexts must describe the same physical system (same Hilbert space)
+    2. Each mechanism can be defined in its own basis and will be transformed to a common basis
+    3. Time dependencies can differ between mechanisms
+
+    This context type is essential when relaxation arises from multiple distinct physical
+    processes that can be modeled separately but act simultaneously on the system.
+
+    Summed contexts can be created using the + operator:
+        summed_context = context1 + context2 + context3
+    """
     def __init__(self, contexts: list[BaseContext]):
+        """
+        Initialize a summed context from multiple component contexts.
+
+        :param contexts: List of contexts representing different relaxation mechanisms acting
+            on the same quantum system.
+
+        Note: All component contexts should be compatible in terms of:
+        - Describing the same physical system (same number of energy levels)
+        - Having compatible time dependence properties
+        """
         super().__init__()
         self.component_contexts = nn.ModuleList(contexts)
 
@@ -1098,15 +1473,29 @@ class SummedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to compute these vectors
+        Return the spontaneous relaxation superoperator in Liouville spac
 
-        :param time_dep_values: the values computed at get_time_dependent_values
+        This method provides the complete Liouville-space superoperator for spontaneous
+        relaxation processes, including thermal transitions, population losses, and decoherence.
+        The superoperator is transformed to the eigenbasis and modified to obey detailed balance.
 
-        :return: relaxation superoperator with shape [... N^2, N^2].
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Pre-computed time-dependent profile values, if applicable.
+        :return: Thermally corrected relaxation superoperator with shape [..., N², N²].
+
+        Construction workflow:
+        1. Build constituent operators:
+           - Lindblad dissipators from thermal transition rates
+           - Anticommutator terms from loss rates
+           - Decoherence superoperators from decoherence rates
+        2. Sum these contributions to form the raw superoperator
+        3. Transform the superoperator to the eigenbasis using:
+              R_new = (U ⊗ U*) · R_old · (U ⊗ U*)⁺
+           where U is the basis transformation matrix and ⊗ denotes Kronecker product
+        4. Apply thermal correction to population transfer elements:
+              R_new_{iijj} = R_old_{iijj} · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
+              R_new_{jjii} = R_old_{jjii} · 1 / (1 + exp(-(E_i-E_j)/k_B·T))
+
         """
         result = None
         for context in self.component_contexts:
@@ -1121,15 +1510,27 @@ class SummedContext(BaseContext):
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
         """
-        :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-        where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to compute these vectors
+        Return the spontaneous relaxation superoperator in Liouville spac
 
-        :param time_dep_values: the values computed at get_time_dependent_values
+        This method provides the complete Liouville-space superoperator for spontaneous
+        relaxation processes, including thermal transitions, population losses, and decoherence.
+        The superoperator is transformed to the eigenbasis and modified to obey detailed balance.
 
-        :return: relaxation superoperator with shape [... N^2, N^2].
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
+        :param time_dep_values: Pre-computed time-dependent profile values, if applicable.
+        :return: Thermally corrected relaxation superoperator with shape [..., N², N²].
+
+        Construction workflow:
+        1. Build constituent operators:
+           - Lindblad dissipators from thermal transition rates
+           - Anticommutator terms from loss rates
+           - Decoherence superoperators from decoherence rates
+        2. Sum these contributions to form the raw superoperator
+        3. Transform the superoperator to the eigenbasis using:
+              R_new = (U ⊗ U*) · R_old · (U ⊗ U*)⁺
+           where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+
         """
         result = None
         for context in self.component_contexts:

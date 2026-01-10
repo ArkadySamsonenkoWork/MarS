@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import combinations
-from matplotlib.patches import Rectangle
+
 import seaborn as sns
 
 

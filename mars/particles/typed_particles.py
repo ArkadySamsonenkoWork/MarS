@@ -4,6 +4,7 @@ import pickle
 import torch
 import math
 
+
 @dataclass(frozen=True)
 class SpinMatricesHalf:
     """Spin matrices for spin-1/2 particles."""
@@ -17,6 +18,7 @@ class SpinMatricesHalf:
     def matrices(self):
         return [self.x, self.y, self.z]
 
+
 @dataclass(frozen=True)
 class SpinMatricesOne:
     """Spin matrices for spin-1/2 particles."""
@@ -29,6 +31,7 @@ class SpinMatricesOne:
     @property
     def matrices(self):
         return [self.x, self.y, self.z]
+
 
 # Лучше этим пользоваться
 def get_spin_operators(s):
@@ -53,16 +56,15 @@ def get_spin_operators(s):
             value = math.sqrt((s + m_i) * (s - m_i + 1))
             sminus[j, i] = value
 
-    # Sx and Sy from ladder operators
     sx = (splus + sminus) / 2
     sy = (splus - sminus) / (2j)
     return {
-        'x': sx,
-        'y': sy,
-        'z': sz,
-        'plus': splus,
-        'minus': sminus,
-        'matrices': (sx, sy, sz)
+        "x": sx,
+        "y": sy,
+        "z": sz,
+        "plus": splus,
+        "minus": sminus,
+        "matrices": (sx, sy, sz)
     }
 
 

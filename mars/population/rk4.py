@@ -75,5 +75,4 @@ def solve_matrix_ode_rk4(superop_static: torch.Tensor, superop_dynamic: torch.Te
 
         integral.add_(U, alpha=sin_mid)
         phi = phi + d_phi
-
     return U, integral

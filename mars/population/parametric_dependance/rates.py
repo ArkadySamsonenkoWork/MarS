@@ -2,7 +2,7 @@ import torch
 
 
 class ParametricRate:
-    """Base class for relaxation speed temperature dependencies."""
+    """Base class for relaxation parameters dependency dependencies."""
 
     def __call__(self, temp: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
@@ -56,7 +56,6 @@ class CombinedRate(ParametricRate):
 
 class ExponentialRate(ParametricRate):
     """Exponential dependence: amplitude * exp((temp - zero_temp)/delta_temp)."""
-
     def __init__(self,
                  amplitude: torch.Tensor,
                  zero_temp: torch.Tensor,
@@ -117,6 +116,7 @@ class ParametricRateMatrix:
             [self._convert_to_rate(entry) for entry in row]
             for row in relaxation_speeds
         ]
+
     def _convert_to_rate(self, entry):
         if isinstance(entry, ParametricRate):
             return entry

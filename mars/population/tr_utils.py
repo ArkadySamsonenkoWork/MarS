@@ -178,6 +178,7 @@ class EvolutionSuper(EvolutionMatrix):
         :return: Transition matrix [..., N**2, N**2].
         """
         super_op = transform.Liouvilleator.hamiltonian_superop(Ht)
+
         if free_superop is not None:
             super_op = self._free_transform(temp, free_superop) + super_op
         if driven_superop is not None:
@@ -274,8 +275,7 @@ class EvolutionRWASolver(EvolutionSolver):
     @staticmethod
     def odeint_solver(time: torch.Tensor, initial_density: torch.Tensor,
                      evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
-                     lvl_down: torch.Tensor, lvl_up: torch.Tensor, detection_vector: torch.Tensor):
-        indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
+                     detection_vector: torch.Tensor):
         def _rate_equation(t, n_flat, evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator):
             """
             RHS for dn/dt = M(t) n, where M depends on t through temperature.
@@ -297,7 +297,7 @@ class EvolutionRWASolver(EvolutionSolver):
     def exponential_solver(time: torch.Tensor,
                           initial_density: torch.Tensor,
                           evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
-                          lvl_down: torch.Tensor, lvl_up: torch.Tensor, detection_vector: torch.Tensor):
+                          detection_vector: torch.Tensor):
 
         dt = (time[1] - time[0])
         M = evo(*matrix_generator(time))
@@ -317,8 +317,9 @@ class EvolutionRWASolver(EvolutionSolver):
     @staticmethod
     def stationary_rate_solver(time: torch.Tensor,
                          initial_density: torch.Tensor,
-                         evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
-                         lvl_down: torch.Tensor, lvl_up: torch.Tensor, detection_vector: torch.Tensor):
+                         evo: EvolutionMatrix,
+                         matrix_generator: matrix_generators.LevelBasedGenerator,
+                         detection_vector: torch.Tensor):
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
 
@@ -332,7 +333,6 @@ class EvolutionRWASolver(EvolutionSolver):
         #eig_vecs = eig_vecs[..., indexes, lvl_down, :] - eig_vecs[..., indexes, lvl_up, :]
         out = torch.matmul(detection_vector.unsqueeze(-2), eig_vecs).squeeze(-2)
         return (out.unsqueeze(0) * exp_factors).real.sum(dim=-1)
-
 
 
 class EvolutionPropagatorSolver(EvolutionSolver):
@@ -353,7 +353,8 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         resip_term_2pi_M = I - U_M
         return resip_term_2pi, resip_term_2pi_M
 
-    def _modify_integral_term(self, integral: torch.Tensor, U_2pi: torch.Tensor, M_power: int, d_phi: torch.Tensor):
+    def _modify_integral_term(
+            self, integral: torch.Tensor, U_2pi: torch.Tensor, M_power: int, d_phi: torch.Tensor):
         """
         :param integral: the integral of U(phi) * sin(phi) dphi over one period. The shape is [..., N^2, N^2]
         :param U_2pi: U(2pi). The shape is [..., N^2, N^2]
@@ -370,10 +371,30 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         integral.mul_(d_phi)
         return integral
 
-    def _U_N_batched(self, U_2pi: torch.Tensor, powers: list[tp.Union[int, torch.Tensor]]):
-        eiglev, eigbasis = torch.linalg.eig(U_2pi)
-        embedings = torch.stack([torch.pow(eiglev, m) for m in powers], dim=-2)
-        return eigbasis, torch.linalg.inv(eigbasis), embedings
+    def _modify_integral_term_single_period(
+            self, integral: torch.Tensor, U_2pi: torch.Tensor, M_power: None, d_phi: torch.Tensor):
+        """
+        If number of measurement periods equel to 1, then there are no need to solve some parts of computations.
+        Then this function is used
+
+        :param integral: the integral of U(phi) * sin(phi) dphi over one period. The shape is [..., N^2, N^2]
+        :param U_2pi: U(2pi). The shape is [..., N^2, N^2]
+        :param M_power: int Number of measurement periods. For this case it is None
+        :param d_phi: the integration step
+        :return:
+            Modified integral for the computation over M periods. That is U(phi) * sin(phi) dphi over M period s
+            The shape is [..., N^2, N^2]
+        """
+        I = torch.eye(U_2pi.shape[-1], dtype=U_2pi.dtype, device=U_2pi.device)
+        resip_term_2pi_M = I - U_2pi
+        torch.add(integral, resip_term_2pi_M, alpha=d_phi/12, out=integral)
+        integral.mul_(d_phi)
+        return integral
+
+    def _U_N_batched(self, U_2pi: torch.Tensor, powers: tp.Union[list[int], torch.Tensor]):
+        eigvel, eigbasis = torch.linalg.eig(U_2pi)
+        embedings = torch.stack([torch.pow(eigvel, m) for m in powers], dim=-2)
+        return eigbasis, torch.linalg.pinv(eigbasis), embedings
 
     def _compute_out(self,
                      detective_vector: torch.Tensor,
@@ -402,7 +423,7 @@ class EvolutionPropagatorSolver(EvolutionSolver):
     def stationary_rate_solver(
             self, time: torch.Tensor, initial_density: torch.Tensor, hamiltonain_time_dep: torch.Tensor,
             superop_static: torch.Tensor, res_omega: torch.Tensor, period_time: torch.Tensor, delta_phi: torch.Tensor,
-            measurement_time: torch.Tensor, n_steps: int
+            measurement_time: tp.Optional[torch.Tensor], n_steps: int
     ):
         """
         Solve for a signal rate under periodic driving res_omega.
@@ -427,9 +448,11 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         U_2pi, integral = rk4.solve_matrix_ode_rk4(
             superop_static / res_omega, superop_dynamic / res_omega, n_steps
         )
-
-        M_power = int((measurement_time / period_time).item())
-        integral = self._modify_integral_term(integral, U_2pi, M_power, delta_phi)
+        if measurement_time is not None:
+            M_power = int(torch.ceil(measurement_time / period_time).item())
+            integral = self._modify_integral_term(integral, U_2pi, M_power, delta_phi)
+        else:
+            integral = self._modify_integral_term_single_period(integral, U_2pi, None, delta_phi)
         powers = torch.ceil(time / period_time)
         direct, inverse, eigen_values = self._U_N_batched(U_2pi, powers)
         return self._compute_out(

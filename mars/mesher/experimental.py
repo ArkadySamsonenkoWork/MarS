@@ -85,3 +85,7 @@ class Mesh3D(delanay_neigbour.DelaunayMeshNeighbour):
         R[..., 2, 2] = cos_theta
 
         return R
+
+    @property
+    def axial(self) -> bool:
+        return False

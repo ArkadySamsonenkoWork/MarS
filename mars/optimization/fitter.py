@@ -3,16 +3,18 @@ from dataclasses import dataclass
 import typing as tp
 import math
 
-import nevergrad as ng
 import numpy as np
-import torch
-import optuna
 from scipy.spatial.distance import cdist
 from sklearn.preprocessing import StandardScaler
+import torch
+
+import nevergrad as ng
+import optuna
 
 from ..spectra_processing import normalize_spectrum, normalize_spectrum2d
 from . import objectives
 from optuna_dashboard import run_server
+
 
 class TrialResult(tp.TypedDict):
     trial_number: int
@@ -489,7 +491,7 @@ class ParameterSpace:
         :param bounds_dict: the dict with names of parameters and their new bounds
         :return: None
         """
-        for param_name, bounds in bounds_dict:
+        for param_name, bounds in bounds_dict.items():
             self._set_single_bounds(param_name, bounds)
 
     def suggest_optuna(self, trial) -> tp.Dict[str, float]:
@@ -722,10 +724,6 @@ class SpectrumFitter:
             return loss
 
         if sampler is None:
-            #sampler = optuna.samplers.CmaEsSampler(
-            #    seed=seed,
-            #    n_startup_trials=50,
-            #    restart_strategy="ipop")
             sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -988,6 +986,7 @@ class SpaceSearcher:
                 }
             )
         return results
+
 
 class Spectrum2DFitter(SpectrumFitter):
     """

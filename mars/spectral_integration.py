@@ -5,6 +5,7 @@ import typing as tp
 import torch
 import torch.nn as nn
 
+
 class BaseIntegrand(nn.Module, ABC):
     def _sum_method_fabric(self, harmonic: int = 0) -> tp.Callable[[tp.Any, tp.Any], torch.Tensor]:
         if harmonic == 0:
@@ -180,7 +181,7 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
-        :return: result: Tensor of shape (..., N) with the value of the integral for each B
+        :return: result: Tensor of shape [..., N] with the value of the integral for each B
 
         """
         A_mean = A_mean * area
@@ -203,63 +204,6 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
             ratio = self.infty_ratio(B_mean, c_extended, B_val)
             weighted_ratio = ratio * A_mean
             return weighted_ratio.sum(dim=1)
-
-        chunks = spectral_field.split(self.chunk_size, dim=-1)
-        result = torch.cat([integrand(ch.unsqueeze(-1)) for ch in chunks], dim=-1)
-        return result
-
-
-class SpectraIntegratorTimeDep(SpectraIntegratorStationary):
-    def forward(self, res_fields: torch.Tensor,
-                  width: torch.Tensor, A_mean: torch.Tensor,
-                  area: torch.Tensor, spectral_field: torch.Tensor):
-        r"""
-        Computes the integral
-            I(B) = 1/2 sqrt(2/pi) * (1/width) * A_mean * I_triangle(B) * area,
-
-            at large B because of the instability of analytical solution we use easyspin-like solution with
-            effective width
-            w_additional = (((B1 - B2)**2 + (B2 - B3)**2 + (B1 - B3)**2) / 9).sqrt()
-            w_effective = (w**2 + w_additional**2).sqrt()
-        where
-        :param res_fields: The resonance fields with the shape [..., M, 3]
-        :param width: The width of transitions. The shape is [..., M]
-        :param A_mean: The intensities of transitions. The shape is [..., M]
-        :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
-        :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
-        :return: result: Tensor of shape (..., N) with the value of the integral for each B
-
-        """
-        area = area.unsqueeze(0)
-        A_mean = (A_mean * area).unsqueeze(-2)
-
-
-        width = width
-        width = self.natural_width + width
-        res_fields, _ = torch.sort(res_fields, dim=-1, descending=True)
-        B1, B2, B3 = torch.unbind(res_fields, dim=-1)
-
-
-        d13 = (B1 - B3) / width
-        d23 = (B2 - B3) / width
-        d12 = (B1 - B2) / width
-
-        additional_width_square = ((d13.square() + d23.square() + d12.square()) * self.width_conversion)
-
-        extended_width = width * (1 + additional_width_square).sqrt()
-        B_mean = (B1 + B2 + B3) / self.three
-        c_extended = self.two_sqrt / extended_width
-
-
-        def integrand(B_val: torch.Tensor):
-            """
-            :param B_val: the value of  spectral magnetic field
-            :return: The total intensity at this magnetic field
-            """
-
-            ratio = self.infty_ratio(B_mean, c_extended, B_val)
-            weighted_ratio = ratio.unsqueeze(-3) * A_mean
-            return weighted_ratio.sum(dim=-1)
 
         chunks = spectral_field.split(self.chunk_size, dim=-1)
         result = torch.cat([integrand(ch.unsqueeze(-1)) for ch in chunks], dim=-1)
@@ -291,7 +235,6 @@ class MeanIntegrator(BaseSpectraIntegrator):
         A_mean = A_mean * area
         width = width
         width = self.natural_width + width
-
         c_extended = self.two_sqrt / width
 
         def integrand(B_val: torch.Tensor):

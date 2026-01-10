@@ -1699,9 +1699,6 @@ class ResField(nn.Module):
         batches = locator(batches, resonance_frequency / resonance_frequency, *args)
         out = self._combine_resonance_data(dtype=resonance_frequency.dtype,
                                            device=Gz.device, batches=batches, resonance_frequency=resonance_frequency)
-        #print(out[0])
-        #print(out[1])
-        #print(out[-1])
         return out
 
 

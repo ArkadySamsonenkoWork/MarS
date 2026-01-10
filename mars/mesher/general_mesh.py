@@ -26,7 +26,12 @@ class BaseMesh(nn.Module, ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
+    def disordered(self) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    def axial(self) -> bool:
         pass
 
 
@@ -56,8 +61,12 @@ class CrystalMesh(BaseMesh):
         return self.rotation_matrices.shape[:-2]
 
     @property
-    def name(self) -> str:
-        return "CrystalMesh"
+    def disordered(self) -> bool:
+        return False
+
+    @property
+    def axial(self) -> bool:
+        return True
 
 
 class BaseMeshPowder(BaseMesh):
@@ -179,14 +188,17 @@ class BaseMeshPowder(BaseMesh):
         pass
 
     @property
-    def name(self) -> str:
-        return "PowderMesh"
+    def disordered(self) -> bool:
+        return True
+
+    @property
+    def axial(self) -> bool:
+        return False
 
     def triplot(self):
         mesh, triplots = self.post_mesh
         phi, theta = mesh[..., 0], mesh[..., 1]
         plt.triplot(phi.numpy(), theta.numpy(), triplots)
-
 
 
 class BaseMeshAxial(BaseMeshPowder):
@@ -245,6 +257,10 @@ class BaseMeshAxial(BaseMeshPowder):
         excess = 2 * torch.pi * (torch.cos(end_theta) - torch.cos(start_theta))
 
         return excess
+
+    @property
+    def axial(self) -> bool:
+        return True
 
     @property
     @abstractmethod

@@ -5,31 +5,6 @@ import networkx as nx
 import numpy as np
 
 import plotly.graph_objs as go
-
-
-"""
-SpinSystemPlotter
-
-Provides a class to convert a SpinSystem into a graph and plot it.
-
-Features
-- Nodes: electrons (e0, e1...) and nuclei (n0, n1...)
-- Edges: interactions (electron-nucleus, electron-electron, nucleus-nucleus)
-- Option to display tensor values (g-tensors, interaction tensors) in the plot
-- Two plotting backends: matplotlib (static) and Plotly (interactive with hover)
-
-Usage example
---------------
-from SpinSystemPlotter import SpinSystemPlotter
-plotter = SpinSystemPlotter(spin_system)
-plotter.build_graph()
-plotter.plot_matplotlib(show_tensors=True)
-# or
-plotter.plot_plotly(show_tensors=True)
-
-"""
-import math
-import textwrap
 from typing import Optional, Dict, Any
 
 import torch
