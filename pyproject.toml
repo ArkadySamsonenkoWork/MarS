@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mars-epr"
-version = "0.0.1alpha"
+version = "0.0.2"
 authors = [
     {name = "Arkady Samsonenko", email = "a.samsonenko@tomo.nsc.ru"},
 ]
