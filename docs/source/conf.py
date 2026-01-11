@@ -23,10 +23,7 @@ extensions = [
     'sphinx.ext.todo',  # поддержка TODO
     'sphinx.ext.coverage',  # проверяет покрытие документации
     'sphinx.ext.ifconfig',  # условные директивы в документации
-    'nbsphinx',  # to read jupyter-notebooks
 ]
-
-nbsphinx_execute = 'never'
 
 templates_path = ['_templates']
 exclude_patterns = []
