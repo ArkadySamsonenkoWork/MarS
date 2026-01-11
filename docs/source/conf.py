@@ -33,6 +33,8 @@ autodoc_default_options = {
     'exclude-members': '__weakref__'
 }
 
+autodoc_mock_imports = ["numpy", "scipy", "torch", ]
+
 
 templates_path = ['_templates']
 exclude_patterns = []
