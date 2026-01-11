@@ -17,17 +17,25 @@ version = '0.0.1'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',  # авто документации из docstrings
+    'sphinx.ext.autodoc',   # авто документации из docstrings
     'sphinx.ext.viewcode',  # ссылки на исходный код
     'sphinx.ext.napoleon',  # поддержка Google и NumPy стиля документации
-    'sphinx.ext.todo',  # поддержка TODO
+    'sphinx.ext.todo',      # поддержка TODO
     'sphinx.ext.coverage',  # проверяет покрытие документации
     'sphinx.ext.ifconfig',  # условные директивы в документации
 ]
 
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'undoc-members': False,  # set to True if you want undocumented members shown
+    'exclude-members': '__weakref__'
+}
+
+
 templates_path = ['_templates']
 exclude_patterns = []
-
 
 html_theme = 'sphinx_rtd_theme' # тема оформления
 html_static_path = ['_static']  # папка со статическими файлами (например, CSS)
