@@ -5,7 +5,7 @@ From PyPI (when published):
 ::
 
 
-   pip install mars
+   pip install mars-epr
 
 From source (development):
 ::

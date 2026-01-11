@@ -7,9 +7,8 @@
 ## 🚀 Overview
 
 **MarS** is a Python library for constructing spin systems (electrons and nuclei), defining their magnetic interactions, and simulating Electron Paramagnetic Resonance (EPR) spectra.
-
 It supports a wide range of interaction models, efficient batched computations on CPU and GPU, flexible numerical precision (`float32` / `float64`), and tools for both stationary and time-resolved EPR experiments.
----
+
 
 ## 🔑 Core Capabilities
 
@@ -138,9 +137,13 @@ Multiple solution strategies optimized for different scenarios:
 ```bash
 git clone https://github.com/ArkadySamsonenkoWork/MarS.git
 cd mars
-pip install -e <folder>
-
+pip install -e <folder
 ```
+or just
+```bash
+pip install mars-epr
+```
+
 ### Code Example
 ```bash
 

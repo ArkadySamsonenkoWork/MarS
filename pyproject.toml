@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "MarS"
-version = "0.0.1"
+name = "mars-epr"
+version = "0.0.1alpha"
 authors = [
     {name = "Arkady Samsonenko", email = "a.samsonenko@tomo.nsc.ru"},
 ]
@@ -12,9 +12,9 @@ description = "A library for computation CW and time resolved spectra"
 readme = "README.md"
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
+
 license = "MIT"
 license-files = ["LICENSE.md"]
 requires-python = ">=3.8"
@@ -22,7 +22,7 @@ dependencies = [
     "numpy>=1.19.4",
     "torch>=2.2",
     "scipy>=1.14",
-    "sklearn",
+    "scikit-learn",
     "torchdiffeq"
 ]
 
@@ -32,5 +32,4 @@ plot = ["seaborn", "plotly"]
 
 [project.urls]
 "Homepage" = "https://github.com/ArkadySamsonenkoWork/MarS"
-"Telegram" = "@Arkady_Samsonenko"
-"Mail" = "a.samsonenko@tomo.nsc.ru"
+Telegram = "https://t.me/Arkady_Samsonenko"
