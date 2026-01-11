@@ -16,3 +16,4 @@ documentation for details.
    :caption: API Reference
 
    mars
+   examples

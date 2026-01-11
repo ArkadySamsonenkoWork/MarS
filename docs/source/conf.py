@@ -23,8 +23,10 @@ extensions = [
     'sphinx.ext.todo',  # поддержка TODO
     'sphinx.ext.coverage',  # проверяет покрытие документации
     'sphinx.ext.ifconfig',  # условные директивы в документации
+    'nbsphinx',  # to read jupyter-notebooks
 ]
 
+nbsphinx_execute = 'never'
 
 templates_path = ['_templates']
 exclude_patterns = []
@@ -43,4 +45,4 @@ html_static_path = ['_static']
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))  # points to MarS/ so 'import mars' works
+sys.path.insert(0, os.path.abspath('../../'))
