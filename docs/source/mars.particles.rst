@@ -1,0 +1,19 @@
+mars.particles package
+======================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   mars.particles.nuclei_db_creation
+   mars.particles.typed_particles
+
+Module contents
+---------------
+
+.. automodule:: mars.particles
+   :members:
+   :undoc-members:
+   :show-inheritance:
