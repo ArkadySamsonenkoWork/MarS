@@ -111,7 +111,6 @@ Automatic transformation of kinetic matrices and relaxation superoperators betwe
 ### Relaxation Algebra
 - **Summation**: Combine multiple relaxation mechanisms defined in different bases
 - **Tensor product**: Construct composite quantum systems with independent subsystem dynamics
-- Enables modeling of complex multi-component systems and multi-pathway relaxation
 
 ---
 
