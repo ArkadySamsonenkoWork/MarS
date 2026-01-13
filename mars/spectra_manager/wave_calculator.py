@@ -340,6 +340,13 @@ class WaveIntensityCalculator(StationaryIntensityCalculator):
             lvl_down: torch.Tensor, lvl_up: torch.Tensor, resonance_energies: torch.Tensor,
             resonance_manifold: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs
     ) -> torch.Tensor:
+        """
+        Compute  EPR intensities under polarized radiation
+        :param Gx, Gy, Gz: Zeeman operator components
+        :param vector_down, vector_up: Eigenvectors of lower/upper states
+        :param ...: Other parameters (unused here but kept for interface consistency)
+        :return: Magnetization-squared term, shape [...]
+        """
 
         intensity = self.populator(resonance_energies, lvl_down, lvl_up, full_system_vectors, *args, **kwargs) * (
                 self._compute_magnitization(Gx, Gy, Gz, vector_down, vector_up,

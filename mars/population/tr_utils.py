@@ -15,7 +15,22 @@ from . import rk4
 
 class EvolutionMatrix:
     """
-    Construct full evolution matrix from energy differences and transition probabilities.
+    Builds a transition rate matrix that describes how populations of energy levels change over time
+    due to relaxation processes.
+
+    The matrix combines three types of contributions:
+      - **Thermal transitions**: bidirectional rates between pairs of levels that obey thermal equilibrium
+        at a given temperature. These are adjusted using the Boltzmann factor based on energy differences.
+      - **Driven transitions**: external or non-equilibrium transitions that are
+        not constrained by thermal balance and are added as-is.
+      - **Outgoing losses**: irreversible decay from individual levels (e.g., phosphorescence), which
+        reduces total population and appears as negative diagonal terms.
+
+    The input energies are expected to be eigenvalues of the spin Hamiltonian. Energy differences
+    are automatically converted from frequency units (Hz) to temperature-compatible units.
+
+    The resulting matrix has zero column sums, ensuring conservation of total probability when
+    no outgoing losses are present.
     """
     def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
         """
@@ -28,16 +43,34 @@ class EvolutionMatrix:
         self._free_transform = self._prob_transform_factory(symmetry_probs)
 
     def _prob_transform_factory(self, symmetry_probs: bool) -> tp.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
+        """
+        Selects the Boltzmann transformation function based on input convention.
+        :param symmetry_probs: Boolean flag.
+        :return: Callable implementing either symmetric or asymmetric thermal scaling.
+        """
         if symmetry_probs:
             return self._compute_boltzmann_symmetry
         else:
             return self._compute_boltzmann_complement
 
     def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
+        """
+        Compute Boltzmann factor denominator: 1 / (1 + exp(-ΔE / k_B T)).
+        :param temp: Temperature tensor broadcastable to [..., N, N].
+        :return: Tensor of same shape as energy_diff.
+        """
         denom = 1 + torch.exp(-self.energy_diff / temp)
         return torch.reciprocal(denom)
 
     def _compute_boltzmann_symmetry(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
+        """
+        Apply detailed balance to symmetric mean rates:
+            K_ij = 2 * free_probs[i,j] / (1 + exp(-ΔE_ij / k_B T)),
+            K_ji = 2 * free_probs[i,j] * exp(-ΔE_ij / k_B T) / (1 + exp(-ΔE_ij / k_B T)).
+        :param temp: Temperature.
+        :param free_probs: Symmetric matrix where free_probs[i,j] = free_probs[j,i] = k'_ij.
+        :return: Asymmetric rate matrix satisfying K_ij / K_ji = exp(-ΔE_ij / k_B T).
+        """
         energy_factor = self._compute_energy_factor(temp)
         return (free_probs + free_probs.transpose(-2, -1)) * energy_factor
 
@@ -47,8 +80,8 @@ class EvolutionMatrix:
 
     def __call__(self, temp: torch.tensor,
                  free_probs: tp.Optional[torch.Tensor] = None,
-                 driven_probs: torch.Tensor | None = None,
-                 out_probs: torch.Tensor | None = None) -> torch.Tensor:
+                 driven_probs: tp.Optional[torch.Tensor] = None,
+                 out_probs: tp.Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Build full transition matrix.
         :param temp: Temperature(s).
@@ -98,7 +131,22 @@ class EvolutionMatrix:
 
 class EvolutionSuper(EvolutionMatrix):
     """
-    Construct full evolution superoperator from energy differences and transition probabilities.
+    Builds a full evolution superoperator for density-matrix dynamics.
+
+    The superoperator combines:
+      - **Coherent evolution** from a given Hamiltonian (converted internally to Liouville form),
+      - **Thermal relaxation**, which is corrected to satisfy detailed balance at the specified temperature,
+      - **Driven relaxation**, which is added without thermal correction.
+
+    Only the parts of the relaxation superoperator that correspond to population exchange
+    between energy levels are modified to enforce thermal equilibrium. All other elements,
+    including those affecting coherences, are left unchanged.
+
+    The class assumes that all input superoperators (thermal and driven) are already expressed
+    in the eigenbasis of the Hamiltonian.
+
+    Diagonal decay rates (total depopulation from each level) are preserved during thermal correction
+    to maintain physical consistency of the relaxation model.
     """
     def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
         """
@@ -132,10 +180,9 @@ class EvolutionSuper(EvolutionMatrix):
         decay_i = R[i,i,i,i,] + sum{R[i,i,j,j]} - total depopulation of i energy level
         After correct we perform R[i,i,i,i,]_new =  -sum{R[i,i,j,j]_new} + decay_i.
 
-
         :param temp: Temperature tensor [...]
-        :param free_superop: Superoperator [..., N², N²]
-        :return: Scaled superoperator [..., N², N²]
+        :param free_superop: Superoperator [..., N^2, N^2]
+        :return: Scaled superoperator [..., N^2, N^2]
         """
         N = self.N
         device = free_superop.device
@@ -164,20 +211,19 @@ class EvolutionSuper(EvolutionMatrix):
 
     def __call__(self,
                  temp: torch.tensor,
-                 Ht: torch.Tensor,
-                 free_superop: torch.Tensor | None = None,
-                 driven_superop: torch.Tensor | None = None,
+                 H: torch.Tensor,
+                 free_superop: tp.Optional[torch.Tensor] = None,
+                 driven_superop: tp.Optional[torch.Tensor] = None,
                  ) -> torch.Tensor:
         """
         Build full transition matrix.
         :param temp: Temperature(s).
-        :param H0: Stationary Hamiltonian. The shape is  [..., N, N].
-        :param Ht: Time Dependant Hamiltonian. The shape is [..., N, N].
+        :param H: Hamiltonian operator. The shape is [..., N, N].
         :param free_superop: Optional outgoing transition rates [..., N**2, N**2].
         :param driven_superop: Optional outgoing transition rates [..., N**2, N**2].
         :return: Transition matrix [..., N**2, N**2].
         """
-        super_op = transform.Liouvilleator.hamiltonian_superop(Ht)
+        super_op = transform.Liouvilleator.hamiltonian_superop(H)
 
         if free_superop is not None:
             super_op = self._free_transform(temp, free_superop) + super_op
@@ -204,10 +250,31 @@ class EvolutionSolver(ABC):
 
 
 class EvolutionPopulationSolver(EvolutionSolver):
+    """
+    Solvers for population-only rate equations.
+    These methods evolve a vector of level populations under a time-dependent or time-independent
+    transition rate matrix and return the difference in populations between two specified levels,
+    which corresponds to the observable EPR signal intensity.
+
+    In general it solves equation:
+    dN / dt = K(N, t) @ N
+    """
     @staticmethod
     def odeint_solver(time: torch.Tensor, initial_populations: torch.Tensor,
                      evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
                      lvl_down: torch.Tensor, lvl_up: torch.Tensor):
+        """
+        Solve population dynamics using an adaptive ODE integrator (torchdiffeq.odeint).
+        Suitable when the rate matrix changes with time (e.g., due to time-dependent temperature).
+        Returns the signal as the difference between populations of upper and lower levels.
+        :param time: Time points for evaluation, shape [T].
+        :param initial_populations: Initial population vector, shape [..., N].
+        :param evo: EvolutionMatrix instance that builds the full rate matrix from generator output.
+        :param matrix_generator: Generator that provides thermal, driven, and loss rates at any time.
+        :param lvl_down: Indices of lower energy levels involved in the observed transitions.
+        :param lvl_up: Indices of upper energy levels involved in the observed transitions.
+        :return: Signal intensity over time, shape [T, ..., R], where R is the number of transitions.
+        """
         indexes = torch.arange(initial_populations.shape[-1], device=lvl_up.device)
         TIME_SCALE = 1.0
         time_scaled = time * TIME_SCALE
@@ -234,6 +301,19 @@ class EvolutionPopulationSolver(EvolutionSolver):
                           initial_populations: torch.Tensor,
                           evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
                           lvl_down: torch.Tensor, lvl_up: torch.Tensor):
+        """
+        Solve population dynamics by piecewise matrix exponentiation.
+        It assumes the rate matrix can be considered as quasi-stationery in the interval [t_i, t_{i+1}].
+        It can be quicker than ODE solution because allows to compute rate matrix in all time points simultaneously
+
+        :param time: Time points, shape [T].
+        :param initial_populations: Initial population vector, shape [..., N].
+        :param evo: EvolutionMatrix instance.
+        :param matrix_generator: Generator evaluated at each time point.
+        :param lvl_down: Indices of lower levels.
+        :param lvl_up: Indices of upper levels.
+        :return: Signal intensity over time, shape [T, ..., R].
+        """
         indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
 
         dt = (time[1:] - time[:-1])
@@ -256,6 +336,18 @@ class EvolutionPopulationSolver(EvolutionSolver):
                          initial_populations: torch.Tensor,
                          evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
                          lvl_down: torch.Tensor, lvl_up: torch.Tensor):
+        """
+        Solve population dynamics analytically when the rate matrix is constant in time.
+        Uses eigen-decomposition of the rate matrix to compute exp(M t) efficiently.
+        Fastest method for time-independent relaxation.
+        :param time: Time points, shape [T].
+        :param initial_populations: Initial population vector, shape [..., N].
+        :param evo: EvolutionMatrix instance.
+        :param matrix_generator: Generator evaluated only at time[0].
+        :param lvl_down: Indices of lower levels.
+        :param lvl_up: Indices of upper levels.
+        :return: Signal intensity over time, shape [T, ..., R].
+        """
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
 
@@ -272,10 +364,29 @@ class EvolutionPopulationSolver(EvolutionSolver):
 
 
 class EvolutionRWASolver(EvolutionSolver):
+    """
+    Solvers for density-matrix evolution under the Rotating Wave Approximation (RWA).
+    These methods evolve the full density matrix but assume the Hamiltonian and relaxation
+    are compatible with RWA constraints (isotropic g-tensor, circular polarization, etc.).
+    The observable is computed as the expectation value of a detection operator (e.g., Gx or Gy).
+
+    In general this solver is similar to the EvolutionPopulationSolver, but operates not with population vector
+    but with denisty matrix
+    """
     @staticmethod
     def odeint_solver(time: torch.Tensor, initial_density: torch.Tensor,
                      evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
                      detection_vector: torch.Tensor):
+        """
+        Solve density-matrix dynamics using an adaptive ODE integrator.
+        The detection operator is provided in vectorized form (Liouville space).
+        :param time: Time points, shape [T].
+        :param initial_density: Initial density matrix flattened to vector, shape [..., N^2].
+        :param evo: EvolutionMatrix
+        :param matrix_generator: Generator that returns relaxation data at any time.
+        :param detection_vector: Vectorized operator for signal detection, shape [..., N^2].
+        :return: Signal intensity over time, shape [T, ..., R].
+        """
         def _rate_equation(t, n_flat, evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator):
             """
             RHS for dn/dt = M(t) n, where M depends on t through temperature.
@@ -298,7 +409,18 @@ class EvolutionRWASolver(EvolutionSolver):
                           initial_density: torch.Tensor,
                           evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator,
                           detection_vector: torch.Tensor):
+        """
+        Solve density-matrix dynamics by piecewise matrix exponentiation.
+        It assumes the rate matrix can be considered as quasi-stationery in the interval [t_i, t_{i+1}].
+        It can be quicker than ODE solution because allows to compute rate matrix in all time points simultaneously
 
+        :param time: Time points, shape [T].
+        :param initial_density: Initial state in vectorized form, shape [..., N²].
+        :param evo: EvolutionMatrix used to assemble the superoperator.
+        :param matrix_generator: Generator evaluated at each time.
+        :param detection_vector: Detection operator in vectorized form, shape [..., N²].
+        :return: Signal intensity over time, shape [T, ..., R].
+        """
         dt = (time[1] - time[0])
         M = evo(*matrix_generator(time))
         exp_M = torch.matrix_exp(M * dt)
@@ -320,6 +442,16 @@ class EvolutionRWASolver(EvolutionSolver):
                          evo: EvolutionMatrix,
                          matrix_generator: matrix_generators.LevelBasedGenerator,
                          detection_vector: torch.Tensor):
+        """
+        Analytical solution for time-independent Liouville superoperator under RWA.
+        Uses eigen-decomposition of the superoperator for fast evaluation.
+        :param time: Time points, shape [T].
+        :param initial_density: Initial state in vectorized form, shape [..., N²].
+        :param evo: EvolutionMatrix.
+        :param matrix_generator: Evaluated only once at time[0].
+        :param detection_vector: Detection operator in vectorized form, shape [..., N²].
+        :return: Signal intensity over time, shape [T, ..., R].
+        """
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
 
@@ -336,6 +468,13 @@ class EvolutionRWASolver(EvolutionSolver):
 
 
 class EvolutionPropagatorSolver(EvolutionSolver):
+    """
+    Solver for full time-resolved EPR signals using construction of Propagator.
+    Uses Floquet theory and numerical integration over one microwave period to compute
+    the stroboscopic evolution propagator. Supports arbitrary g-anisotropy and general
+    relaxation superoperators. The signal is obtained by integrating the density matrix
+    against a sinusoidal detection function over the measurement window.
+    """
     def _get_resips(self, U_2pi: torch.Tensor, M_power: int):
         """
         :param U_2pi: torch.Tensor. Full-period evolution operator of shape [..., N^2, N^2].
@@ -428,7 +567,7 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         """
         Solve for a signal rate under periodic driving res_omega.
         This method computes the time-dependent expectation value of an observable
-        under a periodically driven quantum system using Floquet theory and
+        under a periodically driven system using Floquet theory and
         Runge-Kutta integration.
 
         :param time: torch.Tensor. Time points for signal evaluation

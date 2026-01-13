@@ -23,6 +23,7 @@ extensions = [
     'sphinx.ext.todo',      # поддержка TODO
     'sphinx.ext.coverage',  # проверяет покрытие документации
     'sphinx.ext.ifconfig',  # условные директивы в документации
+    'nbsphinx'
 ]
 
 autodoc_default_options = {
@@ -33,8 +34,8 @@ autodoc_default_options = {
     'exclude-members': '__weakref__'
 }
 
-autodoc_mock_imports = ["numpy", "scipy", "torch", ]
-
+# autodoc_mock_imports = ["numpy", "scipy", "torch", ]
+autodoc_mock_imports = ["torch", "optuna", "nevergrad"]
 
 templates_path = ['_templates']
 exclude_patterns = []

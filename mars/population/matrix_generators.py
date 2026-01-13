@@ -8,6 +8,11 @@ from .. import constants
 
 
 class BaseGenerator(ABC):
+    """
+    Abstract base class for time-dependent generators of relaxation-related computations.
+    Encapsulates a context that defines initial states, transition rates, and basis transformations,
+    along with temperature and eigenvector data required to evaluate relaxation operators at arbitrary times.
+    """
     def __init__(self,
                  context: contexts.BaseContext,
                  init_temperature: torch.Tensor,
@@ -16,7 +21,13 @@ class BaseGenerator(ABC):
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
         """
-        :param context: Context Describing the algorithm of relaxation processes
+        :param context: Context object instance
+        :param init_temperature:  initial temperature of process.
+        -It can be constant during the process
+        -It can be skipped if the temperature defines from profile
+        :param full_system_vectors: The eigen vectors of all energy levels of a spin system. The shape is [N, N]
+        :param device: Computation device
+        :param dtype:
         :param args:
         :param kwargs:
         """
@@ -71,8 +82,13 @@ class LevelBasedGenerator(BaseGenerator):
                      [[0,  dr_1],
                      [dr_2, 0]]
     """
-    def __call__(self, time: torch.Tensor) ->\
-            tuple[torch.Tensor | None, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+
+    def __call__(self, time: torch.Tensor) -> tp.Tuple[
+        tp.Optional[torch.Tensor],
+        torch.Tensor,
+        tp.Optional[torch.Tensor],
+        tp.Optional[torch.Tensor]
+    ]:
         """
         Evaluate transition probabilities at given measurement times.
         Parameters
@@ -109,33 +125,68 @@ class LevelBasedGenerator(BaseGenerator):
         out_probs = self._outgoing_transition_probs(time_dep_values)
         return temp.unsqueeze(-1).unsqueeze(-1), free_probs, induced_probs, out_probs
 
-    def _temperature(self, time_dep_values: torch.Tensor) -> torch.Tensor | None:
+    def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t"""
         return self.init_temperature
 
-    def _base_transition_probs(self, time_dep_values: torch.Tensor | None) -> torch.Tensor:
-        """"""
+    def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> torch.Tensor:
+        """
+        Retrieve spontaneous (free) transition probabilities transformed into the eigenbasis.
+        These rates are subject to Boltzmann detailed balance.
+        :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :return: Tensor of shape [..., N, N] representing equilibrium transition rates.
+        """
         return self.context.get_transformed_free_probs(self.full_system_vectors, time_dep_values)
 
-    def _driven_transition_probs(self, time_dep_values: torch.Tensor | None) -> torch.Tensor | None:
-        """Optional driven transitions; default None"""
+    def _driven_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+        """
+        Retrieve non-thermal (driven) transition probabilities in the eigenbasis.
+        These rates are not modified by thermal constraints and represent external perturbations.
+        :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :return: Tensor of shape [..., N, N] or None if no driven processes are defined.
+        """
         return self.context.get_transformed_driven_probs(self.full_system_vectors, time_dep_values)
 
-    def _outgoing_transition_probs(self, time_dep_values: torch.Tensor | None) -> torch.Tensor | None:
-        """Optional outgoing transitions; default None"""
+    def _outgoing_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+        """
+        Retrieve irreversible loss rates from each energy level in the eigenbasis.
+        These represent population removal from the spin system (e.g., phosphorescence).
+        :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :return: Vector of shape [..., N] or None if no loss processes are defined.
+        """
         return self.context.get_transformed_out_probs(self.full_system_vectors, time_dep_values)
 
 
 class TempDepGenerator(LevelBasedGenerator):
-    def _temperature(self, time_dep_values: torch.Tensor) -> torch.Tensor | None:
-        """Return temperature(s) at times t"""
+    """
+    Extension of LevelBasedGenerator where system temperature is time-dependent.
+    This assumes the profile(t) returns absolute temperature in Kelvin at time t.
+    All thermal transition rates are recomputed at each time step using the instantaneous temperature.
+    """
+    def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """
+        Return time-dependent temperature from the Context profile.
+        Assumes time_dep_values contains temperature values evaluated at 'time'.
+        :param time_dep_values: Tensor of shape compatible with [..., 1, 1] containing temperatures.
+        :return: Same as time_dep_values.
+        """
         return time_dep_values
 
 
 class DensityRWAGenerator(BaseGenerator):
     """
-    Abstract base class for generating density transition probability matrices in or multi-level
-    using rotating wave approximation
+    Generator for Liouville-space superoperators under the rotating wave approximation (RWA).
+
+    Returns the Hamiltonian H and two superoperators:
+      - free_superop: spontaneous processes (thermal relaxation, losses, decoherence),
+      - driven_superop: external non-equilibrium driving.
+
+    The full Liouvillian is L = -i[H, ·] + R_free + R_driven, where [·,·] is the commutator,
+    and R terms are relaxation superoperators.
+    H is defined in rotating frame and equel to H =
+
+    Unlike population-based models, this class preserves quantum coherences and operates on vectorized
+    density matrices of size N^2 x N^2.
     """
     def __init__(self,
                  context: contexts.BaseContext,
@@ -147,7 +198,27 @@ class DensityRWAGenerator(BaseGenerator):
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
         """
-        :param context: Context Describing the algorithm of relaxation processes
+        :param context: Context object instance
+        :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
+        -For RWA it uses full Hamiltonian in rotating frame.
+        -For Propagator it uses real stationary Hamiltonian
+
+        :param init_temperature:  initial temperature of process.
+        -It can be constant during the process
+        -It can be skipped if the temperature defines from profile
+
+        :param lvl_down:
+            Energy levels of lower states from which transitions occur.
+            Shape: [time, ..., N], where time is the time dimension and
+            N is the number of energy levels.
+
+        :param lvl_up:
+            Energy levels of upper states to which transitions occur.
+            Shape: [time, ..., N], where time is the time dimension and
+            N is the number of energy levels.
+        :param full_system_vectors: The eigen vectors of all energy levels of a spin system. The shape is [N, N]
+        :param device: Computation device
+        :param dtype:
         :param args:
         :param kwargs:
         """
@@ -155,46 +226,26 @@ class DensityRWAGenerator(BaseGenerator):
         self.stationary_hamiltonian = stationary_hamiltonian
         self.level_down = lvl_down
         self.level_up = lvl_up
+
+
+    def __call__(self, time: torch.Tensor) -> tp.Tuple[
+        tp.Optional[torch.Tensor],
+        torch.Tensor,
+        tp.Optional[torch.Tensor],
+        tp.Optional[torch.Tensor]
+    ]:
         """
-        self.rwa_ham = self.stationary_hamiltonian.clone().to(self.oscillating_hamiltonian.dtype)
-        indexes = torch.arange(self.rwa_ham.shape[-3])
-        print(self.rwa_ham[0, 0])
-        self.rwa_ham[..., indexes, lvl_down, lvl_down] += self.omega / 2
-        self.rwa_ham[..., indexes, lvl_up, lvl_up] -= self.omega / 2
-        print(self.rwa_ham[0, 0])
+        Evaluate time-dependent relaxation superoperators for density-matrix evolution.
+        :param time: Tensor of shape [T] containing measurement times.
+        :return: A 4-tuple:
+            - temperature: scalar tensor self.init_temperature (shape broadcastable to [..., 1, 1]).
+            - stationary_hamiltonian: Hermitian operator in rotating frame H of shape [..., N, N].
+            In dimensionless units, it is defined as:
+                H = H0 + Sz + Ht(r), where H0 is stationary Hamiltonian, Sz is z-projection of total spin,
+                Ht(r) is oscillating Hamiltonian in rotating frame (in this frame it doesn't depend on time)
 
-        self.rwa_ham[..., indexes, lvl_down, lvl_up] =\
-            self.oscillating_hamiltonian[..., indexes, lvl_down, lvl_up]
-        self.rwa_ham[..., indexes, lvl_up, lvl_down] =\
-            self.oscillating_hamiltonian[
-            ..., indexes, lvl_up, lvl_down]
-        """
-
-    def __call__(self, time: torch.Tensor) ->\
-            tuple[torch.Tensor | None, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
-        """
-        Evaluate transition probabilities at given measurement times.
-        Parameters
-        :param time: torch.Tensor
-        :return: tuple
-            (temperature, base_probs, induced_probs, outgoing_probs)
-            - temperature : torch.Tensor or None
-                System temperature(s) at the given time(s).
-            - free_probs : torch.Tensor [..., N, N]
-                Thermal equilibrium (Boltzmann-weighted) transition probabilities.
-
-            Example in symmetry form:
-                free_probs = [[0,  k'],
-                            [k', 0]]
-
-            - induced_probs : torch.Tensor [..., N, N] or None
-                Probabilities of driven transitions (e.g. due to external driving).
-
-                Ind matrix is always symmetry: [[0,  i],
-                                                [i, 0]]
-
-            - out_probs : torch.Tensor [..., N]  or None
-            Out-of-system transition probabilities (loss terms).
+            - free_superop: Liouville-space superoperator of shape [..., N^2, N^2] for thermal relaxation.
+            - driven_superop: Liouville-space superoperator of shape [..., N^2, N^2] for non-thermal driving.
         """
         if self.context.time_dependant:
             time_dep_values = self.context.get_time_dependent_values(time)
@@ -206,45 +257,51 @@ class DensityRWAGenerator(BaseGenerator):
         driven_superop = self._driven_superop(time_dep_values)
         return temp, self.stationary_hamiltonian, free_superop, driven_superop
 
-    def _temperature(self, time_dep_values: torch.Tensor | None) -> torch.Tensor | None:
+    def _temperature(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t"""
         return self.init_temperature
 
-    def _base_superop(self, time_dep_values: torch.Tensor | None) -> torch.Tensor:
-        """"""
+    def _base_superop(self, time_dep_values: tp.Optional[torch.Tensor]) -> torch.Tensor:
+        """
+        Retrieve spontaneous relaxation superoperator in Liouville space.
+        Includes spontaneous transitions, losses, and decoherence, and is corrected for detailed balance.
+        :param time_dep_values: Optional time-dependent scaling from Context profile.
+        :return: Superoperator tensor of shape [..., N^2, N^2].
+        """
         return self.context.get_transformed_free_superop(self.full_system_vectors, time_dep_values)
 
-    def _driven_superop(self, time_dep_values: torch.Tensor | None) -> torch.Tensor | None:
-        """Optional driven transitions; default None"""
+    def _driven_superop(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+        """
+        Retrieve non-thermal relaxation superoperator in Liouville space.
+        Represents external driving not constrained by thermal equilibrium.
+        :param time_dep_values: Optional time-dependent scaling from Context profile.
+        :return: Superoperator tensor of shape [..., N^2, N^2] or None.
+        """
         return self.context.get_transformed_driven_superop(self.full_system_vectors, time_dep_values)
 
 
 class DensityPropagatorGenerator(DensityRWAGenerator):
-    def __call__(self, time: torch.Tensor) ->\
-            tuple[torch.Tensor | None, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+    """
+    Generator for full propagator-based density-matrix evolution without RWA.
+    Assumes time-independent relaxation rates.
+    Time dependence in the Context profile is explicitly disallowed.
+    """
+    def __call__(self, time: torch.Tensor) -> tp.Tuple[
+        tp.Optional[torch.Tensor],
+        torch.Tensor,
+        tp.Optional[torch.Tensor],
+        tp.Optional[torch.Tensor]
+    ]:
         """
-        Evaluate transition probabilities at given measurement times.
-        Parameters
-        :param time: torch.Tensor
-        :return: tuple
-            (temperature, base_probs, induced_probs, outgoing_probs)
-            - temperature : torch.Tensor or None
-                System temperature(s) at the given time(s).
-            - free_probs : torch.Tensor [..., N, N]
-                Thermal equilibrium (Boltzmann-weighted) transition probabilities.
+        Evaluate time-dependent relaxation superoperators for density-matrix evolution.
+        :param time: Tensor of shape [T] containing measurement times.
+        :return: A 4-tuple:
+            - temperature: scalar tensor self.init_temperature (shape broadcastable to [..., 1, 1]).
+            - stationary_hamiltonian: Hermitian stationary Hamiltonian H0
+             of shape [..., N, N]. In dimensionless units,
 
-            Example in symmetry form:
-                free_probs = [[0,  k'],
-                            [k', 0]]
-
-            - induced_probs : torch.Tensor [..., N, N] or None
-                Probabilities of driven transitions (e.g. due to external driving).
-
-                Ind matrix is always symmetry: [[0,  i],
-                                                [i, 0]]
-
-            - out_probs : torch.Tensor [..., N]  or None
-            Out-of-system transition probabilities (loss terms).
+            - free_superop: Liouville-space superoperator of shape [..., N^2, N^2] for thermal relaxation.
+            - driven_superop: Liouville-space superoperator of shape [..., N^2, N^2] for non-thermal driving.
         """
         if self.context.time_dependant:
             raise NotImplementedError(

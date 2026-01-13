@@ -98,7 +98,7 @@ class Nucleus(Particle):
     def __init__(self, nucleus_str: str):
         self.nucleus_str = nucleus_str
         if not Nucleus._data_loaded:
-            data_path = self._get_data_path("nuclei_db/nuclear_data.pkl")
+            data_path = self._get_data_path(r"nuclei_db\nuclear_data.pkl")
             Nucleus._load_isotope_data(data_path)
         spin, g_factor = self._parse_nucleus_str(nucleus_str)
         super().__init__(spin)

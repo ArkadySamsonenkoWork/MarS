@@ -914,9 +914,9 @@ class SpinSystem(nn.Module):
 
     def update(self,
                g_tensors: list[BaseInteraction] = None,
-               electron_nuclei: list[tuple[int, int, BaseInteraction]] | None = None,
-               electron_electron: list[tuple[int, int, BaseInteraction]] | None = None,
-               nuclei_nuclei: list[tuple[int, int, BaseInteraction]] | None = None):
+               electron_nuclei: tp.Union[list[tuple[int, int, BaseInteraction]], None] = None,
+               electron_electron: tp.Union[list[tuple[int, int, BaseInteraction]], None] = None,
+               nuclei_nuclei: tp.Union[list[tuple[int, int, BaseInteraction]], None] = None):
         """
         Update the parameters of spin system. No recomputation of spin vectors does not occur
         :param g_tensors:
@@ -1041,6 +1041,9 @@ class SpinSystem(nn.Module):
 
 
 class BaseSample(nn.Module):
+    """
+    Base Class for any type of Samples.
+    """
     def __init__(self, spin_system: SpinSystem,
                  ham_strain: tp.Optional[tp.Union[torch.Tensor, float]] = None,
                  gauss: tp.Optional[tp.Union[torch.Tensor, float]] = None,
@@ -1136,13 +1139,56 @@ class BaseSample(nn.Module):
 
     def update(self,
                g_tensors: list[BaseInteraction] = None,
-               electron_nuclei: list[tuple[int, int, BaseInteraction]] | None = None,
-               electron_electron: list[tuple[int, int, BaseInteraction]] | None = None,
-               nuclei_nuclei: list[tuple[int, int, BaseInteraction]] | None = None,
+               electron_nuclei: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
+               electron_electron: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
+               nuclei_nuclei: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
                ham_strain: tp.Optional[torch.Tensor] = None,
                gauss: tp.Union[torch.Tensor, float] = None,
                lorentz: tp.Union[torch.Tensor, float] = None
                ):
+        """
+        Update the parameters of a sample. No recomputation of spin vectors does not occur
+        :param g_tensors:
+        list[BaseInteraction]
+            g-tensors corresponding to each electron in `electrons`.
+            Each element must be an instance of `BaseInteraction` (e.g., `Interaction`).
+
+        :param electron_nuclei:
+        list[tuple[int, int, BaseInteraction]], optional
+            Hyperfine interactions between electrons and nuclei.
+            Each tuple is of the form (electron_index, nucleus_index, interaction_tensor).
+            Default is `None`.
+
+        :param electron_electron:
+        list[tuple[int, int, BaseInteraction]], optional
+            Dipolar or exchange interactions between pairs of electrons.
+            Each tuple is of the form (electron_index, electron_index, interaction_tensor).
+            Default is `None`.
+
+        :param nuclei_nuclei:
+        list[tuple[int, int, BaseInteraction]], optional
+            Dipolar or J-coupling interactions between pairs of nuclei.
+            Each tuple is of the form (nucleus_index, nucleus_index, interaction_tensor).
+            Default is `None`
+
+        :param ham_strain:
+        torch.Tensor, optional
+            Anisotropic line width, due to the unresolved hyperfine interactions.
+            The tensor components, provided in one of the following forms:
+              - A scalar (for isotropic interaction).
+              - A sequence of two values (axial and z components).
+              - A sequence of three values (principal components).
+
+        :param gauss:
+        torch.Tensor, optional
+            Gaussian broadening parameter(s). Defines inhomogeneous linewidth
+            contributions (e.g., due to static disorder). Default is `None`.
+
+        :param lorentz:
+        torch.Tensor, optional
+            Lorentzian broadening parameter(s). Defines homogeneous linewidth
+            contributions (e.g., due to relaxation). Default is `None`
+        """
         raise NotImplementedError
 
     def build_electron_electron(self) -> torch.Tensor:
@@ -1161,7 +1207,7 @@ class BaseSample(nn.Module):
         return F
 
     def build_electron_nuclei(self) -> torch.Tensor:
-        """Constructs the zero-field Hamiltonian F."""
+        """Constructs the hyperfine interaction."""
         F = torch.zeros((*self.config_shape,
                          self.spin_system_dim, self.spin_system_dim),
                         dtype=self.complex_dtype,
@@ -1176,7 +1222,7 @@ class BaseSample(nn.Module):
         return F
 
     def build_nuclei_nuclei(self) -> torch.Tensor:
-        """Constructs the zero-field Hamiltonian F."""
+        """Constructs the nuclei-nuclei interactions F."""
         F = torch.zeros((*self.config_shape,
                          self.spin_system_dim, self.spin_system_dim),
                         dtype=self.complex_dtype,
@@ -1250,9 +1296,30 @@ class BaseSample(nn.Module):
     def get_hamiltonian_terms(self) -> tuple:
         """
         Returns F, Gx, Gy, Gz.
-        F is magnetic field free term
-        Gx, Gy, Gz are terms multiplied to Bx, By, Bz respectively
 
+        F is the magnetic field-independent part of the spin Hamiltonian.
+        Gx, Gy, and Gz are the Zeeman coupling matrices corresponding to the x, y, and z components
+        of the external magnetic field (Bx, By, Bz). The full EPR Hamiltonian is expressed as:
+
+            H = F + Gx * Bx + Gy * By + Gz * Bz
+
+        All matrices are represented in the basis of product states formed from individual electron
+        and nuclear spin projections.
+
+        F includes contributions from:
+          - Zero-field splitting (for systems with S >= 1)
+          - Electron-nuclear hyperfine interactions
+          - Nuclear-nuclear dipolar or scalar couplings
+          - Other field-independent terms (e.g., exchange)
+
+        Gx, Gy, and Gz are defined as the sum of electron and nuclear Zeeman operators weighted by
+        their respective g-tensors and magnetogyric ratios:
+
+          - For electrons: the contribution is proportional to the electron g-tensor (typically anisotropic),
+            such that the electron Zeeman term is mu_B * g_tensor @ B, where mu_B is the Bohr magneton.
+
+          - For nuclei: the contribution is gamma_n * I, where gamma_n is the nuclear gyromagnetic ratio
+            and I is the nuclear spin operator.
         """
         return self.build_zero_field_term(), *self.build_zeeman_terms()
 
@@ -1434,12 +1501,16 @@ class SpinSystemOrientator:
 
 
 class MultiOrientedSample(BaseSample):
+    """
+    A sample class that is used to define any solid and crystalline samples: crystals, powders, glasses.
+    Allows you to specify the required extensions present in the solid phase.
+    """
     def __init__(self, spin_system: SpinSystem,
                  ham_strain: tp.Optional[torch.Tensor] = None,
                  gauss: torch.Tensor = None,
                  lorentz: torch.Tensor = None,
                  mesh: tp.Optional[tp.Union[BaseMesh, tuple[int, int]]] = None,
-                 spin_system_frame: tp.Optional[torch.Tensor] = None,
+                 spin_system_frame: tp.Optional[tp.Union[torch.Tensor, list[float]]] = None,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1491,7 +1562,8 @@ class MultiOrientedSample(BaseSample):
         """
         super().__init__(spin_system, ham_strain, gauss, lorentz, device=device, dtype=dtype)
         self.mesh = self._init_mesh(mesh, device=device, dtype=dtype)
-        self._construct_spin_system_rot_matrix(frame=spin_system_frame, dtype=dtype, device=device)
+        self._construct_spin_system_rot_matrix(frame=spin_system_frame,
+                                               config_shape=spin_system.config_shape, dtype=dtype, device=device)
         rotation_matrices = self.mesh.rotation_matrices
 
         self._ham_strain = self._expand_hamiltonian_strain(
@@ -1507,31 +1579,40 @@ class MultiOrientedSample(BaseSample):
 
     def _construct_spin_system_rot_matrix(
             self, frame: tp.Optional[torch.tensor],
+            config_shape: tp.Iterable,
             device: torch.device,
             dtype: torch.dtype
     ):
+
         if frame is None:
             _frame = None
             _rot_matrix = None
 
         else:
-            if not isinstance(frame, torch.Tensor):
-                raise TypeError("frame must be a torch.Tensor or None.")
-            if frame.shape[-2:] == (3, 3):
-                _frame = utils.rotation_matrix_to_euler_angles(frame)
-                _rot_matrix = frame.to(dtype).to(device)
+            if isinstance(frame, torch.Tensor):
+                if frame.shape[-2:] == (3, 3) and not config_shape:
+                    _frame = utils.rotation_matrix_to_euler_angles(frame)
+                    _rot_matrix = frame.to(self.components.dtype)
 
-            elif frame.shape == (3, ):
-                _frame = frame.to(dtype)
-                _rot_matrix = self.euler_to_rotmat(_frame).to(dtype).to(device)
+                elif frame.shape == (*config_shape, 3):
+                    _frame = frame.to(dtype)
+                    _rot_matrix = self.euler_to_rotmat(_frame).to(self.components.dtype)
 
+                else:
+                    raise ValueError(
+                        "frame must be either:\n"
+                        "  • None (→ identity rotation),\n"
+                        "  • a tensor of Euler angles with shape batch×3,\n"
+                        "  • or a tensor of rotation matrices with shape batch×3×3."
+                    )
+            elif isinstance(frame, collections.abc.Sequence):
+                if len(frame) != 3:
+                    raise ValueError("frame must have exactly 3 values")
+                _frame = torch.tensor(frame, dtype=dtype, device=device)
+                _rot_matrix = self.euler_to_rotmat(_frame).to(self.components.dtype)
             else:
-                raise ValueError(
-                    "frame must be either:\n"
-                    "  • None (→ identity rotation),\n"
-                    "  • a tensor of Euler angles with shape batch×3,\n"
-                    "  • or a tensor of rotation matrices with shape batch×3×3."
-                )
+                raise ValueError("frame must be a Sequence of 3 values, a torch.Tensor, or None.")
+
         self.register_buffer("_spin_system_frame", _frame)
         self.register_buffer("_spin_system_rot_matrix", _rot_matrix)
 
@@ -1573,9 +1654,9 @@ class MultiOrientedSample(BaseSample):
 
     def update(self,
                g_tensors: list[BaseInteraction] = None,
-               electron_nuclei: list[tuple[int, int, BaseInteraction]] | None = None,
-               electron_electron: list[tuple[int, int, BaseInteraction]] | None = None,
-               nuclei_nuclei: list[tuple[int, int, BaseInteraction]] | None = None,
+               electron_nuclei: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
+               electron_electron: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
+               nuclei_nuclei: tp.Optional[list[tuple[int, int, BaseInteraction]]] = None,
                ham_strain: tp.Optional[torch.Tensor] = None,
                gauss: tp.Union[torch.Tensor, float] = None,
                lorentz: tp.Union[torch.Tensor, float] = None

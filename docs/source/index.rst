@@ -15,14 +15,39 @@ Welcome to MarS!
    Installation <installation>
    Quick Start <quickstart>
 
+
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
+   :caption: Contents:
+
+   contents/base_spin_system
+   contents/sample
+   contents/spectrum_constraction
+   contents/interactions/index
+   contents/spectra_creators/index
+   contents/intensity_calculators/index
+   contents/meshers/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
 
    mars
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   examples/example_1
+   examples/example_2
+   examples/example_3
+   examples/example_4
+   examples/example_5
+   examples/example_6
+
+
+.. toctree::
    :maxdepth: 1
    :caption: Project Info
 
-   GitHub Repository <https://github.com/ArkadySamsonenkoWork/MarS.git>
+    GitHub Repository <https://github.com/ArkadySamsonenkoWork/MarS.git>

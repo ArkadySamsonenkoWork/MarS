@@ -57,7 +57,7 @@ class BaseContext(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def get_time_dependent_values(self, time: torch.Tensor) -> torch.Tensor | None:
+    def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """
         Evaluate time-dependent profile at specified time points
         :param time: Time points tensor for evaluation
@@ -335,7 +335,7 @@ class TransformedContext(BaseContext):
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
-    ):
+    ) -> tp.Optional[torch.Tensor]:
         """
         Return spontaneous (thermal) transition probabilities in the eigenbasis.
 
@@ -367,7 +367,7 @@ class TransformedContext(BaseContext):
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
-    ):
+    ) -> tp.Optional[torch.Tensor]:
         """
         Return induced (non-thermal) transition probabilities in the eigenbasis.
 
@@ -394,7 +394,7 @@ class TransformedContext(BaseContext):
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
-    ):
+    ) -> tp.Optional[torch.Tensor]:
         """
         Return loss (out-of-system) probabilities in the eigenbasis.
 
@@ -439,7 +439,7 @@ class TransformedContext(BaseContext):
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
-    ):
+    ) -> tp.Optional[torch.Tensor]:
         """
         Return the spontaneous relaxation superoperator in Liouville space.
 
@@ -594,19 +594,21 @@ class Context(TransformedContext):
     These operations follow the physical rules described in the MarS documentation and
     enable construction of sophisticated relaxation models from simpler components.
     """
+
     def __init__(
             self,
-            basis: tp.Optional[torch.Tensor | str | None] = None,
+            basis: tp.Optional[tp.Union[torch.Tensor, str, None]] = None,
             sample: tp.Optional[spin_system.MultiOrientedSample] = None,
-            init_populations: tp.Optional[torch.Tensor | list[float]] = None,
+            init_populations: tp.Optional[tp.Union[torch.Tensor, tp.List[float]]] = None,
             init_density: tp.Optional[torch.Tensor] = None,
 
-            free_probs: tp.Optional[torch.Tensor | tp.Callable[[torch.Tensor], torch.Tensor]] = None,
-            driven_probs: tp.Optional[torch.Tensor | tp.Callable[[torch.Tensor], torch.Tensor]] = None,
-            out_probs: tp.Optional[torch.Tensor | list[float] | tp.Callable[[torch.Tensor], torch.Tensor]] = None,
+            free_probs: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
+            driven_probs: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
+            out_probs: tp.Optional[
+                tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
-            decoherences: tp.Optional[torch.Tensor | tp.Callable[[torch.Tensor], torch.Tensor]] = None,
-            relaxation_superop: tp.Optional[torch.Tensor | tp.Callable[[torch.Tensor], torch.Tensor]] = None,
+            decoherences: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
+            relaxation_superop: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
             profile: tp.Optional[tp.Callable[[torch.Tensor], torch.Tensor]] = None,
             time_dimension: int = -3,
@@ -899,7 +901,7 @@ class Context(TransformedContext):
         current_driven_superop = self.driven_superop
         self._get_driven_superop_tensor = self._setup_single_getter(current_driven_superop)
 
-    def get_time_dependent_values(self, time: torch.Tensor) -> torch.Tensor | None:
+    def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """
         Evaluate time-dependent profile at specified time points
         Evaluate time-dependent values at specified time points.
@@ -1086,7 +1088,7 @@ class CompositeContext(TransformedContext):
             self.transformation_basis_coeff = transform.compute_clebsch_gordan_coeffs(full_system_vectors, basises)
             return self.transformation_basis_coeff
 
-    def get_time_dependent_values(self, time: torch.Tensor) -> torch.Tensor | None:
+    def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         for context in self.component_contexts:
             if context.profile is not None:
                 return context.profile(time)[(...,) + (None,) * -(context.time_dimension+1)]
@@ -1335,7 +1337,7 @@ class SummedContext(BaseContext):
         super().__init__()
         self.component_contexts = nn.ModuleList(contexts)
 
-    def get_time_dependent_values(self, time: torch.Tensor) -> torch.Tensor | None:
+    def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         for context in self.component_contexts:
             if context.profile is not None:
                 return context.profile(time)[(...,) + (None,) * -(context.time_dimension+1)]

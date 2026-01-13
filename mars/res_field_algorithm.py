@@ -255,9 +255,12 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         return epsilon, (derivatives_low, derivatives_high)
 
     @abstractmethod
-    def determine_split_masks(self, eig_values_low, eig_values_mid, eig_values_high,
-                              B_low, B_mid, B_high, row_indexes,
-                              resonance_frequency, baseline_sign, derivative_max):
+    def determine_split_masks(self,
+                              eig_values_low: torch.Tensor, eig_values_mid: torch.Tensor, eig_values_high: torch.Tensor,
+                              B_low: torch.Tensor, B_mid: torch.Tensor, B_high: torch.Tensor,
+                              row_indexes: torch.Tensor,
+                              resonance_frequency: torch.Tensor, baseline_sign: torch.Tensor,
+                              derivative_max: torch.Tensor):
         pass
 
     def assemble_current_batches(self,
@@ -325,7 +328,9 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
             eig_vectors_low, eig_vectors_mid, eig_vectors_high,
             B_low, B_mid, B_high,
             row_indexes: torch.Tensor
-    ) -> tuple[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
+    ) -> tuple[
+        tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor],
+        torch.Tensor]:
         """
         :param idx_xor: the xor indexes of the left and right mask
          It means that resonance happens in the one interval left or right. The shape is [...]
@@ -677,11 +682,13 @@ class GeneralResonanceIntervalSolver(BaseResonanceIntervalSolver):
 
         return mask
 
-    def determine_split_masks(self, eig_values_low, eig_values_mid, eig_values_high,
-                                                    B_low, B_mid, B_high,
-                                                    row_indexes, resonance_frequency, baseline_sign, deriv_max):
+    def determine_split_masks(self,
+                              eig_values_low: torch.Tensor, eig_values_mid: torch.Tensor, eig_values_high: torch.Tensor,
+                              B_low: torch.Tensor, B_mid: torch.Tensor, B_high: torch.Tensor,
+                              row_indexes: torch.Tensor, resonance_frequency: torch.Tensor,
+                              baseline_sign: torch.Tensor, derivative_max: torch.Tensor):
         baseline_sign_idx = baseline_sign.index_select(0, row_indexes)
-        deriv_max_idx = deriv_max.index_select(0, row_indexes)
+        deriv_max_idx = derivative_max.index_select(0, row_indexes)
 
         mask_left = self.check_resonance(eig_values_low, eig_values_mid, B_low, B_mid,
                                         resonance_frequency, baseline_sign_idx, deriv_max_idx)
@@ -719,8 +726,11 @@ class ZeroFreeResonanceIntervalSolver(BaseResonanceIntervalSolver):
         mask_sign_change = has_sign_change(res_low, res_high)
         return mask_sign_change
 
-    def determine_split_masks(self, eig_values_low, eig_values_mid, eig_values_high,
-                            B_low, B_mid, B_high, row_indexes, resonance_frequency, baseline_sign, derivative_max):
+    def determine_split_masks(self,
+                              eig_values_low: torch.Tensor, eig_values_mid: torch.Tensor, eig_values_high: torch.Tensor,
+                              B_low: torch.Tensor, B_mid: torch.Tensor, B_high: torch.Tensor,
+                              row_indexes: torch.Tensor, resonance_frequency: torch.Tensor,
+                              baseline_sign: torch.Tensor, derivative_max: torch.Tensor):
         mask_left = self.check_resonance(eig_values_low, eig_values_mid, B_low, B_mid,
                                          resonance_frequency, baseline_sign, derivative_max)
         mask_right = self.check_resonance(eig_values_mid, eig_values_high, B_mid, B_high,
@@ -982,7 +992,7 @@ class BaseResonanceLocator(nn.Module):
             self,
             eig_vectors_low: torch.Tensor, eig_vectors_high: torch.Tensor,
             lvl_down: torch.Tensor, lvl_up: torch.Tensor,
-            step_B: torch.Tensor) -> tuple[tuple[torch.Tensor, torch.Tensor], torch.Tensor | None]:
+            step_B: torch.Tensor) -> tuple[tuple[torch.Tensor, torch.Tensor], tp.Union[torch.Tensor, None]]:
         """
         :param eig_vectors_low:
         :param eig_vectors_high:
@@ -1024,46 +1034,52 @@ class BaseResonanceLocator(nn.Module):
                      mask_triu: torch.Tensor,
                      row_indexes: torch.Tensor):
         """
-        :param mask_trans: The mask of True and False of real transitions. The shape is [..., n], where n is valid columns number
-        :param mask_triu: The mask of True and False. The shape is [N], where N is number of all transitions. The number of True == n
-        :param row_indexes: The indexes where batch was computed. The shape is [...].
-        It shows what transitions among global transitions are considered. indexes[indexes==True].shape = [...]
-        :return: tuple[mask_triu_updated, row_indexes]
+    :param mask_trans: The mask of True and False of real transitions. The shape is [..., n],
+    where n is valid columns number
+    :param mask_triu: The mask of True and False. The shape is [N], where N is number of all transitions.
+    The number of True == n
+    :param row_indexes: The indexes where batch was computed. The shape is [...].
+    It shows what transitions among global transitions are considered. indexes[indexes==True].shape = [...]
+    :return: tuple[mask_triu_updated, row_indexes]
 
-        This musk split the data into sub-batches that for each sub-batch all transitions occurse.
-        For example:
-            mask_trans = torch.tensor([
-            [True, False, False],
-            [True, False, False],
+    This musk split the data into sub-batches that for each sub-batch all transitions occurse.
+    For example:
+        mask_trans = torch.tensor([
+        [True, False, False],
+        [True, False, False],
 
-            [True, True, True],
-            [True, True, True],
+        [True, True, True],
+        [True, True, True],
 
-            [True, False, True],
-            [True, False, True],
+        [True, False, True],
+        [True, False, True],
 
-            [False, False, True],
-            ])
+        [False, False, True],
+        ])
 
-            and mask_triu = torch.Tensor([False, False, True, True, True, False])
-            and batch.shape = [7, 3, ...]
+        and mask_triu = torch.Tensor([False, False, True, True, True, False])
+        and batch.shape = [7, 3, ...]
 
-        Then in the output the data must be splitted into 4 parts with repect to:
-            [True, False, False],
-            [True, False, False], with corresponding mask_triu_updated = torch.Tensor([False, False, True, False, False, False])
-                                  and batch_updated.shape = [2, 1, ...]
+    Then in the output the data must be splitted into 4 parts with repect to:
+        [True, False, False],
+        [True, False, False],
+        with corresponding mask_triu_updated = torch.Tensor([False, False, True, False, False, False])
+                              and batch_updated.shape = [2, 1, ...]
 
-            [True, True, True],
-            [True, True, True], with corresponding mask_triu_updated = torch.Tensor([False, False, True, True, True, False])
-                                and batch_updated.shape = [2, 3, ...]
+        [True, True, True],
+        [True, True, True],
+        with corresponding mask_triu_updated = torch.Tensor([False, False, True, True, True, False])
+                            and batch_updated.shape = [2, 3, ...]
 
-            [True, False, True],
-            [True, False, True], with corresponding mask_triu_updated = torch.Tensor([False, False, True, False, True, False])
-                                 and batch_updated.shape = [2, 2, ...]
+        [True, False, True],
+        [True, False, True],
+        with corresponding mask_triu_updated = torch.Tensor([False, False, True, False, True, False])
+                             and batch_updated.shape = [2, 2, ...]
 
 
-            [Flase, False, True], with corresponding mask_triu_updated = torch.Tensor([False, False, False, False, True, False])
-                                 and batch_updated.shape = [1, 1, ...]
+        [Flase, False, True],
+        with corresponding mask_triu_updated = torch.Tensor([False, False, False, False, True, False])
+                             and batch_updated.shape = [1, 1, ...]
 
         """
         original_shape = mask_trans.shape
@@ -1144,7 +1160,7 @@ class BaseResonanceLocator(nn.Module):
             list[tuple[
                     tuple[torch.Tensor, torch.Tensor],
                     tuple[torch.Tensor, torch.Tensor],
-                    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]]:
+                    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]]:
         """
         :param batch: Tuple with the parameters of the interval:
              (eig_values_low, eig_values_high) - eigen values of Hamiltonian
@@ -1224,7 +1240,7 @@ class BaseResonanceLocator(nn.Module):
         return outputs
 
     def forward(self, final_batches, resonance_frequency,
-                baselign_sign:tp.Optional[torch.Tensor] = None,
+                baselign_sign: tp.Optional[torch.Tensor] = None,
                 derivative_max: tp.Optional[torch.Tensor] = None
                 ):
         return list(chain.from_iterable(
@@ -1434,17 +1450,69 @@ class GeneralResonanceLocator(BaseResonanceLocator):
 
 
 class ResField(nn.Module):
+    """
+    Computes resonance fields, transition eigenvectors, and associated resonance energies for a spin system
+    over a user-defined magnetic field interval using a robust root-finding algorithm based on adaptive interval bisection
+    and cubic interpolation of energy differences.
+
+    This class implements a two-stage numerical procedure:
+
+    1. **Resonance Interval Detection**:
+       Using either a general or zero-field-free solver, it identifies subintervals of the magnetic field range
+       where transitions satisfying the resonance condition (energy difference equals the target resonance frequency)
+       may exist.
+
+    2. **Resonance Field Localization**:
+       Within each candidate interval, the resonance field is computed by solving a cubic interpolant
+       of the energy difference between two spin levels as a function of magnetic field. .
+
+    The output includes:
+      - Eigenvectors of lower and upper states involved in each transition,
+      - Indices of the corresponding energy levels,
+      - Resonance magnetic fields,
+      - Resonance energies (equal to the input frequency within numerical tolerance),
+      - Optionally, full-system eigenvectors for all spin states at each resonance field
+      (if `output_full_eigenvector=True`).
+
+    The algorithm operates in batched mode over meshed field
+    configurations and supports arbitrary spin system dimensions.
+    """
     def __init__(self, spin_system_dim: int,
                  mesh_size: torch.Size,
-                 batch_dims: torch.Size | tuple,
+                 batch_dims: tp.Union[torch.Size, tuple],
                  eigen_finder: BaseEigenSolver = EighEigenSolver(), output_full_eigenvector: bool = False,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param eigen_finder: The eigen solver that should find eigen values and eigen vectors
+        Initialize the ResField resonance solver for spin systems.
+
+        :param spin_system_dim: Dimension of the Hilbert space of the spin system
+        (i.e., size N of the Hamiltonian matrices).
+        :type spin_system_dim: int
+        :param mesh_size: Shape of the spatial or parameter mesh over which resonance calculations are performed.
+                          Used during output aggregation to restore tensor layout.
+        :type mesh_size: torch.Size
+        :param batch_dims: Shape of the batch dimensions for vectorized computation
+        across multiple samples or configurations.
+        :type batch_dims: torch.Size or tuple of int
+        :param eigen_finder: Eigenvalue/eigenvector solver used internally for Hamiltonian diagonalization.
+                             Defaults to :class:`EighEigenSolver`, which uses :func:`torch.linalg.eigh`.
+        :type eigen_finder: BaseEigenSolver, optional
+        :param output_full_eigenvector: If True, the forward pass returns full eigenvector matrices
+        (for all energy levels)
+                                        at each resonance field. If False (default), only eigenvectors of the two states
+                                        involved in each transition are returned.
+        :type output_full_eigenvector: bool, optional
+        :param device: Device on which all internal tensors and computations are allocated (e.g., CPU or CUDA).
+                       Default is CPU.
+        :type device: torch.device, optional
+        :param dtype: Floating-point data type for internal computations (e.g., ``torch.float32`` or ``torch.float64``).
+                      Complex counterparts (``torch.complex64``/``torch.complex128``)
+                      are derived automatically where needed.
+        :type dtype: torch.dtype, optional
         """
         super().__init__()
-        self.register_buffer('spin_system_dim', torch.tensor(spin_system_dim))
+        self.register_buffer("spin_system_dim", torch.tensor(spin_system_dim))
         self.output_full_eigenvector = output_full_eigenvector
         self.general_solver = GeneralResonanceIntervalSolver(self.spin_system_dim, eigen_finder=eigen_finder,
                                                              device=device, dtype=dtype)
@@ -1588,10 +1656,11 @@ class ResField(nn.Module):
                                tuple[
                                     tuple[torch.Tensor, torch.Tensor],
                                     tuple[torch.Tensor, torch.Tensor],
-                                    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None,
+                                    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,
+                                    tp.Union[torch.Tensor, None],
                                ]], resonance_frequency: torch.Tensor) -> tuple[
         tuple[torch.Tensor, torch.Tensor],
-        tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor | None
+        tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]
     ]:
         """
         :param batches: list of next data:
@@ -1673,7 +1742,7 @@ class ResField(nn.Module):
             tuple[
             tuple[torch.Tensor, torch.Tensor],
             tuple[torch.Tensor, torch.Tensor],
-            torch.Tensor, torch.Tensor, torch.Tensor | None]:
+            torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]:
         """
         :param sample: The sample for which the resonance parameters need to be found
         :param resonance_frequency: the resonance frequency. The shape is []

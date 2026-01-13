@@ -1,3 +1,5 @@
+import typing as tp
+
 import torch
 import torch.nn as nn
 
@@ -6,6 +8,36 @@ from . import spin_system
 
 
 class SecSolver(nn.Module):
+    """
+    Computes resonance fields and associated transition data under the secular approximation,
+    where only diagonal elements of the Zeeman interaction in the eigenbasis of the field-free Hamiltonian F
+    contribute to the resonance condition.
+
+    This class assumes that the full Hamiltonian can be written as H(B) = F + B * Gz,
+    and [F, Gz] = 0
+    Under this approximation in their general basis, each pair of energy levels evolves linearly with magnetic field:
+        E_i(B) = E_i^F + B * g_i,
+    where E_i^F are eigenvalues of F and g_i are diagonal elements of Gz in the same basis.
+
+    The resonance condition for a transition (i ← j) at frequency ν is:
+        ν = E_i(B) - E_j(B) = (E_i^F - E_j^F) + B * (g_i - g_j),
+    which yields an explicit solution for the resonance field:
+        B_res = (ν - ΔE_F) / Δg,
+    provided |Δg| exceeds a small threshold (`mz_threshold`) to avoid division by near-zero values.
+
+    The solver:
+      - Identifies all level pairs satisfying the resonance condition within [B_low, B_high],
+      - Filters out transitions with negligible Zeeman splitting (|Δg| < mz_threshold),
+      - Reorders eigenstates according to actual energy ordering at each B_res (since level crossing may occur),
+      - Optionally returns full eigenvector sets for all states at resonance fields.
+
+    Output includes:
+      - Transition eigenvectors (lower and upper states),
+      - Level indices involved in transitions (in energy-ordered basis at resonance),
+      - Resonance magnetic fields,
+      - Corresponding resonance energies (≈ ν, up to numerical precision),
+      - Full system eigenvectors if `output_full_eigenvector=True`.
+    """
     def __init__(self,
                  spin_dim: int, output_full_eigenvector: bool = False,
                  mz_threshold: float = 1e-8,
@@ -18,7 +50,16 @@ class SecSolver(nn.Module):
         self._triu_indices = torch.triu_indices(spin_dim, spin_dim, offset=1, device=device)
         self.output_full_eigenvector = output_full_eigenvector
 
-    def _merge_edges(self, lvl_down, lvl_up, mask_out):
+    def _merge_edges(self, lvl_down: torch.Tensor, lvl_up: torch.Tensor, mask_out: torch.Tensor):
+        """
+        Aggregates identical (lower, upper) level-pair transitions across batch elements into
+        a unified set of unique transitions.
+
+        Returns:
+          - Unique lower/upper level indices (in energy-sorted basis),
+          - Column mapping from batched transitions to unified transition list,
+          - Updated validity mask aligned with merged structure.
+        """
         device = lvl_down.device
         dtype = lvl_down.dtype
         batch_shape = lvl_down.shape[:-1]
@@ -87,7 +128,15 @@ class SecSolver(nn.Module):
             gz_eigen: torch.Tensor, B_low: torch.Tensor,
             B_high: torch.Tensor, resonance_frequency: torch.Tensor
     ):
+        """
+        Analytically computes candidate resonance fields for all pairs of spin levels under the secular approximation.
 
+        For each pair (i, j), solves B_res = (ν - (E_i^F - E_j^F)) / (g_i - g_j),
+        then filters results to retain only those where:
+          - |g_i - g_j| > mz_threshold (to avoid singular or unphysical transitions),
+          - B_res ∈ [B_low, B_high].
+        Returns resonance fields and indexing information needed to reconstruct transition data per batch element.
+        """
         delta_E_F = eigenvals_F[..., :, None] - eigenvals_F[..., None, :]
         delta_gz = gz_eigen[..., :, None] - gz_eigen[..., None, :]
 
@@ -247,9 +296,22 @@ class SecSolver(nn.Module):
 
 
 class ResSecular(nn.Module):
+    """
+    Class that enforces the secular approximation to compute EPR resonance parameters
+    over a batched grid of spin systems.
+
+    This approach is valid when [F, Gz] = 0 or close to 0
+
+    Outputs match those of `ResField` for compatibility in hybrid workflows:
+      - Transition eigenvectors,
+      - Energy-level indices,
+      - Resonance fields,
+      - Resonance energies,
+      - Optional full eigenvector sets.
+    """
     def __init__(self, spin_system_dim: int,
                  mesh_size: torch.Size,
-                 batch_dims: torch.Size | tuple,
+                 batch_dims: tp.Union[torch.Size, tuple],
                  eigen_finder: BaseEigenSolver = EighEigenSolver(), output_full_eigenvector: bool = False,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
@@ -271,7 +333,7 @@ class ResSecular(nn.Module):
             tuple[
             tuple[torch.Tensor, torch.Tensor],
             tuple[torch.Tensor, torch.Tensor],
-            torch.Tensor, torch.Tensor, torch.Tensor | None]:
+            torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]:
         """
         :param sample: The sample for which the resonance parameters need to be found
         :param resonance_frequency: the resonance frequency. The shape is []

@@ -1,3 +1,5 @@
+import typing as tp
+
 import torch
 import numpy as np
 
@@ -47,7 +49,7 @@ _CONVERTERS = {
 }
 
 
-def unit_converter(values: torch.Tensor | np.ndarray | float, conversion: str):
+def unit_converter(values: tp.Union[torch.Tensor, np.ndarray, float], conversion: str):
     """
     Convert `values` (scalar or torch.Tensor on CPU or GPU)
     according to the given conversion key.
