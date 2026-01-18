@@ -1,7 +1,7 @@
 Sample Representation
 =====================
 
-In EPR modeling, a *sample* extends a base spin system with broadening mechanisms (Gaussian/Lorentzian), unresolved strain, and—critically for powders—orientational averaging. 
+In EPR modeling, a *sample* extends a base spin system with broadening mechanisms (Gaussian/Lorentzian), unresolved strain, and-critically for powders-orientational averaging.
 
 
 Examples

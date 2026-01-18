@@ -145,5 +145,5 @@ Returns the total magnetic quantum number :math:`M = \sum_i m_{e_i} + \sum_j m_{
 - **Shape**: ``(spin_dim,)``
 - **Example**: Same system as above → `[1.0, 0.0, 0.0, -1.0]`.
 
-These methods enable flexible manipulation of spin states—whether you need to analyze symmetries, project onto total-spin subspaces, or compute expectation values in specific bases.
+These methods enable flexible manipulation of spin states-whether you need to analyze symmetries, project onto total-spin subspaces, or compute expectation values in specific bases.
 

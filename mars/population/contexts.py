@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import torch
@@ -31,8 +33,9 @@ class BaseContext(nn.Module, ABC):
 
     MarS distinguishes two relaxation paradigms:
       1. **Population-based**: Only diagonal elements (populations) evolve; off-diagonal coherences are neglected.
-      2. **Density-matrix-based**: Full dynamic including coherences and decoherence.
+      2. **Density-matrix-based**: Full dynamic including coherences and dephsing.
     """
+
     def __init__(self, time_dimension: int = -3,
                  dtype: torch.dtype = torch.float32,
                  device: torch.device = torch.device("cpu")):
@@ -60,6 +63,7 @@ class BaseContext(nn.Module, ABC):
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """
         Evaluate time-dependent profile at specified time points
+
         :param time: Time points tensor for evaluation
         :return: Profile values shaped for broadcasting along the specified time dimension.
         """
@@ -67,12 +71,12 @@ class BaseContext(nn.Module, ABC):
 
     @abstractmethod
     def get_transformed_init_populations(
-            self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True
+            self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False
     ) -> tp.Optional[torch.Tensor]:
         """
         :param full_system_vectors:
-        :param normalize: If True (default) the returned populations are normalized along the last axis
-            so they sum to 1 (useful for probabilities). If False, populations are returned as-is.
+        :param normalize: If True the returned populations are normalized along the last axis
+            so they sum to 1. If False, populations are returned as-is.
         :return: Transformed populations with shape `[..., N]` (or `None` if no populations
             were provided).
         """
@@ -85,12 +89,14 @@ class BaseContext(nn.Module, ABC):
         Return initial density matrix transformed into the Hamiltonian eigenbasis
 
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-        forces the creator to compute these vectors
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+        forces the creator to compute these vectors.
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
-        :return: density matrix  populations with shape [... N, N]
+        :return: density matrix  populations with shape `[... N, N]`
         """
         pass
 
@@ -102,7 +108,6 @@ class BaseContext(nn.Module, ABC):
     ):
         """
         Return spontaneous (thermal) transition probabilities in the eigenbasis.
-
         These transitions are constrained by detailed balance at the specified temperature.
         Examples include spin-lattice relaxation (T1 processes) that drive the system toward
         thermal equilibrium.
@@ -117,11 +122,11 @@ class BaseContext(nn.Module, ABC):
 
         Transformation rule for rates:
         If W^old is defined in the working basis, then in the eigenbasis:
-            W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}
+            `W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}`
 
         Thermal correction (detailed balance):
         After transformation, rates are modified to satisfy:
-            W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)
+            `W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)`
         where E_i are eigenenergies and T is the temperature.
         """
         pass
@@ -137,9 +142,9 @@ class BaseContext(nn.Module, ABC):
         These transitions are **not** subject to detailed balance.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian at each orientation/field,
-                        shape [..., M, N, N], where M is number of transitions, N is number of levels.
+                        shape `[..., M, N, N]`, where M is number of transitions, N is number of levels.
         :param time: Time points tensor for evaluation
-        :return: Matrix of shape [..., N, N].
+        :return: Matrix of shape `[..., N, N]`.
         """
         pass
 
@@ -160,11 +165,11 @@ class BaseContext(nn.Module, ABC):
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
 
-        :return: Loss rate vector O with shape [..., N], where O_i is the rate at which
+        :return: Loss rate vector O with shape `[..., N]`, where O_i is the rate at which
             population is lost from state i.
 
         Transformation rule:
-            O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k
+            `O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k`
 
         Physical constraint: Loss rates must be non-negative (O_i ≥ 0).
         """
@@ -179,20 +184,20 @@ class BaseContext(nn.Module, ABC):
         Return the spontaneous relaxation superoperator in Liouville space.
 
         This superoperator includes all spontaneous processes (thermal transitions, losses,
-        decoherence) and is transformed to the eigenbasis. It is subsequently modified to
+        dephsing) and is transformed to the eigenbasis. It is subsequently modified to
         obey detailed balance at the specified temperature.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
 
-        :return: Superoperator R_free with shape [..., N², N²], where N is the number of
+        :return: Superoperator R_free with shape `[..., N², N²]`, where N is the number of
             energy levels. This superoperator acts on vectorized density matrices.
 
         Construction method:
         The superoperator is built using Lindblad formalism from the constituent processes:
-        1. Loss terms: L_k = √O_k |k⟩⟨k|
-        2. Thermal transitions: L_{kl} = √W_{kl} |k⟩⟨l|
-        3. Decoherence terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
+        1. Loss terms: `L_k = √O_k |k⟩⟨k|`
+        2. Thermal transitions: `L_{kl} = √W_{kl} |k⟩⟨l|`
+        3. Dephsing terms: `L_{kl} = √γ_{kl} |k⟩⟨l|` for `k≠l`
 
         Transformation rule:
             R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
@@ -201,8 +206,8 @@ class BaseContext(nn.Module, ABC):
         Thermal correction:
         After transformation, diagonal elements corresponding to population transfer are
         modified to satisfy detailed balance:
-            R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
-            R_{jjii}^new = R_{jjii}^old · 1 / (1 + exp(-(E_i-E_j)/k_B·T))
+            `R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))`
+            `R_{jjii}^new = R_{jjii}^old · 1 / (1 + exp(-(E_i-E_j)/k_B·T))`
 
         where E_i are eigenenergies and T is temperature.
         """
@@ -223,15 +228,15 @@ class BaseContext(nn.Module, ABC):
 
         Construction method:
         Built using Lindblad formalism from induced transition rates:
-            L_{kl} = √D_{kl} |k⟩⟨l|
+            `L_{kl} = √D_{kl} |k⟩⟨l|`
 
         Transformation rule:
-            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            `R_new = (U ⊗ U*) · R_old · (U ⊗ U*)`
             where U is the basis transformation matrix and ⊗ denotes Kronecker product
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
-        :return: Superoperator R_driven with shape [..., N², N²].
+        :return: Superoperator R_driven with shape `[..., N², N²]`.
 
         Unlike the free superoperator, NO thermal correction is applied to these elements,
         as they represent processes that actively drive the system away from equilibrium.
@@ -347,18 +352,18 @@ class TransformedContext(BaseContext):
         :param time: Optional time points for evaluation if transition probabilities are
             time-dependent.
 
-        :return: Transition rate matrix W with shape [..., N, N], where W_{ij} (i≠j) is the
+        :return: Transition rate matrix W with shape `[..., N, N]`, where `W_{ij} (i≠j)` is the
             rate from state j to state i. Diagonal elements are not used directly but are
             computed internally to ensure probability conservation.
 
         Transformation rule for rates:
-        If W^old is defined in the working basis, then in the eigenbasis:
-            W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}
+        If `W^old` is defined in the working basis, then in the eigenbasis:
+           `W^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · W^old_{kl}`
 
         Thermal correction (detailed balance):
         After transformation, rates are modified to satisfy:
-            W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)
-        where E_i are eigenenergies and T is the temperature.
+            `W^new_{ij}/W^new_{ji} = exp(-(E_i - E_j)/k_B·T)`
+        where `E_i` are eigenenergies and T is the temperature.
         """
         _free_probs = self._get_free_probs_tensor(time_dep_values)
         return self.transformed_matrix(_free_probs, full_system_vectors)
@@ -370,7 +375,6 @@ class TransformedContext(BaseContext):
     ) -> tp.Optional[torch.Tensor]:
         """
         Return induced (non-thermal) transition probabilities in the eigenbasis.
-
         These transitions are NOT constrained by detailed balance and represent external
         driving forces or non-equilibrium processes.
 
@@ -378,11 +382,11 @@ class TransformedContext(BaseContext):
         :param time: Optional time points for evaluation if transition probabilities are
             time-dependent.
 
-        :return: Transition rate matrix D with shape [..., N, N], where D_{ij} (i≠j) is the
+        :return: Transition rate matrix D with shape `[..., N, N]`, where `D_{ij} (i≠j)` is the
             non-thermal rate from state j to state i.
 
         Transformation rule is the same as for free probabilities:
-            D^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · D^old_{kl}
+            `D^new_{ij} = Σ_{k≠l} |<ψ_i^new|ψ_k^old>|² · |<ψ_j^new|ψ_l^old>|² · D^old_{kl}`
 
         Note: No thermal correction is applied to these rates as they represent non-equilibrium
         processes that actively drive the system away from thermal equilibrium.
@@ -419,8 +423,11 @@ class TransformedContext(BaseContext):
 
     @property
     def free_superop(self):
+        """
+        :return: free superoperator created from other relaxation parameters (free_probs, dephasing, out_probs)
+        """
         if self._default_free_superop is None:
-            if (self.free_probs is None) and (self.out_probs is None) and (self.decoherences is None):
+            if (self.free_probs is None) and (self.out_probs is None) and (self.dephasing is None):
                 return None
             return self._create_free_superop
         else:
@@ -428,6 +435,10 @@ class TransformedContext(BaseContext):
 
     @property
     def driven_superop(self):
+        """
+        :return: free superoperator created from other relaxation parameters (driven_probs) or user-defined
+            superoperator
+        """
         if self._default_driven_superop is None:
             if self.driven_probs is None:
                 return None
@@ -444,7 +455,7 @@ class TransformedContext(BaseContext):
         Return the spontaneous relaxation superoperator in Liouville space.
 
         This superoperator includes all spontaneous processes (thermal transitions, losses,
-        decoherence) and is transformed to the eigenbasis. It is subsequently modified to
+        dephasing) and is transformed to the eigenbasis. It is subsequently modified to
         obey detailed balance at the specified temperature.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
@@ -455,9 +466,9 @@ class TransformedContext(BaseContext):
 
         Construction method:
         The superoperator is built using Lindblad formalism from the constituent processes:
-        1. Loss terms: L_k = √O_k |k⟩⟨k|
+        1. Loss terms: ``L_k = √O_k |k⟩⟨k|``
         2. Thermal transitions: L_{kl} = √W_{kl} |k⟩⟨l|
-        3. Decoherence terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
+        3. Dephasing terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
 
         Transformation rule:
             R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
@@ -545,23 +556,28 @@ class TransformedContext(BaseContext):
             self,
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        if (self.free_probs is None) and (self.decoherences is None) and (self.out_probs is None):
+        """
+        For the dephasing, free_probs, out_probs create free-superoperator.
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :return: free superoperator tensor or None
+        """
+        if (self.free_probs is None) and (self.dephasing is None) and (self.out_probs is None):
             return None
 
         _density_condition = (self.out_probs is not None) or (self.free_probs is not None)
-        if self.decoherences is not None and _density_condition:
-            _decoherences = self._get_decoherences_tensor(time_dep_values)
+        if self.dephasing is not None and _density_condition:
+            _dephasing = self._get_dephasing_tensor(time_dep_values)
             _relaxation_superop =\
-                self.liouvilleator.lindblad_decoherences_superop(_decoherences) +\
+                self.liouvilleator.lindblad_dephasing_superop(_dephasing) +\
                 self._extract_free_populations_superop(time_dep_values)
             return _relaxation_superop
 
-        elif (self.decoherences is None) and _density_condition:
+        elif (self.dephasing is None) and _density_condition:
             return self._extract_free_populations_superop(time_dep_values)
 
         else:
-            _decoherences = self._get_decoherences_tensor(time_dep_values)
-            _relaxation_superop = self.liouvilleator.lindblad_decoherences_superop(_decoherences)
+            _dephasing = self._get_dephasing_tensor(time_dep_values)
+            _relaxation_superop = self.liouvilleator.lindblad_dephasing_superop(_dephasing)
             return _relaxation_superop
 
 
@@ -573,14 +589,14 @@ class Context(TransformedContext):
     - Basis specification (explicit matrix or string identifier)
     - Initial state definition (populations or full density matrix)
     - Transition rate matrices (spontaneous, induced, loss terms)
-    - Decoherence rates (for density-matrix paradigm)
+    - Dephasing rates (for density-matrix approach)
     - Time-dependent profile functions
 
     Physical interpretation of parameters:
-    - free_probs: Thermal (Boltzmann-weighted) transition rates between states
-    - driven_probs: Non-thermal transition rates not constrained by detailed balance
+    - free_probs: Thermal (Boltzmann-weighted) transition probabilities between states
+    - driven_probs: Non-thermal transition probabilities not constrained by detailed balance
     - out_probs: Irreversible loss rates from states (e.g., phosphorescence)
-    - decoherences: Rates of quantum coherence decay between states
+    - dephasing: Probabilities of dephasing relaxation (decay of off-diagonal terms of a density matrix)
     - init_populations: Initial state populations in the working basis
     - init_density: Complete initial quantum state (includes coherences)
 
@@ -607,7 +623,7 @@ class Context(TransformedContext):
             out_probs: tp.Optional[
                 tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
-            decoherences: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
+            dephasing: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
             relaxation_superop: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
             profile: tp.Optional[tp.Callable[[torch.Tensor], torch.Tensor]] = None,
@@ -668,18 +684,18 @@ class Context(TransformedContext):
               - Python list of length `N` (converted to tensor), or
               - callable `f(time) -> tensor`.
 
-        :param decoherences: torch.Tensor or callable or None, optional
-            decoherences relaxation rates with shape [N].
+        :param dephasing: torch.Tensor or callable or None, optional
+            dephasing vector probabilities with shape [N].
             Each element set the Decreasing of the non-diagonal matrix elements of density matrix
-            d <i|rho|j> / dt = -(decoherences[i] + decoherences[j]) / 2 * <i|rho|j>
+            d <i|rho|j> / dt = -(dephasing[i] + dephasing[j]) / 2 * <i|rho|j>
             If relaxation_superop is given, then this parameter is ignored
-        For implementation of decoherences, out_probs, driven_probs, free_probs we use Lindblad form of relaxation.
+        For implementation of dephasing, out_probs, driven_probs, free_probs we use Lindblad form of relaxation.
 
         :param relaxation_superop: torch.Tensor or callable or None, optional
             Full superoperator of relaxation rates for density matrix
             with shape [N*N, N*N]. Any elements can be given.
             If it is given then  driven_probs are ignored
-            but free_probs, decoherences, out_probs are computed
+            but free_probs, dephasing, out_probs are computed
             After transformation the thermal correction is not used for this term
 
         :param profile: callable or None, optional
@@ -704,12 +720,14 @@ class Context(TransformedContext):
         self.free_probs = free_probs
         self.driven_probs = driven_probs
 
-        self.decoherences = self._set_init_decoherences(decoherences, relaxation_superop)
+        self.dephasing = self._set_init_dephasing(dephasing, relaxation_superop)
         self._default_free_superop = None
         self._default_driven_superop = relaxation_superop
 
         self.profile = profile
+        self.sample = sample
 
+        self.eigen_basis_flag = False
         if isinstance(basis, str):
             if sample is None:
                 raise ValueError("Sample must be provided when basis is specified as a string method")
@@ -718,25 +736,45 @@ class Context(TransformedContext):
             if basis.shape[-1] != basis.shape[-2]:
                 raise ValueError("Basis tensor must be square (last two dimensions must match)")
             self.basis = basis
-        else:
+        elif basis is None:
+            self.eigen_basis_flag = True
             self.basis = basis
+        else:
+            raise ValueError("Basis must be either None, string or tensor")
         self._setup_prob_getters()
         self._setup_transformers()
 
     @property
-    def time_dependant(self):
+    def time_dependant(self) -> bool:
+        """Indicates whether the system parameters are time-dependent profile."""
         return self.profile is not None
 
     @property
-    def contexted_init_population(self):
+    def contexted_init_population(self) -> bool:
+        """Indicates whether initial populations are provided via context"""
         return self.init_populations is not None
 
     @property
-    def contexted_init_density(self):
+    def contexted_init_density(self) -> bool:
+        """
+        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        Returns True if either `init_populations` or a user-defined initial density matrix is provided;
+        otherwise False.
+        """
         return (self.init_populations is not None) or (self._init_density_real is not None)
 
     @property
-    def init_density(self):
+    def init_density(self) -> tp.Optional[torch.Tensor]:
+        """
+        Returns the initial density matrix.
+
+        The matrix is constructed in the following order of precedence:
+        1. If a user-provided complex density matrix is available, it is returned density matrix.
+        2. If only `init_populations` are given, a diagonal density matrix is created from them.
+        3. If neither is provided, returns None.
+
+        :return: Initial density matrix as a complex-valued torch.Tensor, or None if unspecified.
+        """
         if self._init_density_real is None:
             if self.init_populations is None:
                 return None
@@ -744,7 +782,8 @@ class Context(TransformedContext):
             self._init_density_imag = torch.zeros_like(self._init_density_real)
         return torch.complex(self._init_density_real, self._init_density_imag)
 
-    def _set_init_density(self, init_density: tp.Optional[torch.Tensor]):
+    def _set_init_density(self, init_density: tp.Optional[torch.Tensor]) ->\
+            tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]:
         if init_density is None:
             return None, None
         else:
@@ -753,7 +792,7 @@ class Context(TransformedContext):
     def _set_init_populations(self,
                               init_populations: tp.Optional[tp.Union[torch.Tensor, list[float]]],
                               init_density: tp.Optional[torch.Tensor],
-                              dtype: torch.dtype, device: torch.device):
+                              dtype: torch.dtype, device: torch.device) -> tp.Optional[torch.Tensor]:
         if init_density is None:
             if init_populations is None:
                 return None
@@ -762,12 +801,12 @@ class Context(TransformedContext):
         else:
             return torch.diagonal(init_density, dim1=-1, dim2=-2)
 
-    def _set_init_decoherences(self,
-                             decoherences: tp.Optional[torch.Tensor],
+    def _set_init_dephasing(self,
+                             dephasing: tp.Optional[torch.Tensor],
                              relaxation_superop: tp.Optional[torch.Tensor])\
             -> tp.Optional[tp.Union[tp.Callable[[torch.Tensor], torch.Tensor], torch.Tensor]]:
         if relaxation_superop is None:
-            return decoherences
+            return dephasing
         else:
             return None
 
@@ -803,7 +842,7 @@ class Context(TransformedContext):
 
     def _transformed_skip(
             self, system_data: tp.Optional[torch.Tensor],
-            full_system_vectors: tp.Optional[torch.Tensor]):
+            full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         return system_data
 
     def _transformed_vector_basis(
@@ -865,6 +904,7 @@ class Context(TransformedContext):
             return sample.base_spin_system.get_product_state_basis()\
                 .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
         elif basis_type == "eigen":
+            self.eigen_basis_flag = True
             return None
         else:
             raise KeyError(
@@ -875,7 +915,8 @@ class Context(TransformedContext):
             )
 
     def _setup_single_getter(
-            self, getter: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]]):
+            self, getter: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]]) ->\
+            tp.Callable[[torch.Tensor], torch.Tensor]:
         if callable(getter):
             return lambda t: getter(t)
         else:
@@ -892,8 +933,8 @@ class Context(TransformedContext):
         current_out_probs = self.out_probs
         self._get_out_probs_tensor = self._setup_single_getter(current_out_probs)
 
-        current_decoherences = self.decoherences
-        self._get_decoherences_tensor = self._setup_single_getter(current_decoherences)
+        current_dephasing = self.dephasing
+        self._get_dephasing_tensor = self._setup_single_getter(current_dephasing)
 
         current_free_superop = self.free_superop
         self._get_free_superop_tensor = self._setup_single_getter(current_free_superop)
@@ -922,8 +963,10 @@ class Context(TransformedContext):
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
         Transformation rule:
         If |ψ_k^old> are basis states in working basis and |ψ_j^new> in eigenbasis, then:
@@ -960,14 +1003,16 @@ class Context(TransformedContext):
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
         :return: Initial densities with shape [...N, N]
         """
         return self.transformed_density(self.init_density, full_system_vectors)
 
-    def __add__(self, other: BaseContext):
+    def __add__(self, other: BaseContext) -> SummedContext:
         """
         """
         if isinstance(other, SummedContext):
@@ -975,7 +1020,7 @@ class Context(TransformedContext):
         else:
             return SummedContext([self, other])
 
-    def __matmul__(self, other: BaseContext):
+    def __matmul__(self, other: BaseContext) -> CompositeContext:
         """
         """
         if isinstance(other, SummedContext):
@@ -1038,6 +1083,7 @@ class CompositeContext(TransformedContext):
 
     @property
     def time_dependant(self):
+        """Indicates whether the system parameters are time-dependent profile."""
         for context in self.component_contexts:
             if context.profile is not None:
                 return True
@@ -1045,6 +1091,7 @@ class CompositeContext(TransformedContext):
 
     @property
     def contexted_init_population(self):
+        """Indicates whether initial populations are provided via context"""
         if [None for context in self.component_contexts if context.contexted_init_population is not None]:
             return True
         else:
@@ -1052,6 +1099,11 @@ class CompositeContext(TransformedContext):
 
     @property
     def contexted_init_density(self):
+        """
+        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        Returns True if either `init_populations` or a user-defined initial density matrix is provided;
+        otherwise False.
+        """
         if [context.init_populations for context in self.component_contexts if context.contexted_init_desnity]:
             return True
         else:
@@ -1144,10 +1196,10 @@ class CompositeContext(TransformedContext):
         ]
         self._get_out_probs_tensor = self._setup_single_getter(current_out_probs_lst)
 
-        current_decoherences_lst = [
-            context.decoherences for context in self.component_contexts if context.decoherences is not None
+        current_dephasing_lst = [
+            context.dephasing for context in self.component_contexts if context.dephasing is not None
         ]
-        self._get_decoherences_tensor = self._setup_single_getter(current_decoherences_lst)
+        self._get_dephasing_tensor = self._setup_single_getter(current_dephasing_lst)
 
         current_free_superop_lst = [
             context.free_superop for context in self.component_contexts if context.free_superop is not None
@@ -1215,7 +1267,7 @@ class CompositeContext(TransformedContext):
             coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
             return transform.transform_kronecker_superoperator(relaxation_superop_lst, coeffs)
 
-    def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True):
+    def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False):
         """
         Return initial populations transformed into the field-dependent Hamiltonian eigenbasis.
         This method handles the critical transformation from the working basis (where initial
@@ -1223,24 +1275,26 @@ class CompositeContext(TransformedContext):
         dynamics are computed).
 
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
         Transformation rule:
         1) Firstly, the initial populations in kronecker basis is created:
-        n = n1 ⊗ n2 ⊗ n3 ... ⊗ n_k
+        `n = n1 ⊗ n2 ⊗ n3 ... ⊗ n_k`
 
         2) Then the transformation to the field-dependent Hamiltonian eigenbasis. is performed
-        If |ψ_k^old> are basis states in working basis and |ψ_j^new> in eigenbasis, then:
-            p_j^new = Σ_k |<ψ_j^new|ψ_k^old>|² · p_k^old
+        If `|ψ_k^old>` are basis states in working basis and `|ψ_j^new>` in eigenbasis, then:
+            `p_j^new = Σ_k |<ψ_j^new|ψ_k^old>|² · p_k^old`
         This ensures conservation of probability under basis change.
 
-        :param normalize: If True (default) the returned populations are normalized along the last axis
-        so they sum to 1 (useful for probabilities). If False, populations are returned
+        :param normalize: If True the returned populations are normalized along the last axis
+        so they sum to 1. If False, populations are returned
         as-is.
-        :return: Initial populations with shape [...N]
+        :return: Initial populations with shape `[...N]`
         """
         populations = [
             context.init_populations for context in self.component_contexts if context.init_populations is not None
@@ -1264,19 +1318,21 @@ class CompositeContext(TransformedContext):
 
         Transformation rule:
         1) Firstly, the initial populations in kronecker basis is created:
-        ρ = ρ1 ⊗ ρ2 ⊗ ρ3 ... ρ n_k
+        `ρ = ρ1 ⊗ ρ2 ⊗ ρ3 ... ρ n_k`
 
-        2) Then, if U is the unitary transformation matrix between bases (U_{jk} = <ψ_j^new|ψ_k^old>),
-            ρ^new = U · ρ^old · U⁺
+        2) Then, if U is the unitary transformation matrix between bases `(U_{jk} = <ψ_j^new|ψ_k^old>)`,
+            `ρ^new = U · ρ^old · U⁺`
         where U⁺ is the conjugate transpose of U.
 
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
-        :return: Initial densities with shape [...N, N]
+        :return: Initial densities with shape `[...N, N]`
         """
         component_densities = []
         for context in self.component_contexts:
@@ -1289,7 +1345,7 @@ class CompositeContext(TransformedContext):
         _transformation_basis_coeff = self._compute_transformation_superop_coeff(full_system_vectors)
         return transform.transform_kronecker_density(component_densities, _transformation_basis_coeff)
 
-    def __matmul__(self, other: BaseContext):
+    def __matmul__(self, other: BaseContext) -> CompositeContext:
         """
         """
         if isinstance(other, SummedContext):
@@ -1309,8 +1365,8 @@ class SummedContext(BaseContext):
 
     Mathematical formulation:
     The total relaxation is described by the sum of individual contributions:
-        K_total = K₁ + K₂ + ... + Kₙ    (for population dynamics)
-        R_total = R₁ + R₂ + ... + Rₙ    (for density matrix dynamics)
+        `K_total = K₁ + K₂ + ... + Kₙ`   (for population dynamics)
+        `R_total = R₁ + R₂ + ... + Rₙ` (for density matrix dynamics)
 
     Key properties:
     1. All component contexts must describe the same physical system (same Hilbert space)
@@ -1344,6 +1400,7 @@ class SummedContext(BaseContext):
 
     @property
     def time_dependant(self):
+        """Indicates whether the system parameters are time-dependent profile."""
         for context in self.component_contexts:
             if context.profile is not None:
                 return True
@@ -1351,6 +1408,7 @@ class SummedContext(BaseContext):
 
     @property
     def contexted_init_population(self):
+        """Indicates whether initial populations are provided via context"""
         if [None for context in self.component_contexts if context.init_populations is not None]:
             return True
         else:
@@ -1358,23 +1416,30 @@ class SummedContext(BaseContext):
 
     @property
     def contexted_init_density(self):
+        """
+        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        Returns True if either `init_populations` or a user-defined initial density matrix is provided;
+        otherwise False.
+        """
         if [context.init_populations for context in self.component_contexts if context.contexted_init_desnity]:
             return True
         else:
             return False
 
-    def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True):
+    def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False):
         """
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[..., M, N, N]`,
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
-        :param normalize: If True (default) the returned populations are normalized along the last axis
-        so they sum to 1 (useful for probabilities). If False, populations are returned
+        :param normalize: If True the returned populations are normalized along the last axis
+        so they sum to 1. If False, populations are returned
         as-is.
-        :return: Initial populations with shape [...N]
+        :return: Initial populations with shape `[..., N]`
         """
         result = None
         for context in self.component_contexts:
@@ -1387,12 +1452,14 @@ class SummedContext(BaseContext):
             self, full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
         where M is number of transitions, N is number of levels
-        For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+        For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
         forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
-        :return: density matrix  populations with shape [... N, N]
+        :return: density matrix  populations with shape `[... N, N]`
         """
         result = None
         for context in self.component_contexts:
@@ -1408,12 +1475,14 @@ class SummedContext(BaseContext):
     ):
         """
         :param full_system_vectors:
-        Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+        Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
         where M is number of transitions, N is number of levels
-        The parameter of the creator 'full_system_vectors_flag == True'
+        The parameter of the creator 'output_eigenvector- == True'
         forces the creator to calculate these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
-        :param time_dep_values:
+        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
         :return: torch.Tensor or None
             Transformed out probabilities shaped `[..., N]` or `[..., R, M, N]`.
         """
@@ -1433,8 +1502,10 @@ class SummedContext(BaseContext):
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
             forces the creator to compute these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: the values computed at get_time_dependent_values
         :return: driven probability of transition.
@@ -1455,8 +1526,10 @@ class SummedContext(BaseContext):
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
         where M is number of transitions, N is number of levels
-        The parameter of the creator 'full_system_vectors_flag == True'
+        The parameter of the creator 'output_eigenvector- == True'
         forces the creator to calculate these vectors
+        The default behavior, whether to calculate vectors or not,
+        depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: the values computed at get_time_dependent_values
         :return: torch.Tensor or None
@@ -1478,7 +1551,7 @@ class SummedContext(BaseContext):
         Return the spontaneous relaxation superoperator in Liouville spac
 
         This method provides the complete Liouville-space superoperator for spontaneous
-        relaxation processes, including thermal transitions, population losses, and decoherence.
+        relaxation processes, including thermal transitions, population losses, and dephasing.
         The superoperator is transformed to the eigenbasis and modified to obey detailed balance.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
@@ -1489,7 +1562,7 @@ class SummedContext(BaseContext):
         1. Build constituent operators:
            - Lindblad dissipators from thermal transition rates
            - Anticommutator terms from loss rates
-           - Decoherence superoperators from decoherence rates
+           - Dephasing superoperators from dephasing rates
         2. Sum these contributions to form the raw superoperator
         3. Transform the superoperator to the eigenbasis using:
               R_new = (U ⊗ U*) · R_old · (U ⊗ U*)⁺
@@ -1515,7 +1588,7 @@ class SummedContext(BaseContext):
         Return the spontaneous relaxation superoperator in Liouville spac
 
         This method provides the complete Liouville-space superoperator for spontaneous
-        relaxation processes, including thermal transitions, population losses, and decoherence.
+        relaxation processes, including thermal transitions, population losses, and dephasing.
         The superoperator is transformed to the eigenbasis and modified to obey detailed balance.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
@@ -1526,7 +1599,7 @@ class SummedContext(BaseContext):
         1. Build constituent operators:
            - Lindblad dissipators from thermal transition rates
            - Anticommutator terms from loss rates
-           - Decoherence superoperators from decoherence rates
+           - Dephasing superoperators from dephasing rates
         2. Sum these contributions to form the raw superoperator
         3. Transform the superoperator to the eigenbasis using:
               R_new = (U ⊗ U*) · R_old · (U ⊗ U*)⁺

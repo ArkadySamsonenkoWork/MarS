@@ -273,7 +273,7 @@ class WaveIntensityCalculator(StationaryIntensityCalculator):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasing, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         :param device: torch.device

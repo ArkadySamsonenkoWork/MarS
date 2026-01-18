@@ -7,19 +7,92 @@ from torchdiffeq import odeint
 from .. import constants
 import typing as tp
 
-from . import contexts
 from . import matrix_generators
 from . import transform
 from . import rk4
 
 
-class EvolutionMatrix:
+class EvolutionBase(ABC):
+    """Base class for time evolution implementations.
+
+    This class defines the common interface for time evolution strategies.
+    Subclasses must implement the ``evolve`` method to describe how a state
+    or operator evolves over time under a given Hamiltonian or generator.
+    """
+
+    def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
+        """
+        :param res_energies: The resonance energies. The shape is [..., N, N], where N is spin system dimension
+        :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
+        """
+        self.energy_diff = res_energies.unsqueeze(-2) - res_energies.unsqueeze(-1)
+        self.energy_diff = constants.unit_converter(self.energy_diff, "Hz_to_K")
+        self.config_dim = self.energy_diff.shape[:-2]
+        self._free_transform = self._prob_transform_factory(symmetry_probs)
+        self.spin_system_dim = res_energies.shape[-1]
+
+    def _prob_transform_factory(self, symmetry_probs: bool) -> tp.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
+        """
+        Selects the Boltzmann transformation function based on input convention.
+
+        :param symmetry_probs: Boolean flag.
+        :return: Callable implementing either symmetric or asymmetric thermal scaling.
+        """
+        if symmetry_probs:
+            return self._compute_boltzmann_symmetry
+        else:
+            return self._compute_boltzmann_complement
+
+    def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
+        """
+        Compute Boltzmann factor denominator: 1 / (1 + exp(-ΔE / k_B T)).
+
+        :param temp: Temperature tensor.
+        :return: Tensor of same shape as energy_diff '[..., N, N]'.
+        """
+        denom = 1 + torch.exp(-self.energy_diff / temp)
+        return torch.reciprocal(denom)
+
+    @abstractmethod
+    def _compute_boltzmann_symmetry(self, temp: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
+        """
+        Modifies the matrix so that it complies with the principle of detailed balance
+
+        :param temp: Temperature in K
+        :param matrix: Matrix which should be modified
+        :return: The modified matrix
+        """
+        pass
+
+    @abstractmethod
+    def _compute_boltzmann_complement(self, temp: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
+        """
+        Modifies the matrix so that it complies with the principle of detailed balance.
+        Use another approach compared to '_compute_boltzmann_symmetry'
+
+        :param temp: Temperature in K
+        :param matrix: Matrix which should be modified
+        :return: The modified matrix
+        """
+        pass
+
+    @abstractmethod
+    def __ceil__(self, *args, **kwargs) -> torch.Tensor:
+        """
+        :param args:
+        :param kwargs:
+        :return: The matrix or superoperator which used for the time-equation solution
+        """
+
+
+class EvolutionMatrix(EvolutionBase):
     """
     Builds a transition rate matrix that describes how populations of energy levels change over time
     due to relaxation processes.
 
     The matrix combines three types of contributions:
-      - **Thermal transitions**: bidirectional rates between pairs of levels that obey thermal equilibrium
+      - **Free (spontaneous) transitions**: bidirectional probabilities
+        between pairs of levels that obey thermal equilibrium
         at a given temperature. These are adjusted using the Boltzmann factor based on energy differences.
       - **Driven transitions**: external or non-equilibrium transitions that are
         not constrained by thermal balance and are added as-is.
@@ -32,41 +105,13 @@ class EvolutionMatrix:
     The resulting matrix has zero column sums, ensuring conservation of total probability when
     no outgoing losses are present.
     """
-    def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
-        """
-        :param res_energies: The resonance energies. The shape is [..., N, N], where N is spin system dimension
-        :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
-        """
-        self.energy_diff = res_energies.unsqueeze(-2) - res_energies.unsqueeze(-1)
-        self.energy_diff = constants.unit_converter(self.energy_diff, "Hz_to_K")
-        self.config_dim = self.energy_diff.shape[:-2]
-        self._free_transform = self._prob_transform_factory(symmetry_probs)
-
-    def _prob_transform_factory(self, symmetry_probs: bool) -> tp.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """
-        Selects the Boltzmann transformation function based on input convention.
-        :param symmetry_probs: Boolean flag.
-        :return: Callable implementing either symmetric or asymmetric thermal scaling.
-        """
-        if symmetry_probs:
-            return self._compute_boltzmann_symmetry
-        else:
-            return self._compute_boltzmann_complement
-
-    def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
-        """
-        Compute Boltzmann factor denominator: 1 / (1 + exp(-ΔE / k_B T)).
-        :param temp: Temperature tensor broadcastable to [..., N, N].
-        :return: Tensor of same shape as energy_diff.
-        """
-        denom = 1 + torch.exp(-self.energy_diff / temp)
-        return torch.reciprocal(denom)
 
     def _compute_boltzmann_symmetry(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
         """
         Apply detailed balance to symmetric mean rates:
             K_ij = 2 * free_probs[i,j] / (1 + exp(-ΔE_ij / k_B T)),
             K_ji = 2 * free_probs[i,j] * exp(-ΔE_ij / k_B T) / (1 + exp(-ΔE_ij / k_B T)).
+
         :param temp: Temperature.
         :param free_probs: Symmetric matrix where free_probs[i,j] = free_probs[j,i] = k'_ij.
         :return: Asymmetric rate matrix satisfying K_ij / K_ji = exp(-ΔE_ij / k_B T).
@@ -75,6 +120,15 @@ class EvolutionMatrix:
         return (free_probs + free_probs.transpose(-2, -1)) * energy_factor
 
     def _compute_boltzmann_complement(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
+        """
+        Apply detailed balance to symmetric mean rates:
+            K_ij =  K_ji * exp(-ΔE_ij / k_B T)
+            K_ji = K_ji
+
+        :param temp: Temperature.
+        :param free_probs: Symmetric matrix where free_probs[i,j] = free_probs[j,i] = k'_ij.
+        :return: Asymmetric rate matrix satisfying K_ij / K_ji = exp(-ΔE_ij / k_B T).
+        """
         numerator = torch.exp(self.energy_diff / temp)
         return torch.where(free_probs == 0, free_probs.transpose(-1, -2) * numerator, free_probs)
 
@@ -100,8 +154,8 @@ class EvolutionMatrix:
             induced_probs = [[0,  dr1'],
                              [dr2', 0]]
 
-        Outgoing rates:
-            out_probs = [t, t]
+        Outgoing transitions:
+            out_probs = [o, o]
 
         Resulting matrix:
             [[-2k' * exp(-(E2 - E1)/kT),   2k'],
@@ -110,8 +164,8 @@ class EvolutionMatrix:
           + [[-i',  i'],
              [ i', -i']]
 
-          - [[t, 0],
-             [0, t]]
+          - [[o, 0],
+             [0, o]]
         """
         indices = torch.arange(self.energy_diff.shape[-1], device=self.energy_diff.device)
         if free_probs is not None:
@@ -129,7 +183,7 @@ class EvolutionMatrix:
         return transition_matrix
 
 
-class EvolutionSuper(EvolutionMatrix):
+class EvolutionSuper(EvolutionBase):
     """
     Builds a full evolution superoperator for density-matrix dynamics.
 
@@ -154,18 +208,8 @@ class EvolutionSuper(EvolutionMatrix):
         :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
         """
         super().__init__(res_energies, symmetry_probs)
-        self.N = res_energies.shape[-1]
-        self.pop_indices = torch.arange(self.N, device=res_energies.device) * (self.N + 1)
-
-    def _prob_transform_factory(self, symmetry_probs: bool) -> tp.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
-        if symmetry_probs:
-            return self._compute_boltzmann_symmetry
-        else:
-            return self._compute_boltzmann_complement
-
-    def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
-        denom = 1 + torch.exp(-self.energy_diff / temp)
-        return torch.reciprocal(denom)
+        self.pop_indices = torch.arange(
+            self.spin_system_dim, device=res_energies.device) * (self.spin_system_dim + 1)
 
     def _compute_boltzmann_symmetry(self, temp: torch.Tensor, free_superop: torch.Tensor) -> torch.Tensor:
         """
@@ -184,10 +228,9 @@ class EvolutionSuper(EvolutionMatrix):
         :param free_superop: Superoperator [..., N^2, N^2]
         :return: Scaled superoperator [..., N^2, N^2]
         """
-        N = self.N
         device = free_superop.device
 
-        pop_indices = torch.arange(N, device=device) * (N + 1)
+        pop_indices = torch.arange(self.spin_system_dim, device=device) * (self.spin_system_dim + 1)
         pop_block = free_superop[..., pop_indices[:, None], pop_indices[None, :]]
         decay = pop_block.sum(dim=-2)  # It is decay rate from the level. It should be preserved after all correction
 
@@ -195,12 +238,12 @@ class EvolutionSuper(EvolutionMatrix):
         energy_factor = self._compute_energy_factor(temp)
 
         new_superop = torch.zeros(
-                (*energy_factor.shape[:-2], self.N**2, self.N**2), device=free_superop.device, dtype=free_superop.dtype
-            ) + free_superop
+                (*energy_factor.shape[:-2], self.spin_system_dim**2, self.spin_system_dim**2),
+            device=free_superop.device, dtype=free_superop.dtype) + free_superop
 
         pop_block = pop_block * energy_factor
 
-        diag_indices = torch.arange(N, device=device)
+        diag_indices = torch.arange(self.spin_system_dim, device=device)
         mask = ~torch.eye(pop_block.shape[-1], device=pop_block.device, dtype=torch.bool)
         pop_block[..., diag_indices, diag_indices] = -(mask * pop_block).sum(dim=-2) + decay
         new_superop[..., pop_indices[:, None], pop_indices[None, :]] = pop_block
@@ -216,11 +259,15 @@ class EvolutionSuper(EvolutionMatrix):
                  driven_superop: tp.Optional[torch.Tensor] = None,
                  ) -> torch.Tensor:
         """
-        Build full transition matrix.
+        Build full superoperator from Hamiltonian and relaxation superoperator:
+            Then 'drho / dt = R_full [rho]'
+
         :param temp: Temperature(s).
         :param H: Hamiltonian operator. The shape is [..., N, N].
-        :param free_superop: Optional outgoing transition rates [..., N**2, N**2].
-        :param driven_superop: Optional outgoing transition rates [..., N**2, N**2].
+        :param free_superop: The part of the superoperator that will be transformed to satisfy the detailed balance.
+            The shape is '[..., N**2, N**2]'.
+        :param driven_superop: The part of the superoperator that will be saved without transformation.
+            The shape is '[..., N**2, N**2]'.
         :return: Transition matrix [..., N**2, N**2].
         """
         super_op = transform.Liouvilleator.hamiltonian_superop(H)
@@ -350,7 +397,6 @@ class EvolutionPopulationSolver(EvolutionSolver):
         """
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
-
         indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
 
         intermediate = (torch.linalg.inv(eig_vecs) @ initial_populations.unsqueeze(-1).to(eig_vecs.dtype)).squeeze(-1)
@@ -543,6 +589,16 @@ class EvolutionPropagatorSolver(EvolutionSolver):
                      eigen_basis_inv: torch.Tensor,
                      density_vector: torch.Tensor):
         """
+        Computes the time-domain signal using a spectral decomposition of the time evolution operator.
+
+        The signal is computed as:
+            signal = detective_vector @ (integral @ rho(t))
+        where the time-evolved density vector rho(t) is expressed in the eigenbasis of the U_2pi propagator:
+            rho(t) = eigen_basis @ diag(time_dep_values[t]) @ eigen_basis_inv @ density_vector
+
+        This avoids explicit matrix exponentials by working directly with precomputed eigenvalues
+        (time_dep_values) and eigenvectors (eigen_basis and its inverse).
+
         :param detective_vector: Vector form of Gx or Gy operators. The shape is [..., n^2]
         :param integral: Integral term from the equation rho(t) * sin(wt) dt. The shape is [..., n^2, n^2]
         :param eigen_basis: Eigen basis of U_2pi propagator. The shape is [..., n^2, n^2]
@@ -552,12 +608,14 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         :return:
             The output signal, the shape is [tau, ...]
         """
+
         temp = torch.einsum('...i,...ji->...j', density_vector, eigen_basis_inv).unsqueeze(-2)
         temp = time_dep_values * temp
         temp = torch.einsum('...ti,...ji->...tj', temp, eigen_basis)
         temp = torch.einsum('...ti,...ji->...tj', temp, integral)
         result = torch.einsum('...i,...ti->...t', detective_vector, temp)
-        return -result.movedim(-1, 0).real
+        result = -result.movedim(-1, 0).real
+        return result
 
     def stationary_rate_solver(
             self, time: torch.Tensor, initial_density: torch.Tensor, hamiltonain_time_dep: torch.Tensor,
@@ -590,10 +648,22 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         if measurement_time is not None:
             M_power = int(torch.ceil(measurement_time / period_time).item())
             integral = self._modify_integral_term(integral, U_2pi, M_power, delta_phi)
+
         else:
             integral = self._modify_integral_term_single_period(integral, U_2pi, None, delta_phi)
         powers = torch.ceil(time / period_time)
         direct, inverse, eigen_values = self._U_N_batched(U_2pi, powers)
+        """
+        Un = torch.stack([torch.matrix_power(U_2pi, int(m.item())) for m in powers], dim=-3)
+        rho_t = Un @ liouvilleator.vec(initial_density).unsqueeze(-2).unsqueeze(-1)
+        rho_t = rho_t.squeeze()
+        sum_signal = integral.unsqueeze(-3) @ rho_t.unsqueeze(-1)
+        sum_signal = sum_signal.squeeze()
+        detect = torch.einsum(
+            "...i,...ti->...t", liouvilleator.vec(hamiltonain_time_dep.transpose(-2, -1)), rho_t)
+        detect = -detect.movedim(-1, 0).real
+        return detect
+        """
         return self._compute_out(
             liouvilleator.vec(hamiltonain_time_dep.transpose(-2, -1)),
             integral, direct, eigen_values, inverse, liouvilleator.vec(initial_density)

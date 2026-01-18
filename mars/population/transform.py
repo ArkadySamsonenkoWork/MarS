@@ -43,6 +43,7 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
         │ s                                         │
         │ ↓                                         │
         └───────────────────────────────────────────┘
+        ```
     """
     return torch.matmul(basis_2.conj().transpose(-1, -2), basis_1)
 
@@ -93,6 +94,7 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
         │ s                                         │
         │ ↓                                         │
         └───────────────────────────────────────────┘
+        ```
     """
 
     transforms = basis_transformation(basis_old, basis_new)
@@ -464,7 +466,7 @@ def transform_density(density_old: torch.Tensor, coeffs: torch.Tensor):
     Notes:
     ------
     - Diagonal elements represent populations in the new basis
-    - Off-diagonal elements represent decoherences in the new basis
+    - Off-diagonal elements represent dephasing in the new basis
     """
     return coeffs @ density_old @ coeffs.conj().transpose(-1, -2)
 
@@ -841,11 +843,11 @@ class Liouvilleator:
         return superop_total
 
     @staticmethod
-    def lindblad_decoherences_superop(gamma: torch.Tensor) -> torch.Tensor:
+    def lindblad_dephasing_superop(gamma: torch.Tensor) -> torch.Tensor:
         """
-        Construct Lindblad decoherences superoperator from on-diagonal decoherence. It models decoherences
+        Construct Lindblad relaxation superoperator from 'dephasing' vector. It models dephasing
 
-        Models the decoherences term in the Lindblad equation:
+        Models the dephasing term in the Lindblad equation:
             D(ρ) = Σ_i γ_{i} [L_{i} ρ L_{i}^† - (1/2){L_{i}^† L_{i}, ρ}]
         where L_{i} = √γ_{i} |i⟩⟨i|
 
@@ -853,27 +855,27 @@ class Liouvilleator:
             D(ρ) = Σ_i γ_{i} [|i⟩⟨i| ρ |i⟩⟨i| - (1/2){|i⟩⟨i|, ρ}]
 
         :param gamma : torch.Tensor
-            decoherence rate matrix. Shape: [..., n]
-            Element [i] represents decoherence rate.
+            dephasing rate matrix. Shape: [..., n]
+            Element [i] represents dephasing rate.
             For example, if γ is not zero only for i state, then the result will be - γ / 2 * rho_ij for all j != i
             In the general case:
 
             drho_ij / dt = - (gamma_i + gamma_j) / 2 * rho_ij for i != j
 
         :return: torch.Tensor
-            Lindblad decoherences superoperator. Shape: [..., n², n²]
+            Lindblad dephasing superoperator. Shape: [..., n², n²]
         """
-        decoherences = -(gamma[..., :, None] + gamma[..., None, :]) / 2
-        decoherences.diagonal(dim1=-2, dim2=-1).zero_()
+        dephsing = -(gamma[..., :, None] + gamma[..., None, :]) / 2
+        dephsing.diagonal(dim1=-2, dim2=-1).zero_()
 
-        *batch, n, _ = decoherences.shape
+        *batch, n, _ = dephsing.shape
         N = n * n
-        pop_indices = torch.arange(n, device=decoherences.device) * (n + 1)
+        pop_indices = torch.arange(n, device=dephsing.device) * (n + 1)
 
-        is_coherence = torch.ones(N, dtype=torch.bool, device=decoherences.device)
+        is_coherence = torch.ones(N, dtype=torch.bool, device=dephsing.device)
         is_coherence[pop_indices] = False
 
-        rate_vector = decoherences.reshape(*batch, N)
+        rate_vector = dephsing.reshape(*batch, N)
         rate_vector = rate_vector.clone()
         rate_vector[..., pop_indices] = 0
         return torch.diag_embed(rate_vector)

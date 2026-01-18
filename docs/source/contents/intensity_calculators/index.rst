@@ -6,17 +6,27 @@ Transition Intensity Calculation in MarS
 Overview
 --------
 
-The intensity of a transition between two spin eigenstates |a> and |b> is determined by:
+In electron paramagnetic resonance (EPR), the observable signal for a transition between two spin eigenstates :math:`|a\rangle` and :math:`|b\rangle` generally depends on:
 
-1. **Transition matrix elements** (magnetization) — describing how strongly the microwave magnetic field couples to the transition
-2. **Level populations** — determining the occupancy difference between initial and final states
+1. The **magnetic transition dipole moment**, a quantum-mechanical matrix element that quantifies how strongly the radiation couples to the spin system.
+2. The **population difference** between the initial and final states, which can be determined from ф thermal equilibrium conditions or defined via :class:`mars.population.contexts.Context`.
 
-For stationary EPR spectroscopy and time-resolved EPR spectroscopy with kinetic relaxation calculation:
+This two-factor decomposition is valid for *incoherent, rate-based descriptions* of EPR (e.g., continuous-wave or time-resolved experiments with relaxation where quantum coherences are neglected).  
+However, it does not hold in coherent treatments based on the density matrix, where populations and coherences evolve jointly under the Liouville–von Neumann equation. 
+
+For stationary EPR under *thermal equilibrium*, the detected signal is proportional to the *absorbed microwave power*, which—within Fermi golden rule - is given by:
 
 .. math::
-   I_{ab} = \chi \frac{B_1^2}{4} |{\bf n}_1^T \boldsymbol{\mu}|^2
+   I_{ab} \propto (p_a - p_b) \cdot \left| \mathbf{n}_1^\top \boldsymbol{\mu}_{ab} \right|^2,
 
-where χ contains the population difference, B₁ is the oscillating field amplitude, **n**₁ describes the radiation polarization, and **μ** is the magnetic transition dipole moment (MTDM) vector.
+where:
+- :math:`p_a = e^{-E_a / k_B T}/Z` and :math:`p_b = e^{-E_b / k_B T}/Z` are Boltzmann populations,
+- :math:`\boldsymbol{\mu}_{ab} = \langle b | \hat{\boldsymbol{\mu}} | a \rangle` is the **magnetic transition dipole moment vector**,
+- :math:`\mathbf{n}_1` is the unit polarization vector of the oscillating magnetic field :math:`\mathbf{B}_1`,
+- :math:`Z` is the partition function.
+
+For density matrix-based time dependant methods, the signal is computed directly as ~:math:`\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))`,
+   where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection method and computation method)
 
 Intensity Calculator Classes
 -----------------------------
@@ -39,16 +49,17 @@ MarS provides several intensity calculator implementations through :class:`mars.
    For EPR experiments with non-standard excitation geometries and polarizations (circular, linear, unpolarized). Accounts for arbitrary orientation of radiation relative to the magnetic field.
    Reference: :class:`mars.spectra_manager.wave_calculator.WaveIntensityCalculator`
 
+
 Computational Workflow
 ----------------------
 
-All intensity calculators share a common computational pattern:
+*StationaryIntensityCalculator*, *TimeIntensityCalculator*, *WaveIntensityCalculator* follow a common pipeline:
 
 1. **Receive transition parameters**
    
    - Zeeman operator components **G**ₓ, **G**ᵧ, **G**_z
    - Eigenvectors of lower (|ψ_down⟩) and upper (|ψ_up⟩) states
-   - Energy level indices and eigenvalues
+   - Energy level indices of transition levels and eigenvalues of spin Hamiltonian
    - Resonance manifold values (fields or frequencies)
 
 2. **Compute magnetization term**
@@ -63,55 +74,4 @@ All intensity calculators share a common computational pattern:
    
    Multiply magnetization and population terms to obtain final intensity.
 
-Standard CW-EPR Intensity
---------------------------
-
-For continuous-wave EPR under thermal equilibrium, :class:`mars.spectra_manager.spectra_manager.StationaryIntensityCalculator` computes:
-
-.. math::
-   I_{ij} = (p_j - p_i) \cdot M_{ij}
-
-where the population difference follows Boltzmann statistics:
-
-.. math::
-   p_k = \frac{e^{-E_k / k_B T}}{Z}, \quad Z = \sum_k e^{-E_k / k_B T}
-
-or is defined by Contex (see :class:`mars.population.contexts.Context`)
-
-and M_{ij} is the magnetization term (see :ref:`magnetization_computation`).
-
-
-Time-Resolved EPR Intensity
-----------------------------
-
-For time-resolved EPR experiments, :class:`mars.spectra_manager.spectra_manager.TimeIntensityCalculator` handles non-equilibrium time dependant populations:
-
-.. math::
-   I_{ij}(t) = p_i(t) \cdot M_{ij}
-
-Here populations p_i(t) evolve according to rate equations defined in the Context. The magnetization M_{ij} remains constant but populations change with time.
-
-
-Density Matrix Time-Domain Calculation
----------------------------------------
-
-:class:`mars.spectra_manager.spectra_manager.TimeDensityCalculator` extends ``TimeIntensityCalculator`` with density matrix formalism. This approach:
-
-- Computes detected signal as Tr(**G⊥,+,-,x,y** **ρ**(t)) depending on detection method or computation method
-
-
-Polarized Radiation and Excitation Geometry
---------------------------------------------
-
-:class:`mars.spectra_manager.spectra_manager.WaveIntensityCalculator` handles experiments with:
-
-- **Circular polarization** (left/right-handed)
-- **Linear polarization**
-- **Unpolarized radiation**
-
-The intensity includes polarization-dependent weight factors (see :ref:`polarized_radiation`):
-
-.. math::
-   I_{ij} = (p_j - p_i) \cdot \left[ M_{xy} \cdot w_{xy} + M_z \cdot w_z + M_{mixed} \cdot w_{mixed} \right]
-
-where w_{xy}, w_z, w_{mixed} are computed by ``terms_computer`` classes based on Wigner d-matrix elements
+See also: :ref:`magnetization_computation`, :ref:`population_calculation`.

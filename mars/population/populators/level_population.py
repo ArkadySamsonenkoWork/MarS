@@ -13,18 +13,14 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
     LevelBasedPopulator implements time-resolved EPR signal modeling within the kinetic
     (population-based) relaxation paradigm.
 
-    This class assumes that only the diagonal elements of the density matrix (populations of energy levels)
-    evolve in time.
+    This class uses only the diagonal elements of the density matrix (populations of energy levels)
     Transitions between levels are governed by a kinetic matrix K derived from the provided Context, which may include:
       - Spontaneous (free) transitions respecting detailed balance,
-      - Induced (forced) transitions,
+      - Driven (induced) transitions,
       - Loss terms (e.g., phosphorescence decay from triplet states).
 
-    The initial populations are either computed from thermal equilibrium at `init_temperature` or taken from the Context,
-    if explicitly defined.
-
-    This approach is computationally efficient and suitable for systems where coherence effects are negligible
-    (e.g., high-temperature or strongly relaxing systems).
+    The initial populations are either computed from thermal equilibrium at `init_temperature`
+    or taken from the Context, if explicitly defined.
     """
     def __init__(self,
                  context: tp.Optional[contexts.BaseContext],
@@ -50,8 +46,8 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             In this case the solution is n_i+1 = exp(A_idt) @ ni
 
             If solver is None than it will be initialized as odeint solver or stationary solver according to the context
-        :param init_temperature: initial temperature. In default case it is used to find initial population
 
+        :param init_temperature: initial temperature. In default case it is used to find initial population
         :param difference_out: If True, the output intensity is expressed as the difference relative
                to the initial signal:
                        intensity(t) = intensity(t) - intensity(t=0).
@@ -72,21 +68,30 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
                                   lvl_up: torch.Tensor, energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
         ----------
+
         :param time:
             Time points of measurements.
 
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
+
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors.
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -109,12 +114,6 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
 
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-            make the creator to compute these vectors
-
         :param args: tuple, optional.
         :param kwargs : dict, optional
 
@@ -125,7 +124,8 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         return self.tr_matrix_generator_cls(
             context=self.context,
             init_temperature=self.init_temperature,
-            full_system_vectors=full_system_vectors
+            res_fields=res_fields,
+            full_system_vectors=full_system_vectors,
         )
 
     def forward(self,
@@ -167,8 +167,10 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
             make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param args: additinal args from spectra creator.
 
@@ -177,9 +179,9 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         The shape is [T, ...., Tr]
         """
         initial_populations = self._initial_populations(energies, lvl_down, lvl_up, full_system_vectors)
-        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
+        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields, full_system_vectors,
                                                              lvl_down, lvl_up, energies, vector_down,
-                                                             vector_up, full_system_vectors, *args, **kwargs)
+                                                             vector_up, *args, **kwargs)
         evo = tr_utils.EvolutionMatrix(energies)
         if initial_populations.dim() == 1:
             initial_populations = initial_populations.unsqueeze(-2)

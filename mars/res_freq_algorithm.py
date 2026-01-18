@@ -68,7 +68,7 @@ class Locator(nn.Module):
             Shape: [..., N_trans, K], where N_trans is the number of transitions in the frequency window.
         tuple[torch.Tensor, torch.Tensor]
             Level indices (in ascending energy order) involved in each transition: (lvl_down, lvl_up).
-            Shape: [N_trans,] — global across batch due to masking logic.
+            Shape: [N_trans,] - global across batch due to masking logic.
         torch.Tensor
             Transition frequencies ν_{ij} = E_j - E_i that satisfy freq_low ≤ ν ≤ freq_high.
             Shape: [..., N_trans].
@@ -150,7 +150,7 @@ class ResFreq(nn.Module):
         :type dtype: torch.dtype, optional
         """
         super().__init__()
-        self.register_buffer('spin_system_dim', torch.tensor(spin_system_dim))
+        self.register_buffer("spin_system_dim", torch.tensor(spin_system_dim))
         self.output_full_eigenvector = output_full_eigenvector
         self.mesh_size = mesh_size
         self.batch_dims = batch_dims

@@ -1,3 +1,5 @@
+.. _strain-managment-mars:
+
 Strain in MarS
 =======================
 

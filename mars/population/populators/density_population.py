@@ -36,7 +36,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     2. The g-tensor must be isotropic, meaning the Zeeman operators are proportional to spin operators:
        Gx = g * mu_B * Sx, Gy = g * mu_B * Sy, Gz = g * mu_B * Sz.,
     3. The static part of the Hamiltonian (denoted F) must commute with Gz (i.e., [F, Gz] = 0).
-    4. The relaxation superoperator Rijkl—which couples matrix elements rho_ij
+    4. The relaxation superoperator Rijkl-which couples matrix elements rho_ij
     and rho_kl - is only non-zero when i - j equals k - l.
        This covers two processes:
        - Population transfer between energy levels (i = j, k = l), including pure decay (i = j = k = l).
@@ -161,7 +161,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
 
         :param args:
         :param kwargs:
-        :return: initial populations
+        :return: density in the initial state
         """
         return self._getter_init_density(energies, lvl_down, lvl_up, full_system_vectors)
 
@@ -240,11 +240,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
                                   lvl_up: torch.Tensor, energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   resonance_frequency: torch.Tensor,
                                   H0: torch.Tensor,
                                   Sz: torch.Tensor,
@@ -259,6 +259,14 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
+
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -281,12 +289,6 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
 
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-            make the creator to compute these vectors
-
         :param resonance_frequency: Resonance frequency of the spin transition, in (Hz).
         Scalar value (shape: `[]`).
 
@@ -307,10 +309,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                 self.two_pi * resonance_frequency, "Hz_to_T_e"
             ) * (constants.BOHR / constants.PLANCK)
         tr_matrix_generator = self.tr_matrix_generator_cls(context=self.context,
+                                                           init_temperature=self.init_temperature,
+                                                           res_fields=res_fields,
+                                                           full_system_vectors=full_system_vectors,
                                                            stationary_hamiltonian=H0 + shift + Ht,
                                                            lvl_down=lvl_down, lvl_up=lvl_up,
-                                                           init_temperature=self.init_temperature,
-                                                           full_system_vectors=full_system_vectors,
                                                            )
         return tr_matrix_generator
 
@@ -369,8 +372,10 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
             make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G. The shape is [...., N, N]
         :param Gx: x-part of Hamiltonian Zeeman Term. The shape is [...., N, N]
@@ -479,11 +484,11 @@ class PropagatorDensityPopulator(RWADensityPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
                                   lvl_up: torch.Tensor, energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   resonance_frequency: torch.Tensor, H0: torch.Tensor,
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
@@ -495,6 +500,14 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
+
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors.
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -517,12 +530,6 @@ class PropagatorDensityPopulator(RWADensityPopulator):
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
 
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
-            make the creator to compute these vectors
-
         :param resonance_frequency: Resonance frequency of the spin transition, in hertz (Hz).
         Scalar value (shape: `[]`).
         :param H0: Static (time-independent) part of the spin Hamiltonian, expressed in hertz (Hz).
@@ -539,10 +546,11 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         TransitionMatrixGenerator instance
         """
         tr_matrix_generator = self.tr_matrix_generator_cls(context=self.context,
+                                                           init_temperature=self.init_temperature,
+                                                           res_fields=res_fields,
+                                                           full_system_vectors=full_system_vectors,
                                                            stationary_hamiltonian=H0,
                                                            lvl_down=lvl_down, lvl_up=lvl_up,
-                                                           init_temperature=self.init_temperature,
-                                                           full_system_vectors=full_system_vectors,
                                                            )
         return tr_matrix_generator
 
@@ -729,8 +737,10 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'full_system_vectors_flag == True'
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
             make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G. The shape is [...., N, N]
         :param Gx: x-part of Hamiltonian Zeeman Term. The shape is [...., N, N]
@@ -751,9 +761,9 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         Gx, Gy, Gz = self._compute_hamiltonian_operators(
             Gx, Gy, Gz, full_system_vectors)
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
-        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
+        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields, full_system_vectors,
                                                              lvl_down, lvl_up, energies, vector_down,
-                                                             vector_up, full_system_vectors, resonance_frequency, H0,
+                                                             vector_up, resonance_frequency, H0,
                                                              *args, **kwargs)
         evo = tr_utils.EvolutionSuper(energies)
         return self._compute_out(evo, tr_matrix_generator,

@@ -39,32 +39,55 @@ class BasePopulator(nn.Module):
         self.register_buffer(
             "init_temperature", torch.tensor(init_temperature, device=device, dtype=dtype)
         )
-        self.context = context
+        self._context = context
         self._init_context_meta()
 
     def _precompute(self, res_fields, lvl_down, lvl_up, energies, vector_down, vector_up, *args, **kwargs):
         return res_fields, lvl_down, lvl_up, energies, vector_down, vector_up
 
     def _init_context_meta(self):
-        if self.context is not None:
-            if self.context.contexted_init_population:
+        """
+        Initialize data depending on context
+        :return: None
+        """
+        if self._context is not None:
+            if self._context.contexted_init_population:
                 self.contexted = True
                 self._getter_init_population = self._context_dependant_init_population
             else:
                 self.contexted = False
                 self._getter_init_population = self._temp_dependant_init_population
-            self.time_dependant = self.context.time_dependant
+            self.time_dependant = self._context.time_dependant
 
         else:
             self.contexted = False
             self._getter_init_population = self._temp_dependant_init_population
             self.time_dependant = False
 
+    @property
+    def context(self) -> contexts.BaseContext:
+        """
+        :return: The context object
+        """
+        return self._context
+
+    @context.setter
+    def context(self, context: contexts.BaseContext) -> None:
+        """
+        Set the new context for populator
+
+        :param context: Base Context object
+        :return:
+        """
+        self._context = context
+        self._init_context_meta()
+
+
     def _initial_populations(
             self, energies: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor,
             full_system_vectors: tp.Optional[torch.Tensor],
             *args, **kwargs
-    ):
+    ) -> torch.Tensor:
         """
         :param energies:
             The energies of spin states. The shape is [..., R, N], where R is number of resonance transitions
@@ -79,7 +102,7 @@ class BasePopulator(nn.Module):
         For some cases it can be None
         :param args:
         :param kwargs:
-        :return: initial populations
+        :return: initial populations defined from thermal equilibrium
         """
         return self._getter_init_population(energies, lvl_down, lvl_up, full_system_vectors)
 
@@ -99,7 +122,7 @@ class BasePopulator(nn.Module):
                 lvl_up: torch.Tensor,
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
-        return self.context.get_transformed_init_populations(full_system_vectors, normalize=True)
+        return self.context.get_transformed_init_populations(full_system_vectors, normalize=False)
 
     def _out_population_difference(self, populations: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor):
         """
@@ -142,7 +165,7 @@ class BaseTimeDepPopulator(BasePopulator):
       Key components:
         1. **Populator**: Defines initial state and numerical strategy (this class and subclasses).
         2. **Context**: Encodes physical relaxation mechanisms (losses, spontaneous/induced transitions,
-           decoherence) and their basis of definition.
+           dephasing) and their basis of definition.
         3. **Transition matrix generator**: Constructs the relaxation operator (K or R) from Context.
         4. **Solver**: Integrates the evolution equation (stationary, quasi-stationary, or adaptive ODE).
 
@@ -209,12 +232,11 @@ class BaseTimeDepPopulator(BasePopulator):
             return time_intensities
 
     @abstractmethod
-    def _init_tr_matrix_generator(self, *args, **kwargs) -> matrix_generators.BaseGenerator:
+    def _init_tr_matrix_generator(self,
+                                  *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
-
         :param args: tuple, optional.
-
         :param kwargs : dict, optional
         :param return:
         -------

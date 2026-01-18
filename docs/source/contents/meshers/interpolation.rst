@@ -1,7 +1,7 @@
 Interpolation on Spherical Meshes
 =================================
 
-MarS supports interpolation of the full resonance triplet—**resonance fields**, **intensities**, and **linewidths**—from a coarse initial orientation grid to a finer evaluation grid. This decouples the expensive Hamiltonian diagonalization (performed on the coarse grid) from the high-resolution spherical integration required for smooth spectra.
+MarS supports interpolation of the full resonance triplet-**resonance fields**, **intensities**, and **linewidths**-from a coarse initial orientation grid to a finer evaluation grid. This decouples the expensive Hamiltonian diagonalization (performed on the coarse grid) from the high-resolution spherical integration required for smooth spectra.
 
 Two interpolation strategies are provided:
 
@@ -27,9 +27,9 @@ Technical Details
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Given resonance data on the base mesh:
-- **Fields** :math:`B_{\text{res}}(\Omega_i)` — resonance magnetic field at orientation :math:`\Omega_i`
-- **Intensities** :math:`I(\Omega_i)` — transition intensity
-- **Widths** :math:`\Delta B(\Omega_i)` — linewidth
+- **Fields** :math:`B_{\text{res}}(\Omega_i)` - resonance magnetic field at orientation :math:`\Omega_i`
+- **Intensities** :math:`I(\Omega_i)` - transition intensity
+- **Widths** :math:`\Delta B(\Omega_i)` - linewidth
 
 All three tensors are interpolated **independently** to the extended mesh vertices :math:`\{\Omega'_j\}`:
 

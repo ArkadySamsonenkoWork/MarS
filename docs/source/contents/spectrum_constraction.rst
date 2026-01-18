@@ -6,7 +6,7 @@ EPR Spectrum Construction in MarS
 The construction of an EPR spectrum in MarS follows a sequence of well-defined computational steps:
 
 1. **Define spin particles**  
-   The spin system consists of quantum particles—electrons and magnetic nuclei—each specified by its spin quantum number and intrinsic magnetic parameters.
+   The spin system consists of quantum particles-electrons and magnetic nuclei-each specified by its spin quantum number and intrinsic magnetic parameters.
 
 2. **Specify interactions**  
    Interactions (e.g., hyperfine, zero-field splitting, nuclear-nuclear couplings) are defined using the :class:`mars.spin_system.Interaction` class.  

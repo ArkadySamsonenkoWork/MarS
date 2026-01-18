@@ -2,6 +2,7 @@ import copy
 from dataclasses import dataclass
 import typing as tp
 import math
+from abc import ABC, abstractmethod
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -28,12 +29,11 @@ def print_trial_results(results: tp.Union[TrialResult, list[TrialResult]], max_p
     """
     Print trial results.
 
-    Args:
-        results: Single trial dict or list of trial dicts
-        max_params: Maximum number of parameters to display (None for all)
-        precision: Number of decimal places for numeric values
+    :param results: Single trial dict or list of trial dicts
+    :param max_params: Maximum number of parameters to display (None for all)
+    :param precision: Number of decimal places for numeric values
+    :return: None
     """
-
     if isinstance(results, dict):
         results = [results]
 
@@ -536,107 +536,77 @@ class CWSpectraSimulator:
         return self.spectra_creator(sample, fields)
 
 
-class SpectrumFitter:
+class BaseSpectrumFitter(ABC):
     """
-    General fitter for spectra.
-    The user must provide either a `simulate_spectrum_callable` that maps a
-    parameter dict -> torch.Tensor (spectrum on the same B-grid), or override
-    the `simulate_spectrum` method in a subclass.
-
-    Typical usage:
-      - construct with B grid, experimental spectrum (np or torch), device
-      - provide parameter specs
-      - call fit(method='optuna'|'nevergrad')
+    Base class for spectrum fitting.
     """
-    __available_optimizer__ = {"nevergrad": sorted(ng.optimizers.registry.keys()),
-                               "optuna": [optuna.integration.BoTorchSampler,
-                                          optuna.samplers.RandomSampler,
-                                          optuna.samplers.TPESampler,
-                                          optuna.samplers.BruteForceSampler,
-                                          optuna.samplers.GridSampler,
-                                          optuna.samplers.CmaEsSampler,
-                                          optuna.samplers.NSGAIISampler,
-                                          optuna.samplers.NSGAIIISampler,
-                                          ]
-                               }
+    __available_optimizer__ = {
+        "nevergrad": sorted(ng.optimizers.registry.keys()),
+        "optuna": [
+            optuna.integration.BoTorchSampler,
+            optuna.samplers.RandomSampler,
+            optuna.samplers.TPESampler,
+            optuna.samplers.BruteForceSampler,
+            optuna.samplers.GridSampler,
+            optuna.samplers.CmaEsSampler,
+            optuna.samplers.NSGAIISampler,
+            optuna.samplers.NSGAIIISampler,
+        ],
+    }
 
     def __init__(
         self,
-        x_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-        y_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
         param_space: ParameterSpace,
-        spectra_simulator: tp.Callable[
-            [list[torch.Tensor] | torch.Tensor, tp.Dict[str, float], tp.Dict],
-             torch.Tensor | list[torch.Tensor]
-        ],
+        spectra_simulator: tp.Callable,
         norm_mode: str = "integral",
         objective=objectives.MSEObjective(),
-        weights: list[float] = None,
+        weights: tp.Optional[list[float]] = None,
         device: tp.Optional[torch.device] = None,
     ):
         """
-        :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
-            It is possible to pass a list for multi-object fit
-        :param y_exp: Experimental y-axis data.
         :param param_space: The object of ParameterSpace class where all varying parameters are included
-        :param spectra_simulator: Any callable object that takes x_data and parameters and returns simulated
-            spectra or list of simulated spectra.
-            It is highly recommended for all new parameters to use update methods:
-            sample.update(new_params) or spec_creator.update_config(config)
-
-            Example:
-            class CWSpectraSimulator:
-                def __init__(self,
-                             sample_updator: tp.Callable[[dict[str, float], tp.Any], tp.Any],
-                             spectra_creator: tp.Callable[[tp.Any, torch.Tensor], torch.Tensor], *args):
-                    self.sample_updator = sample_updator
-                    self.spectra_creator = spectra_creator
-                    self.args = args
-
-                def __call__(self, fields: torch.Tensor, params: dict[str, float]):
-                    sample = self.sample_updator(params, *self.args)
-                    return self.spectra_creator(sample, fields)
-
+        :param spectra_simulator: Callable that takes x-data and parameters and returns simulated spectra
         :param norm_mode: Norm mode to fit data. 'integral' / 'max'
-        :param device: Device for computation
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
-        :param weights: The weights for multi-data fit. Default is None
+        :param weights: The weights for multi-spectra fit. Default is None
+        :param device: Device for computation
         """
         self.device = torch.device("cpu") if device is None else device
         self.norm_mode = norm_mode
         self._simulate_callable = spectra_simulator
-
-        self.x_exp, self.y_exp, self.multisample = self._set_experimental(x_exp, y_exp)
-
-        if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x_exp), dtype=torch.float32, device=self.device)
-        elif weights is None:
-            self.weights = None
-        else:
-            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
-
         self.param_space = param_space
         self._objective = objective
-        self._loss_normalization = self._get_loss_norm()
 
-    def _set_experimental(self, x_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-                                y_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]]):
-        if isinstance(x_exp, list):
-            if len(x_exp) != len(y_exp):
-                raise ValueError("The number of x array and experimental arrays must be the same")
-            else:
-                x_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x_exp]
-                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
-                for idx, b in enumerate(x_exp):
-                    y_exp[idx] = normalize_spectrum(b, y_exp[idx], mode=self.norm_mode)
-                multisample = True
-        else:
-            x_exp = torch.tensor(x_exp, dtype=torch.float32, device=self.device)
-            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
-            y_exp = normalize_spectrum(x_exp, y_exp, mode=self.norm_mode)
-            multisample = False
+        self.x_exp = None
+        self.y_exp = None
+        self.multisample = False
+        self.weights = None
+        self._loss_normalization = None
 
-        return x_exp, y_exp, multisample
+    @abstractmethod
+    def _set_experimental(self, *args, **kwargs):
+        """
+        Process experimental data and set  them self.x_exp, self.y_exp, self.multisample.
+        """
+        pass
+
+    @abstractmethod
+    def _simulate_single_spectrum(self, params: dict[str, float], **kwargs) -> torch.Tensor:
+        """
+        Simulate spectrum from set of parameters
+        :param params: Full parameter dictionary
+        :return: Normalized single simulated spectrum
+        """
+        pass
+
+    @abstractmethod
+    def _simulate_spectral_set(self, params: dict[str, float], **kwargs) -> list[torch.Tensor]:
+        """
+        Simulate set of spectra from set of parameters
+        :param params: Full parameter dictionary
+        :return: List of normalized simulated spectra
+        """
+        pass
 
     def _get_loss_norm(self):
         if self.multisample:
@@ -644,16 +614,8 @@ class SpectrumFitter:
         else:
             return self._objective(torch.zeros_like(self.y_exp), self.y_exp).reciprocal()
 
-    def _simulate_single_spectrum(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
-        return normalize_spectrum(self.x_exp, self._simulate_callable(self.x_exp, params, **kwargs), mode=self.norm_mode)
-
-    def _simulate_spectral_set(self, params: tp.Dict[str, float], **kwargs) -> list[torch.Tensor]:
-        models = self._simulate_callable(self.x_exp, params, **kwargs)
-        for idx in range(len(models)):
-            models[idx] = normalize_spectrum(self.x_exp[idx], models[idx], mode=self.norm_mode)
-        return models
-
-    def simulate_spectroscopic_data(self, params: tp.Dict[str, float], **kwargs) -> list[torch.Tensor] | torch.Tensor:
+    def simulate_spectroscopic_data(self, params: tp.Dict[str, float], **kwargs) ->\
+            tp.Union[list[torch.Tensor], torch.Tensor]:
         """
         :param params: fict of parameter names: parameter values.
         The names of parameters are names from param_space.
@@ -668,8 +630,8 @@ class SpectrumFitter:
             model = self._simulate_single_spectrum(params, **kwargs)
         return model
 
-    def simulate_spectra_from_trial_params(self, trial_params: tp.Dict[str, float], **kwargs) ->\
-            list[torch.Tensor] | torch.Tensor:
+    def simulate_spectra_from_trial_params(self, trial_params: tp.Dict[str, float], **kwargs) -> \
+            tp.Union[list[torch.Tensor], torch.Tensor]:
         """
         :param trial_params: Simulate spectra from parameters given as trial_params (only varied parameters)
         As fixed_parameters the parameters from self.param_space are used
@@ -701,23 +663,24 @@ class SpectrumFitter:
         return ng_trials
 
     def fit_optuna(
-        self,
-        show_progress: bool,
-        seed: tp.Optional[int],
-        return_best_spectrum: bool,
+            self,
+            show_progress: bool,
+            seed: tp.Optional[int],
+            return_best_spectrum: bool,
 
-        n_trials: int = 300,
-        timeout: tp.Optional[float] = None,
-        n_jobs: int = 1,
-        sampler: tp.Optional[optuna.samplers.BaseSampler] = None,
-        study_name: tp.Optional[str] = None,
-        run_dashboard: bool = True,
-        **kwargs,
+            n_trials: int = 300,
+            timeout: tp.Optional[float] = None,
+            n_jobs: int = 1,
+            sampler: tp.Optional[optuna.samplers.BaseSampler] = None,
+            study_name: tp.Optional[str] = None,
+            run_dashboard: bool = True,
+            **kwargs,
     ) -> FitResult:
-        """Fit using Optuna.
+        """Fit spectra using Optuna.
 
         Requires optuna to be installed.
         """
+
         def loss_function(trial):
             p = self.param_space.suggest_optuna(trial)
             loss = self._loss_from_params(p, **kwargs)
@@ -727,17 +690,17 @@ class SpectrumFitter:
             sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        
+
         if run_dashboard:
             storage = optuna.storages.InMemoryStorage()
             study = optuna.create_study(direction="minimize", sampler=sampler,
-                                        study_name=study_name,  load_if_exists=True, storage=storage)
+                                        study_name=study_name, load_if_exists=True, storage=storage)
             study.optimize(
                 loss_function, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs, show_progress_bar=show_progress)
             run_server(storage)
         else:
             study = optuna.create_study(direction="minimize", sampler=sampler,
-                                        study_name=study_name,  load_if_exists=True)
+                                        study_name=study_name, load_if_exists=True)
             study.optimize(
                 loss_function, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs, show_progress_bar=show_progress)
 
@@ -748,18 +711,18 @@ class SpectrumFitter:
         return FitResult(best_params, float(study.best_value), best_spec, {"backend": "optuna", "study": study})
 
     def fit_nevergrad(
-        self,
-        show_progress: bool,
-        seed: tp.Optional[int],
-        return_best_spectrum: bool,
+            self,
+            show_progress: bool,
+            seed: tp.Optional[int],
+            return_best_spectrum: bool,
 
-        budget: int = 200,
-        optimizer_name: str = "TwoPointsDE",
-        track_trials: bool = True,
+            budget: int = 200,
+            optimizer_name: str = "TwoPointsDE",
+            track_trials: bool = True,
 
-        **kwargs,
+            **kwargs,
     ) -> FitResult:
-        """Fit using Nevergrad (if installed)."""
+        """Fit spectra using Nevergrad (if installed)."""
         if ng is None:
             raise RuntimeError("Nevergrad is required for fit_nevergrad but not installed")
 
@@ -799,13 +762,13 @@ class SpectrumFitter:
         )
 
     def fit(
-        self,
-        backend: str = "optuna",
-        seed: tp.Optional[int] = None,
-        show_progress: bool = True,
-        return_best_spectrum: bool = True,
+            self,
+            backend: str = "optuna",
+            seed: tp.Optional[int] = None,
+            show_progress: bool = True,
+            return_best_spectrum: bool = True,
 
-        **backend_kwargs,
+            **backend_kwargs,
     ) -> FitResult:
         """
         All fitting methods can be viewed in SpectrumFitter.__available_optimizer__
@@ -843,6 +806,226 @@ class SpectrumFitter:
         raise ValueError(f"Unknown fit method: {method}")
 
 
+class SpectrumFitter(BaseSpectrumFitter):
+    """
+    General fitter for spectra.
+    The user must provide either a `simulate_spectrum_callable` that maps a
+    parameter dict -> torch.Tensor (spectrum on the same B-grid), or override
+    the `simulate_spectrum` method in a subclass.
+
+    Typical usage:
+      - construct with B grid, experimental spectrum (np or torch), device
+      - provide parameter specs
+      - call fit(method='optuna'|'nevergrad')
+    """
+    __available_optimizer__ = {"nevergrad": sorted(ng.optimizers.registry.keys()),
+                               "optuna": [optuna.integration.BoTorchSampler,
+                                          optuna.samplers.RandomSampler,
+                                          optuna.samplers.TPESampler,
+                                          optuna.samplers.BruteForceSampler,
+                                          optuna.samplers.GridSampler,
+                                          optuna.samplers.CmaEsSampler,
+                                          optuna.samplers.NSGAIISampler,
+                                          optuna.samplers.NSGAIIISampler,
+                                          ]
+                               }
+
+    def __init__(
+            self,
+            x_exp: tp.Union[np.ndarray, torch.Tensor, tp.List[tp.Union[np.ndarray, torch.Tensor]]],
+            y_exp: tp.Union[np.ndarray, torch.Tensor, tp.List[tp.Union[np.ndarray, torch.Tensor]]],
+            param_space: ParameterSpace,
+            spectra_simulator: tp.Callable[
+                [tp.Union[tp.List[torch.Tensor], torch.Tensor], tp.Dict[str, float], tp.Dict],
+                tp.Union[torch.Tensor, tp.List[torch.Tensor]]
+            ],
+            norm_mode: str = "integral",
+            objective=objectives.MSEObjective(),
+            weights: tp.Optional[tp.List[float]] = None,
+            device: tp.Optional[torch.device] = None,
+    ) -> None:
+        """
+        :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
+            It is possible to pass a list for multi-object fit
+        :param y_exp: Experimental y-axis data.
+        :param param_space: The object of ParameterSpace class where all varying parameters are included
+        :param spectra_simulator: Any callable object that takes x_data and parameters and returns simulated
+            spectra or list of simulated spectra.
+            It is highly recommended for all new parameters to use update methods:
+            sample.update(new_params) or spec_creator.update_config(config)
+
+            Example:
+            class CWSpectraSimulator:
+                def __init__(self,
+                             sample_updator: tp.Callable[[dict[str, float], tp.Any], tp.Any],
+                             spectra_creator: tp.Callable[[tp.Any, torch.Tensor], torch.Tensor], *args):
+                    self.sample_updator = sample_updator
+                    self.spectra_creator = spectra_creator
+                    self.args = args
+
+                def __call__(self, fields: torch.Tensor, params: dict[str, float]):
+                    sample = self.sample_updator(params, *self.args)
+                    return self.spectra_creator(sample, fields)
+
+        :param norm_mode: Norm mode to fit data. 'integral' / 'max'
+        :param device: Device for computation
+        :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
+        :param weights: The weights for multi-data fit. Default is None
+        """
+        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device)
+        self.x_exp, self.y_exp, self.multisample = self._set_experimental(x_exp, y_exp)
+
+        if self.multisample and (weights is None):
+            self.weights = torch.ones(len(self.x_exp), dtype=torch.float32, device=self.device)
+        elif weights is not None:
+            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
+        else:
+            self.weights = None
+        self._loss_normalization = self._get_loss_norm()
+
+    def _set_experimental(
+            self, x_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, bool]:
+        """
+        Set expereimental given parameter
+        :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
+        :param y_exp: Experimental y-axis data.
+        :return: x_exp, y_exp in appropriate format and flag that is multisample fitting data
+        """
+        if isinstance(x_exp, list):
+            if len(x_exp) != len(y_exp):
+                raise ValueError("The number of x array and experimental arrays must be the same")
+            else:
+                x_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x_exp]
+                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
+                for idx, b in enumerate(x_exp):
+                    y_exp[idx] = normalize_spectrum(b, y_exp[idx], mode=self.norm_mode)
+                multisample = True
+        else:
+            x_exp = torch.tensor(x_exp, dtype=torch.float32, device=self.device)
+            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
+            y_exp = normalize_spectrum(x_exp, y_exp, mode=self.norm_mode)
+            multisample = False
+
+        return x_exp, y_exp, multisample
+
+    def _simulate_single_spectrum(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
+        return normalize_spectrum(self.x_exp, self._simulate_callable(self.x_exp, params, **kwargs), mode=self.norm_mode)
+
+    def _simulate_spectral_set(self, params: tp.Dict[str, float], **kwargs) -> list[torch.Tensor]:
+        models = self._simulate_callable(self.x_exp, params, **kwargs)
+        for idx in range(len(models)):
+            models[idx] = normalize_spectrum(self.x_exp[idx], models[idx], mode=self.norm_mode)
+        return models
+
+
+class Spectrum2DFitter(BaseSpectrumFitter):
+    """
+    Spectrum Fitter for 2D data. y_exp should be 2d array, x1_exp and x2_exp are axis
+    """
+    def __init__(
+            self,
+            x1_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+            x2_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+            y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+            param_space: ParameterSpace,
+            spectra_simulator: tp.Callable[
+                [tp.Union[list[torch.Tensor], torch.Tensor],
+                 tp.Union[list[torch.Tensor], torch.Tensor],
+                 tp.Dict[str, float], tp.Dict],
+                tp.Union[torch.Tensor, list[torch.Tensor]]
+            ],
+            norm_mode: str = "integral",
+            objective=objectives.MSEObjective(),
+            weights: list[float] = None,
+            device: tp.Optional[torch.device] = None,
+    ):
+        """
+        :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s),
+            It is possible to pass a list for multi-object fit
+        :param x2_exp: Experimental x2-axis data. It can be magnetic field (T), time (s),
+            It is possible to pass a list for multi-object fit
+
+        :param y_exp: Experimental y-axis data.
+        :param param_space: The object of ParameterSpace class where all varying parameters are included
+        :param spectra_simulator: Any callable object that takes x_data and parameters and returns simulated
+            spectra or list of simulated spectra.
+            It is highly recommended for all new parameters to use update methods:
+            sample.update(new_params) or spec_creator.update_config(config)
+
+            Example:
+            class CWSpectraSimulator:
+                def __init__(self,
+                             sample_updator: tp.Callable[[dict[str, float], tp.Any], tp.Any],
+                             spectra_creator: tp.Callable[[tp.Any, torch.Tensor], torch.Tensor], *args):
+                    self.sample_updator = sample_updator
+                    self.spectra_creator = spectra_creator
+                    self.args = args
+
+                def __call__(self, fields: torch.Tensor, params: dict[str, float]):
+                    sample = self.sample_updator(params, *self.args)
+                    return self.spectra_creator(sample, fields)
+
+        :param norm_mode: Norm mode to fit data. 'integral' / 'max'
+        :param device: Device for computation
+        :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
+        :param weights: The weights for multi-data fit. Default is None
+        """
+        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device)
+        self.x1_exp, self.x2_exp, self.y_exp, self.multisample = self._set_experimental(x1_exp, x2_exp, y_exp)
+
+        if self.multisample and (weights is None):
+            self.weights = torch.ones(len(self.x1_exp), dtype=torch.float32, device=self.device)
+        elif weights is not None:
+            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
+        else:
+            self.weights = None
+
+        self._loss_normalization = self._get_loss_norm()
+
+    def _set_experimental(
+            self, x1_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+                  x2_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, bool]:
+        """
+        Set experimental given parameter
+        :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
+        :param x2_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
+        :param y_exp: Experimental y-axis data.
+        :return: x1_exp, x2_exp, y_exp in appropriate format and flag that is multisample fitting data
+        """
+        if isinstance(x1_exp, list) and isinstance(x2_exp, list):
+            if (len(x1_exp) != len(y_exp)) or (len(x2_exp) != len(y_exp)):
+                raise ValueError("The number of x1 and x2 array and experimental arrays must be the same")
+            else:
+                x1_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x1_exp]
+                x2_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x2_exp]
+                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
+                for idx, b1, b2 in enumerate(zip(x1_exp, x2_exp)):
+                    y_exp[idx] = normalize_spectrum2d(b1, b2, y_exp[idx], mode=self.norm_mode)
+                multisample = True
+        else:
+            x1_exp = torch.tensor(x1_exp, dtype=torch.float32, device=self.device)
+            x2_exp = torch.tensor(x2_exp, dtype=torch.float32, device=self.device)
+            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
+            y_exp = normalize_spectrum2d(x1_exp, x2_exp, y_exp, mode=self.norm_mode)
+            multisample = False
+
+        return x1_exp, x2_exp, y_exp, multisample
+
+    def _simulate_single_spectrum(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
+        return normalize_spectrum2d(self.x1_exp, self.x2_exp, self._simulate_callable(
+            self.x1_exp, self.x2_exp, params, **kwargs), mode=self.norm_mode)
+
+    def _simulate_spectral_set(self, params: tp.Dict[str, float], **kwargs) -> list[torch.Tensor]:
+        models = self._simulate_callable(self.x1_exp, self.x2_exp, params, **kwargs)
+        for idx in range(len(models)):
+            models[idx] = normalize_spectrum2d(self.x1_exp[idx], self.x2_exp[idx], models[idx], mode=self.norm_mode)
+        return models
+
+
 class SpaceSearcher:
     """
     For some cases not only the best fitting parameters are useful but all 'good' parameters.
@@ -867,7 +1050,7 @@ class SpaceSearcher:
         self.top_k = int(top_k)
         self.distance_fraction = float(distance_fraction)
 
-    def _parse_trials(self, trials: list[NevergradTrial | optuna.Trial], param_names: list[str]):
+    def _parse_trials(self, trials: list[tp.Union[NevergradTrial, optuna.Trial]], param_names: list[str]):
         param_rows = []
         losses = []
         trial_ids = []
@@ -892,7 +1075,7 @@ class SpaceSearcher:
         return P, L, np.asarray(trial_ids, dtype=np.int32)
 
     def _extract_trials_from_fit(self, fit_result: FitResult,
-                                   param_names: list[str] | None = None):
+                                   param_names: tp.Optional[list[str]] = None):
         """
         Return arrays: (param_matrix, losses, trial_indices)
         param_matrix shape: (n_trials, n_varying_params)
@@ -915,12 +1098,13 @@ class SpaceSearcher:
             param_names = list(fit_result.best_params.keys())
         return trials, param_names
 
-    def __call__(self, fit_result: FitResult, param_names: list[str] | None = None):
+    def __call__(self, fit_result: FitResult, param_names: tp.Optional[tp.List[str]] = None) ->\
+            tp.List[tp.Dict[str, tp.Any]]:
         """
         :param fit_result: The output of fitter.
         :param param_names: The names of parameters that should be included in search procedure.
         Default value is None means that all spec (varying) parameters should be included.
-        :return:
+        :return: The results of fitting searching
         """
         trials, param_names = self._extract_trials_from_fit(fit_result, param_names)
         P, L, trial_numbers = self._parse_trials(trials, param_names)
@@ -986,103 +1170,3 @@ class SpaceSearcher:
                 }
             )
         return results
-
-
-class Spectrum2DFitter(SpectrumFitter):
-    """
-    Spectrum Fitter for 2D data. y_exp should be 2d array, x1_exp and x2_exp are axis
-    """
-    def __init__(
-            self,
-            x1_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-            x2_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-            y_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-            param_space: ParameterSpace,
-            spectra_simulator: tp.Callable[
-                [list[torch.Tensor] | torch.Tensor, list[torch.Tensor] | torch.Tensor, tp.Dict[str, float], tp.Dict],
-                torch.Tensor | list[torch.Tensor]
-            ],
-            norm_mode: str = "integral",
-            objective=objectives.MSEObjective(),
-            weights: list[float] = None,
-            device: tp.Optional[torch.device] = None,
-    ):
-        """
-        :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s),
-            It is possible to pass a list for multi-object fit
-        :param x2_exp: Experimental x2-axis data. It can be magnetic field (T), time (s),
-            It is possible to pass a list for multi-object fit
-
-        :param y_exp: Experimental y-axis data.
-        :param param_space: The object of ParameterSpace class where all varying parameters are included
-        :param spectra_simulator: Any callable object that takes x_data and parameters and returns simulated
-            spectra or list of simulated spectra.
-            It is highly recommended for all new parameters to use update methods:
-            sample.update(new_params) or spec_creator.update_config(config)
-
-            Example:
-            class CWSpectraSimulator:
-                def __init__(self,
-                             sample_updator: tp.Callable[[dict[str, float], tp.Any], tp.Any],
-                             spectra_creator: tp.Callable[[tp.Any, torch.Tensor], torch.Tensor], *args):
-                    self.sample_updator = sample_updator
-                    self.spectra_creator = spectra_creator
-                    self.args = args
-
-                def __call__(self, fields: torch.Tensor, params: dict[str, float]):
-                    sample = self.sample_updator(params, *self.args)
-                    return self.spectra_creator(sample, fields)
-
-        :param norm_mode: Norm mode to fit data. 'integral' / 'max'
-        :param device: Device for computation
-        :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
-        :param weights: The weights for multi-data fit. Default is None
-        """
-        self.device = torch.device("cpu") if device is None else device
-        self.norm_mode = norm_mode
-        self._simulate_callable = spectra_simulator
-
-        self.x1_exp, self.x2_exp, self.y_exp, self.multisample = self._set_experimental(x1_exp, x2_exp, y_exp)
-
-        if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x1_exp), dtype=torch.float32, device=self.device)
-        elif weights is None:
-            self.weights = None
-        else:
-            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
-
-        self.param_space = param_space
-        self._objective = objective
-        self._loss_normalization = self._get_loss_norm()
-
-    def _set_experimental(self, x1_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-                                x2_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]],
-                                y_exp: tp.Union[np.ndarray, torch.Tensor] | list[tp.Union[np.ndarray, torch.Tensor]]):
-        if isinstance(x1_exp, list) and isinstance(x2_exp, list):
-            if (len(x1_exp) != len(y_exp)) or (len(x2_exp) != len(y_exp)):
-                raise ValueError("The number of x1 and x2 array and experimental arrays must be the same")
-            else:
-                x1_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x1_exp]
-                x2_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x2_exp]
-                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
-                for idx, b1, b2 in enumerate(zip(x1_exp, x2_exp)):
-                    y_exp[idx] = normalize_spectrum2d(b1, b2, y_exp[idx], mode=self.norm_mode)
-                multisample = True
-        else:
-            x1_exp = torch.tensor(x1_exp, dtype=torch.float32, device=self.device)
-            x2_exp = torch.tensor(x2_exp, dtype=torch.float32, device=self.device)
-            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
-            y_exp = normalize_spectrum2d(x1_exp, x2_exp, y_exp, mode=self.norm_mode)
-            multisample = False
-
-        return x1_exp, x2_exp, y_exp, multisample
-
-    def _simulate_single_spectrum(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
-        return normalize_spectrum2d(self.x1_exp, self.x2_exp, self._simulate_callable(
-            self.x1_exp, self.x2_exp, params, **kwargs), mode=self.norm_mode)
-
-    def _simulate_spectral_set(self, params: tp.Dict[str, float], **kwargs) -> list[torch.Tensor]:
-        models = self._simulate_callable(self.x1_exp, self.x2_exp, params, **kwargs)
-        for idx in range(len(models)):
-            models[idx] = normalize_spectrum2d(self.x1_exp[idx], self.x2_exp[idx], models[idx], mode=self.norm_mode)
-        return models

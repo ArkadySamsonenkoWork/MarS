@@ -282,7 +282,7 @@ class SpinSystemPlotter:
         Includes interaction type and a short representation of the tensor(s).
         """
         itype = d.get('itype', '')
-        lines = [f"{a} — {b} ({itype})"]
+        lines = [f"{a} - {b} ({itype})"]
         t = d.get('tensor', None)
         s = self._short_tensor_str(t, maxchars=500)
         lines.append('tensor:')

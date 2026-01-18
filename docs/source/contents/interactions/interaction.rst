@@ -37,7 +37,65 @@ Construction
 
 Note: All values must be provided in SI-compatible units (Hz for couplings, dimensionless for g-tensors).
 
-Addition
---------
+Addition and Interaction Summation
+-----------------------------
 
-Two :class:`Interaction` instances can be added. If their frames match, components are summed directly. Otherwise, tensors are rotated to the lab frame, summed, and diagonalized to extract new principal values and frame.
+Two :class:`mars.spin_system.Interaction` and :class:`mars.spin_system.DEInteraction`  instances can be added using the ``+`` operator. The result is a new interaction that represents the sum of their second-rank tensors in the laboratory frame.
+
+Frame handling
+~~~~~~~~~~~~~~
+
+If both interactions are defined in the same molecular frame (i.e., their Euler angles are numerically identical), their principal components are summed directly. If their frames differ, each tensor is first rotated into the laboratory frame:
+
+.. math::
+
+   \mathbf{T}^{(i)}_{\text{lab}} = \mathbf{R}^{(i)} \cdot \operatorname{diag}(T_x^{(i)}, T_y^{(i)}, T_z^{(i)}) \cdot (\mathbf{R}^{(i)})^\top,
+
+then summed as full 3×3 matrices:
+
+.. math::
+
+   \mathbf{T}_{\text{sum}}^{\text{lab}} = \mathbf{T}^{(1)}_{\text{lab}} + \mathbf{T}^{(2)}_{\text{lab}}.
+
+The resulting tensor is diagonalized to extract new principal values and a new orientation frame. The output is always stored as a valid :class:`Interaction` with its own intrinsic frame and rotation to the lab frame.
+
+Strain handling
+~~~~~~~~~~~~~~~
+
+Strain parameters describe distributions of the principal values in the intrinsic frame. During addition:
+
+- Strain vectors from each operand are **concatenated**.
+- A combined ``strain_correlation`` matrix is built to map this concatenated strain vector onto perturbations of the final principal components. (see also :ref:`strain-managment-mars`)
+
+This mechanism works consistently even when combining a generic :class:`Interaction` with a :class:`DEInteraction`.
+
+For example::
+
+    # Isotropic exchange interaction with scalar strain
+    exchange = Interaction(1.5e9, strain=0.5e9)  # 1.5 GHz, strain = 0.5 GHz
+
+    # Zero-field splitting in D–E form with strain on D and E
+    zfs = DEInteraction([400e6, 80e6], strain=[20e6, 5e6])  # D = 400 MHz, E = 80 MHz
+
+    # Combine them
+    total = exchange + zfs
+
+    print("Principal values (Hz):", total.components)
+    print("Strain correlation matrix:\n", total.strain_correlation)
+
+The resulting ``strain_correlation`` matrix has shape ``(3, 5)``: three rows for the output principal components (Dx, Dy, Dz) and five columns—three from the isotropic interaction (treated as independent perturbations along x, y, z) and two from the D/E parameters via the standard transformation:
+
+.. math::
+
+   \begin{bmatrix}
+   \delta D_x \\ \delta D_y \\ \delta D_z
+   \end{bmatrix}
+   =
+   \begin{bmatrix}
+   1 & 0 & 0 & -\frac{1}{3} & 1 \\
+   0 & 1 & 0 & -\frac{1}{3} & -1 \\
+   0 & 0 & 1 & \frac{2}{3} & 0
+   \end{bmatrix}
+   \begin{bmatrix}
+   \delta J_x \\ \delta J_y \\ \delta J_z \\ \delta D \\ \delta E
+   \end{bmatrix}

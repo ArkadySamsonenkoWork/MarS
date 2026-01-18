@@ -26,7 +26,9 @@ Welcome to MarS!
    contents/interactions/index
    contents/spectra_creators/index
    contents/intensity_calculators/index
-   contents/meshers/index
+   contents/optimization/index
+   contents/populators/index
+   contents/context/index
 
 .. toctree::
    :maxdepth: 2

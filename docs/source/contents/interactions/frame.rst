@@ -1,12 +1,12 @@
 Frame and Euler Angles
 ======================
 
-In MarS, the orientation of any interaction tensor relative to the laboratory frame is defined by a **rotation**, specified either as Euler angles or a full rotation matrix.
+In MarS, the orientation of any interaction tensor relative to the laboratory frame is defined by a *rotation*, specified either as Euler angles or a full rotation matrix.
 
 Euler Angle Convention
 ----------------------
 
-MarS uses the **ZYZ' (proper Euler) convention** with angles :math:`(\alpha, \beta, \gamma)` in **radians**, applied in the following order:
+MarS uses the *ZYZ' (proper Euler) convention* with angles :math:`(\alpha, \beta, \gamma)` in *radians*, applied in the following order:
 
 1. Rotation by :math:`\alpha` around the **lab Z-axis**,
 2. Rotation by :math:`\beta` around the **new Y'-axis**,
@@ -23,7 +23,7 @@ This is the standard convention in magnetic resonance for describing molecular o
 Usage
 -----
 
-When constructing an :class:`spin_system.Interaction` or :class:`spin_system.DEInteraction`, the ``frame`` argument accepts:
+When constructing an :class:`mars.spin_system.Interaction` or :class:`mars.spin_system.DEInteraction`, the ``frame`` argument accepts:
 
 - ``None`` → identity (tensor aligned with lab frame),
 - A sequence ``[α, β, γ]`` (in radians),

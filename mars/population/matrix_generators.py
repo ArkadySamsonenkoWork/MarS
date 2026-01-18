@@ -16,7 +16,8 @@ class BaseGenerator(ABC):
     def __init__(self,
                  context: contexts.BaseContext,
                  init_temperature: torch.Tensor,
-                 full_system_vectors: tp.Optional[torch.Tensor] = None,
+                 res_fields: tp.Optional[torch.Tensor],
+                 full_system_vectors: tp.Optional[torch.Tensor],
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
@@ -25,7 +26,17 @@ class BaseGenerator(ABC):
         :param init_temperature:  initial temperature of process.
         -It can be constant during the process
         -It can be skipped if the temperature defines from profile
-        :param full_system_vectors: The eigen vectors of all energy levels of a spin system. The shape is [N, N]
+        :param res_fields:
+            Resonance fields of transitions.
+            Shape: [..., M], where M is the number of resonance energies.
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors.
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
+
         :param device: Computation device
         :param dtype:
         :param args:
@@ -35,6 +46,7 @@ class BaseGenerator(ABC):
         self.context = context
         self.init_temperature = init_temperature
         self.full_system_vectors = full_system_vectors
+        self.res_fields = res_fields
 
     @abstractmethod
     def __call__(self, time: torch.Tensor):
@@ -85,7 +97,7 @@ class LevelBasedGenerator(BaseGenerator):
 
     def __call__(self, time: torch.Tensor) -> tp.Tuple[
         tp.Optional[torch.Tensor],
-        torch.Tensor,
+        tp.Optional[torch.Tensor],
         tp.Optional[torch.Tensor],
         tp.Optional[torch.Tensor]
     ]:
@@ -121,15 +133,15 @@ class LevelBasedGenerator(BaseGenerator):
 
         temp = self._temperature(time_dep_values)
         free_probs = self._base_transition_probs(time_dep_values)
-        induced_probs = self._driven_transition_probs(time_dep_values)
+        driven_probs = self._driven_transition_probs(time_dep_values)
         out_probs = self._outgoing_transition_probs(time_dep_values)
-        return temp.unsqueeze(-1).unsqueeze(-1), free_probs, induced_probs, out_probs
+        return temp.unsqueeze(-1).unsqueeze(-1), free_probs, driven_probs, out_probs
 
     def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t"""
         return self.init_temperature
 
-    def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> torch.Tensor:
+    def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """
         Retrieve spontaneous (free) transition probabilities transformed into the eigenbasis.
         These rates are subject to Boltzmann detailed balance.
@@ -178,7 +190,7 @@ class DensityRWAGenerator(BaseGenerator):
     Generator for Liouville-space superoperators under the rotating wave approximation (RWA).
 
     Returns the Hamiltonian H and two superoperators:
-      - free_superop: spontaneous processes (thermal relaxation, losses, decoherence),
+      - free_superop: spontaneous processes (thermal relaxation, losses, dephsing),
       - driven_superop: external non-equilibrium driving.
 
     The full Liouvillian is L = -i[H, ·] + R_free + R_driven, where [·,·] is the commutator,
@@ -190,22 +202,36 @@ class DensityRWAGenerator(BaseGenerator):
     """
     def __init__(self,
                  context: contexts.BaseContext,
-                 stationary_hamiltonian: torch.Tensor,
                  init_temperature: torch.Tensor,
-                 lvl_down, lvl_up,
-                 full_system_vectors: tp.Optional[torch.Tensor] = None,
+                 res_fields: torch.Tensor,
+                 full_system_vectors: tp.Optional[torch.Tensor],
+                 stationary_hamiltonian: torch.Tensor,
+                 lvl_down: torch.Tensor, lvl_up: torch.Tensor,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
         """
         :param context: Context object instance
-        :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
-        -For RWA it uses full Hamiltonian in rotating frame.
-        -For Propagator it uses real stationary Hamiltonian
 
         :param init_temperature:  initial temperature of process.
         -It can be constant during the process
         -It can be skipped if the temperature defines from profile
+
+        :param res_fields:
+            Resonance fields of transitions.
+            Shape: [..., M], where M is the number of resonance energies.
+
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
+
+        :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
+            -For RWA it uses full Hamiltonian in rotating frame.
+            -For Propagator it uses real stationary Hamiltonian
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -216,17 +242,15 @@ class DensityRWAGenerator(BaseGenerator):
             Energy levels of upper states to which transitions occur.
             Shape: [time, ..., N], where time is the time dimension and
             N is the number of energy levels.
-        :param full_system_vectors: The eigen vectors of all energy levels of a spin system. The shape is [N, N]
         :param device: Computation device
         :param dtype:
         :param args:
         :param kwargs:
         """
-        super().__init__(context, init_temperature, full_system_vectors, device, dtype)
+        super().__init__(context, init_temperature, res_fields, full_system_vectors, device, dtype)
         self.stationary_hamiltonian = stationary_hamiltonian
         self.level_down = lvl_down
         self.level_up = lvl_up
-
 
     def __call__(self, time: torch.Tensor) -> tp.Tuple[
         tp.Optional[torch.Tensor],
@@ -264,7 +288,7 @@ class DensityRWAGenerator(BaseGenerator):
     def _base_superop(self, time_dep_values: tp.Optional[torch.Tensor]) -> torch.Tensor:
         """
         Retrieve spontaneous relaxation superoperator in Liouville space.
-        Includes spontaneous transitions, losses, and decoherence, and is corrected for detailed balance.
+        Includes spontaneous transitions, losses, and dephsing, and is corrected for detailed balance.
         :param time_dep_values: Optional time-dependent scaling from Context profile.
         :return: Superoperator tensor of shape [..., N^2, N^2].
         """

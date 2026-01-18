@@ -684,7 +684,12 @@ class Broadener(nn.Module):
     def forward(self, sample: spin_system.MultiOrientedSample,
                  vector_down: torch.Tensor, vector_up: torch.Tensor, B_trans: torch.Tensor) -> torch.Tensor:
         """
-        Compute gaussian broadening of individual transition lines
+        Compute total Gaussian linewidth (FWHM) for each transition by combining:
+        - Field-dependent strain contributions (from g-, D-tensor distributions)
+        - Field-independent zero-field strain terms
+        - Residual Hamiltonian strain (e.g., unresolved hyperfine)
+        Result is scaled to FWHM using standard Gaussian conversion factor.
+
         :param sample: The MultiOrientedSample object
         :param vector_down: Lower-state eigenvector. Shape [..., N]
         :param vector_up: Upper-state eigenvector. Shape [..., N]
@@ -715,7 +720,7 @@ class BaseIntensityCalculator(nn.Module):
     def __init__(self,
                  spin_system_dim: int | list[int],
                  temperature: tp.Optional[float] = None,
-                 populator: tp.Optional[BasePopulator] = None,
+                 populator: tp.Optional[tp.Union[BasePopulator, str]] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
                  disordered: bool = True,
                  device: torch.device = torch.device("cpu"),
@@ -724,7 +729,9 @@ class BaseIntensityCalculator(nn.Module):
         :param spin_system_dim: Dimension of spin system Hilbert space
         :param temperature: Temperature in Kelvin of a sample.
         :param populator: BasePopulator object. Default is None
-        (auto-initialized based on specific calculator)
+        (auto-initialized based on specific calculator).
+        Also, can be set as string object for some cases (for example, for density computations)
+
         :param context: Relaxation/population context defining relaxation and initial population. Default is None
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
         :param device: Computation device. Default is torch.device("cpu")
@@ -739,7 +746,8 @@ class BaseIntensityCalculator(nn.Module):
 
         self.to(device)
 
-    def _init_populator(self,  temperature: tp.Optional[float], populator: tp.Optional[BasePopulator],
+    def _init_populator(self,  temperature: tp.Optional[float],
+                        populator: tp.Optional[tp.Union[BasePopulator, str]],
                         context: tp.Optional[contexts.BaseContext], disordered: bool,
                         device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
@@ -783,6 +791,16 @@ class BaseIntensityCalculator(nn.Module):
                 vector_down: torch.Tensor, vector_up: torch.Tensor, lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
+        """
+        Compute intensity of transitions.
+        :param Gx, Gy, Gz: Zeeman operator components
+        :param vector_down, vector_up: Transition eigenvectors
+        :param lvl_down, lvl_up: Energy level indices
+        :param resonance_energies: Hamiltonian eigenvalues
+        :param resonance_manifold: Resonance condition values (fields/frequencies)
+        :param full_system_vectors: Optional full eigenbasis
+        :return: Transition intensities
+        """
         raise NotImplementedError
 
     def forward(self, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
@@ -790,12 +808,6 @@ class BaseIntensityCalculator(nn.Module):
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
         """
-        Compute total Gaussian linewidth (FWHM) for each transition by combining:
-        - Field-dependent strain contributions (from g-, D-tensor distributions)
-        - Field-independent zero-field strain terms
-        - Residual Hamiltonian strain (e.g., unresolved hyperfine)
-        Result is scaled to FWHM using standard Gaussian conversion factor.
-
         :param Gx, Gy, Gz: Zeeman operator components
         :param vector_down, vector_up: Transition eigenvectors
         :param lvl_down, lvl_up: Energy level indices
@@ -840,7 +852,7 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
                         disordered: bool, device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
         :param temperature: Sample temperature in Kelvin
-        :param populator: Optional custom population function
+        :param populator: Optional population computation instance of BasePopulator
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
         :param device: Computation device
@@ -885,15 +897,22 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
     - Level populations. Uses relaxation parameters and initial populations given in context
     """
     def __init__(self, spin_system_dim: int, temperature: tp.Optional[float],
-                 populator: tp.Optional[BaseTimeDepPopulator], context: tp.Optional[contexts.BaseContext],
+                 populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
+                 context: tp.Optional[contexts.BaseContext],
                  disordered: bool = True,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32,
                  ):
         """
         :param spin_system_dim: Dimension of spin system Hilbert space
         :param temperature: Temperature in Kelvin of a sample.
-        :param populator: Custom population calculator. Default is None
-        (auto-initialized based as LevelBasedPopulator)
+        :param populator:
+            Specifies the population calculator to use.
+            If None (default), a LevelBasedPopulator or RWADensityPopulator  is automatically initialized
+            depending on class.
+            Alternatively, a string may be provided to select a density-based method:
+            - rwa - uses the rotating-wave approximation
+            - propagator - uses full time-propagator dynamics
+
         :param context: Relaxation/population context defining relaxation and initial population.
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
         :param device: Computation device. Default is torch.device("cpu")
@@ -903,10 +922,13 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
             spin_system_dim, temperature, populator, context, disordered, device=device, dtype=dtype
         )
 
-    def _init_populator(self, temperature, populator, context, disordered, device: torch.device, dtype: torch.dtype):
+    def _init_populator(self,
+                        temperature: tp.Optional[float], populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
+                        context: tp.Optional[contexts.BaseContext],
+                        disordered: bool, device: torch.device, dtype: torch.dtype) -> BaseTimeDepPopulator:
         """
         :param temperature: Sample temperature in Kelvin
-        :param populator: Optional custom population function
+        :param populator: Optional BaseTimeDepPopulator object
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
         :param device: Computation device
@@ -959,12 +981,21 @@ class TimeDensityCalculator(TimeIntensityCalculator):
     Default RWADensityPopulator populator is used
     """
     def _init_populator(self, temperature: torch.Tensor,
-                        populator: tp.Optional[BasePopulator],
+                        populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
                         context: tp.Optional[contexts.BaseContext], disordered: bool,
                         device: torch.device, dtype: torch.dtype):
         if populator is None:
             return RWADensityPopulator(
                 context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+        elif isinstance(populator, str):
+            if populator == "rwa":
+                return RWADensityPopulator(
+                    context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+            elif populator == "propagator":
+                return PropagatorDensityPopulator(
+                    context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+            else:
+                raise ValueError("populator can be None, user-defined or sting 'rwa' or 'propagator'")
         else:
             setattr(populator, "disordered", disordered)
             return populator
@@ -1010,7 +1041,7 @@ class BaseSpectra(nn.Module, ABC):
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
                  intensity_calculator: tp.Optional[BaseIntensityCalculator] = None,
-                 populator: tp.Optional[BasePopulator] = None,
+                 populator: tp.Optional[tp.Union[BasePopulator, str]] = None,
                  spectra_integrator: tp.Optional[BaseSpectraIntegrator] = None,
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
@@ -1073,7 +1104,7 @@ class BaseSpectra(nn.Module, ABC):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         :param secular: bool
@@ -1190,8 +1221,10 @@ class BaseSpectra(nn.Module, ABC):
 
         return spin_system_dim, batch_dims, mesh
 
-    def _get_intensity_calculator(self, intensity_calculator, temperature: float,
-                                  populator: tp.Optional[BasePopulator],
+    def _get_intensity_calculator(self,
+                                  intensity_calculator: tp.Optional[BaseIntensityCalculator],
+                                  temperature: float,
+                                  populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
                                   device: torch.device, dtype: torch.dtype):
         if intensity_calculator is None:
@@ -1478,7 +1511,7 @@ class StationarySpectra(BaseSpectra):
         :param populator:
             Class that is used to compute part intensity due to population of levels. Default is None
             If intensity_calculator is None or StationaryIntensityCalculator
-            then it will be initialized as StationaryPopulation
+            then it will be initialized as StationaryPopulator
             In this case the population is given as Boltzmann population
 
         :param spectra_integrator:
@@ -1510,7 +1543,7 @@ class StationarySpectra(BaseSpectra):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         :param secular: bool
@@ -1623,9 +1656,8 @@ class TruncTimeSpectra(BaseSpectra):
             If it is None then it will be initialized as TimeIntensityCalculator
 
         :param populator:
-            Class that is used to compute part intensity due to population of levels.
-            There is no default initialization.
-            Eather Populator or Intensity Calculator should be given
+            Object that is used to compute part intensity due to the difference of population between levels.
+            By default, it is initialized as LevelBasedPopulator and uses solution of kinetic equation for populations
 
         :param spectra_integrator:
             Class to integrate the resonance lines to get the spectrum.
@@ -1656,7 +1688,7 @@ class TruncTimeSpectra(BaseSpectra):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         :param secular: bool
@@ -1689,8 +1721,8 @@ class TruncTimeSpectra(BaseSpectra):
         """
         return super().__call__(sample, field, time, **kwargs)
 
-    def _get_intensity_calculator(self, intensity_calculator,
-                                  temperature,
+    def _get_intensity_calculator(self, intensity_calculator: tp.Optional[BaseIntensityCalculator],
+                                  temperature: float,
                                   populator: tp.Optional[BaseTimeDepPopulator],
                                   context: tp.Optional[contexts.BaseContext],
                                   device: torch.device, dtype: torch.dtype):
@@ -1753,7 +1785,13 @@ class TruncTimeSpectra(BaseSpectra):
         """
         return False
 
-    def update_context(self, new_context: tp.Any):
+    def update_context(self, new_context: contexts.BaseContext) -> None:
+        """
+        Update context
+
+        :param new_context: New context object with updated parameters
+        :return:
+        """
         self.intensity_calculator.populator.context = new_context
 
 
@@ -1796,7 +1834,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
                  intensity_calculator: tp.Optional[tp.Callable] = None,
-                 populator: tp.Optional[StationaryPopulator] = None,
+                 populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]] = None,
                  spectra_integrator: tp.Optional[BaseSpectraIntegrator] = None,
                  harmonic: int = 0,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
@@ -1832,9 +1870,11 @@ class DensityTimeSpectra(CoupledTimeSpectra):
             If it is None then it will be initialized as TimeIntensityCalculator
 
         :param populator:
-            Class that is used to compute part intensity due to population of levels.
-            There is no default initialization.
-            Eather Populator or Intensity Calculator should be given
+            Object used to compute the solution of the Liouville–von Neumann equation.
+            If None`(the default), the solver uses the rotating-wave approximation (RWA)
+            with RWADensityPopulator to evolve the density matrix.
+            To use full propagator-based dynamics instead, pass the string 'propagator',
+            which selects PropagatorDensityPopulator.
 
         :param spectra_integrator:
             Class to integrate the resonance lines to get the spectrum.
@@ -1865,7 +1905,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         :param secular: bool
@@ -1905,9 +1945,9 @@ class DensityTimeSpectra(CoupledTimeSpectra):
         intensities = population
         return res_fields, intensities, width
 
-    def _get_intensity_calculator(self, intensity_calculator,
-                                  temperature,
-                                  populator: tp.Optional[BaseTimeDepPopulator],
+    def _get_intensity_calculator(self, intensity_calculator: tp.Optional[BaseIntensityCalculator],
+                                  temperature: float,
+                                  populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
                                   device: torch.device, dtype: torch.dtype):
         if intensity_calculator is None:
@@ -1971,7 +2011,7 @@ class StationaryFreqSpectra(StationarySpectra):
         :param populator:
             Class that is used to compute part intensity due to population of levels. Default is None
             If intensity_calculator is None or StationaryIntensityCalculator
-            then it will be initialized as StationaryPopulation
+            then it will be initialized as StationaryPopulator
             In this case the population is given as Boltzmann population
 
         :param spectra_integrator:
@@ -1996,7 +2036,6 @@ class StationaryFreqSpectra(StationarySpectra):
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
 
-
         :param output_eigenvector: Optional[bool]
             If True, computes and returns the full system eigenvector. If False, returns None.
             For stationary computations, the default is False; for time-resolved simulations, the default is True.
@@ -2004,7 +2043,7 @@ class StationaryFreqSpectra(StationarySpectra):
 
         :param context: Optional[context]
             The instance of BaseContext which describes the relaxation mechanism.
-            It can have the initial population logic, transition between energy levels, decoherences, driven transition,
+            It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
         """
