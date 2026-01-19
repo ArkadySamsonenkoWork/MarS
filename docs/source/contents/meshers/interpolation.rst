@@ -12,19 +12,11 @@ These are implemented in :class:`mars.mesher.NearestNeighborsInterpolator` and :
 
 When ``interpolate=True`` in :class:`DelaunayMeshNeighbour`, all three resonance quantities are interpolated onto the extended mesh before triangulation and integration.
 
-
-Recommendation
---------------
-
-For routine powder simulations, use nearest-neighbor interpolation with  
-``initial_grid_frequency=20–30`` and ``interpolation_grid_frequency=60–100``.  
-
-
 Technical Details
 -----------------
 
-**What Is Interpolated?**
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Interpolation Procedures**
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Given resonance data on the base mesh:
 - **Fields** :math:`B_{\text{res}}(\Omega_i)` - resonance magnetic field at orientation :math:`\Omega_i`
@@ -45,7 +37,7 @@ After interpolation, values are assigned to triangle vertices via :meth:`mesh.to
 and per-triangle averages of width and intensity are used during integration (see :class:`PowderStationaryProcessing`).
 
 **NearestNeighborsInterpolator**
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Uses a BallTree (scikit-learn) with haversine distance on the sphere. For each extended vertex,
 the *k*=4 nearest base vertices are found. Weights are computed as:

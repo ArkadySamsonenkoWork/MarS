@@ -5,7 +5,8 @@ import torch
 
 def solve_matrix_ode_rk4(superop_static: torch.Tensor, superop_dynamic: torch.Tensor, n_steps: int):
     """
-    Solve RK4 equation at the interval 2pi
+    Solve RK4 equation at the interval 2pi.
+
     :param superop_static: Time independent part of Liouvillian superoperator
     :param superop_dynamic: Time dependent part of Liouvillian superoperator
     :param n_steps: Total integration steps

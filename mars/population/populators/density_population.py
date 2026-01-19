@@ -22,7 +22,7 @@ def transform_to_complex(vector):
 
 class RWADensityPopulator(core.BaseTimeDepPopulator):
     """
-    RWADensityPopulator
+    RWADensityPopulator.
 
     Computes time-dependent signal intensity using the density matrix formalism
     under the Rotating Wave Approximation (RWA).
@@ -55,6 +55,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                  dtype: torch.dtype = torch.float32):
         """
         :param omega_intensity: The intensity of oscillating magnetic field given at angular frequency (Hz / 2π).
+
         :param context: context is a dataclass / Dict with any objects that are used to compute relaxation matrix.
         :param tr_matrix_generator_cls: class of Matrix Generator
             that will be used to compute probabilities of transitions
@@ -100,7 +101,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
 
     def _init_context_meta(self):
         """
-      Initializes metadata flags based on the presence and configuration of the relaxation Context.
+        Itializes metadata flags based on the presence and configuration of the relaxation Context.
 
       Determines:
         - Whether initial populations/density matrices are provided by the Context (`contexted = True`),
@@ -126,6 +127,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     def _get_initial_Hamiltonian(self, energies: torch.Tensor):
         """
         Constructs the static (time-independent) part of the spin Hamiltonian in the eigenbasis.
+
         :param energies:
             Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
             and N is the number of energy levels.
@@ -142,6 +144,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     ):
         """
         Computes the initial density matrix either from thermal equilibrium or from a context-defined state.
+
         Dispatches to one of two internal methods based on whether the Context provides an initial state.
 
         :param energies:
@@ -172,7 +175,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
         """
-       Initializes the density matrix from thermal equilibrium at `self.init_temperature`.
+        Nitializes the density matrix from thermal equilibrium at `self.init_temperature`.
 
        Populations follow the Boltzmann distribution: p_i ∝ exp(−E_i / k_B T),
        where energies are converted from Hz to Kelvin using physical constants.
@@ -207,6 +210,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     def _transform_to_eigenbasis(self, full_basis: torch.Tensor, args_matrix: tp.Iterable[torch.Tensor]):
         """
         Transforms an Iterable of operators (matrices) from the computational basis to the Hamiltonian eigenbasis.
+
         Applies the unitary transformation: A_eigen = U⁺ A U,
         where U = `full_basis` contains the eigenvectors as columns.
 
@@ -227,7 +231,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             Gx: torch.Tensor, Gy: torch.Tensor, Oz: torch.Tensor,
             full_system_vectors: torch.Tensor,
     ) -> tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Transform Hamiltonian components to eigenbasis and apply scaling"""
+        """Transform Hamiltonian components to eigenbasis and apply scaling."""
         Gx, Gy, Oz = self._transform_to_eigenbasis(
             full_system_vectors,
             (Gx.unsqueeze(-3), Gy.unsqueeze(-3), Oz.unsqueeze(-3))
@@ -252,6 +256,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
+
         ----------
         :param time:
             Time points of measurements.
@@ -342,6 +347,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                 *args, **kwargs) -> torch.Tensor:
         """
         :param time:
+
             Time points of measurements. The shape is [T], where T is number of time-steps
 
         :param res_fields:
@@ -410,7 +416,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
 
 class PropagatorDensityPopulator(RWADensityPopulator):
     """
-    PropagatorDensityPopulator computes time-resolved EPR signals by explicitly evaluating the full
+    PropagatorDensityPopulator computes time-resolved EPR signals by explicitly evaluating the full.
+
     time-evolution propagator U(t, 0).
 
     This method supports:
@@ -440,6 +447,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                  dtype: torch.dtype = torch.float32):
         """
         :param omega_intensity: The intensity of oscillating magnetic field given at angular frequency (Hz / 2π).
+
         :param measurement_time: The EPR spectrometer measurements time in seconds.
         The real experimental  time is about 40-200ns.
         By default, this parameter is None, meaning that only one period of oscillating magnetic field is measured
@@ -493,6 +501,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
+
         ----------
         :param time:
             Time points of measurements.
@@ -564,7 +573,8 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 *args, **kwargs) -> torch.Tensor:
 
         """
-        Computes the time-resolved EPR signal for a disordered (powder) sample
+        Computes the time-resolved EPR signal for a disordered (powder) sample.
+
         by averaging over the microwave field polarization.
 
         In powder samples, the orientation of the microwave magnetic field relative to the molecular structure is random.
@@ -592,7 +602,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
            Microwave frequency in Hz (scalar).
        :return:
            Averaged time-dependent signal intensity for powder sample, shape [T, ..., Tr].
-       """
+        """
 
         tau = 1 / resonance_frequency
         delta_phi = self.two_pi / self.n_steps
@@ -616,7 +626,8 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                          *args, **kwargs) -> torch.Tensor:
 
         """
-       Computes the time-resolved EPR signal for a single-crystal or many-crystal sample
+        Omputes the time-resolved EPR signal for a single-crystal or many-crystal sample.
+
        with fixed microwave polarization.
 
        In crystal simulations, the microwave field direction is fixed relative to the molecular frame.
@@ -666,7 +677,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 resonance_frequency: torch.Tensor,
                 *args, **kwargs) -> torch.Tensor:
         """
-       Computes the time-resolved EPR signal.
+        Omputes the time-resolved EPR signal.
 
        The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
        over one microwave period (or a user-defined `measurement_time`).
@@ -707,6 +718,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 *args, **kwargs) -> torch.Tensor:
         """
         :param time:
+
             Time points of measurements. The shape is [T], where T is number of time-steps
 
         :param res_fields:

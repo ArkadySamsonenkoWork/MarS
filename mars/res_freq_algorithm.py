@@ -9,7 +9,8 @@ from . import spin_system
 ### It should be rebuild without expand operation
 class Locator(nn.Module):
     """
-    Initialize a resonance locator that identifies EPR-allowed transitions within a frequency window
+    Initialize a resonance locator that identifies EPR-allowed transitions within a frequency window.
+
     at a fixed magnetic field.
     This class evaluates the Hamiltonian H = F + B * Gz at a given field `B`,
     computes its eigenvalues and eigenvectors, and then determines which pairwise energy differences
@@ -36,48 +37,48 @@ class Locator(nn.Module):
                 F: torch.Tensor, Gz: torch.Tensor, freq_low: torch.Tensor,
                 freq_high: torch.Tensor, resonance_field: torch.Tensor
                 ):
-
         """
-        Compute all spin transitions whose frequencies lie within [freq_low, freq_high]
-        at a fixed magnetic field `resonance_field`.
+        Compute all spin transitions whose frequencies lie within
+        [freq_low, freq_high] at a fixed magnetic field `resonance_field`.
 
         The Hamiltonian is constructed as H = F + resonance_field * Gz,
         diagonalized to obtain eigenvalues {E_k} and eigenvectors {|ψ_k⟩}.
         Transition frequencies ν_{ij} = E_j - E_i (with i < j) are compared against the frequency window.
-
         Valid transitions are collected, and corresponding eigenvectors are extracted.
         Output tensors are masked to include only transitions satisfying the frequency condition.
 
-        Parameters
-        ----------
-        F : torch.Tensor
-            Field-independent part of the Hamiltonian. Shape: [..., N, N].
-        Gz : torch.Tensor
-            Zeeman interaction operator (z-component). Shape: [... ,N, N].
-        freq_low : torch.Tensor
-            Lower bound of the target frequency interval. Shape: [...].
-        freq_high : torch.Tensor
-            Upper bound of the target frequency interval. Shape: [...].
-        resonance_field : torch.Tensor
-            Fixed magnetic field value at which to evaluate the spectrum..
+        :param F:
+            'torch.Tensor'
+                Field-independent part of the Hamiltonian. Shape: [..., N, N].
+        :param Gz:
+            'torch.Tensor'
+                Zeeman interaction operator (z-component). Shape: [..., N, N].
+        :param freq_low:
+            'torch.Tensor'
+                Lower bound of the target frequency interval. Shape: [...].
+        :param freq_high:
+            'torch.Tensor'
+                Upper bound of the target frequency interval. Shape: [...].
+        :param resonance_field:
+            'torch.Tensor'
+                Fixed magnetic field value at which to evaluate the spectrum.
 
-        Returns
-        -------
-        tuple[torch.Tensor, torch.Tensor]
-            Eigenvectors of lower (`vectors_u`) and upper (`vectors_v`) states for each valid transition.
-            Shape: [..., N_trans, K], where N_trans is the number of transitions in the frequency window.
-        tuple[torch.Tensor, torch.Tensor]
-            Level indices (in ascending energy order) involved in each transition: (lvl_down, lvl_up).
-            Shape: [N_trans,] - global across batch due to masking logic.
-        torch.Tensor
-            Transition frequencies ν_{ij} = E_j - E_i that satisfy freq_low ≤ ν ≤ freq_high.
-            Shape: [..., N_trans].
-        torch.Tensor
-            Full energy spectra (all K levels) repeated per valid transition.
-            Shape: [..., N_trans, K].
-        torch.Tensor or None
-            Full eigenvector matrices (all K states) for each valid transition, if `output_full_eigenvector=True`.
-            Shape: [..., N_trans, K, K]. Otherwise, None.
+        :return:
+            'tuple[torch.Tensor, torch.Tensor]'
+                Eigenvectors of lower (`vectors_u`) and upper (`vectors_v`) states for each valid transition.
+                Shape: [..., N_trans, K], where N_trans is the number of transitions in the frequency window.
+            'tuple[torch.Tensor, torch.Tensor]'
+                Level indices (in ascending energy order) involved in each transition: (lvl_down, lvl_up).
+                Shape: [N_trans,] — global across batch due to masking logic.
+            'torch.Tensor'
+                Transition frequencies ν_{ij} = E_j - E_i that satisfy freq_low ≤ ν ≤ freq_high.
+                Shape: [..., N_trans].
+            'torch.Tensor'
+                Full energy spectra (all K levels) repeated per valid transition.
+                Shape: [..., N_trans, K].
+            'torch.Tensor | None'
+                Full eigenvector matrices (all K states) for each valid transition, if `output_full_eigenvector=True`.
+                Shape: [..., N_trans, K, K]. Otherwise, None.
         """
         H = F + Gz * resonance_field
         eigen_values, eigen_vectors = torch.linalg.eigh(H)
@@ -108,7 +109,8 @@ class Locator(nn.Module):
 
 class ResFreq(nn.Module):
     """
-    Clss to compute EPR transitions within a user-defined frequency interval
+    Clss to compute EPR transitions within a user-defined frequency interval.
+
     at a fixed magnetic field, over a structured batch/mesh of spin systems.
 
     Designed for use in frequency-swept simulations (e.g., fixed-field EPR or THz spectroscopy),
@@ -165,7 +167,8 @@ class ResFreq(nn.Module):
             tuple[torch.Tensor, torch.Tensor],
             torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]:
         """
-        :param sample: The sample for which the resonance parameters need to be found
+        :param sample: The sample for which the resonance parameters need to be found.
+
         :param resonance_field: the resonance field. The shape is []
         :param freq_low: low limit of frequency intervals. The shape is [batch_dim]
         :param freq_high: high limit of frequency intervals. The shape is [batch_dim]
@@ -180,7 +183,7 @@ class ResFreq(nn.Module):
         - vector_full_system | None. The eigen vectors for all energy levels
         """
         config_dims = (*self.batch_dims, *self.mesh_size)
-        (vectors_u, vectors_v), (lvl_down, lvl_up), \
+        (vectors_u, vectors_v), (lvl_down, lvl_up),\
             transition_freq, eigen_values, full_eigen_vectors = self.locator(
             F.flatten(0, -3), Gz.flatten(0, -3), freq_low.flatten(0, -1), freq_high.flatten(0, -1), resonance_field
         )

@@ -10,7 +10,8 @@ from . import core
 
 class LevelBasedPopulator(core.BaseTimeDepPopulator):
     """
-    LevelBasedPopulator implements time-resolved EPR signal modeling within the kinetic
+    LevelBasedPopulator implements time-resolved EPR signal modeling within the kinetic.
+
     (population-based) relaxation paradigm.
 
     This class uses only the diagonal elements of the density matrix (populations of energy levels)
@@ -32,6 +33,7 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
         :param context: context is a dataclass / Dict with any objects that are used to compute relaxation matrix.
+
         :param tr_matrix_generator_cls: class of Matrix Generator
             that will be used to compute probabilities of transitions
         :param solver: It solves the general equation dn/dt = A(n,t) @ n.
@@ -137,6 +139,7 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
                 *args, **kwargs) -> torch.Tensor:
         """
         :param time:
+
             Time points of measurements. The shape is [T], where T is number of time-steps
 
         :param res_fields:
@@ -194,7 +197,8 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
 
 class T1Populator(LevelBasedPopulator):
     """
-    T1Populator models time-resolved EPR signals initiated from an inverted population distribution,
+    T1Populator models time-resolved EPR signals initiated from an inverted population distribution,.
+
     mimicking inversion-recovery relaxation experiments.
 
     Unlike the standard LevelBasedPopulator, which starts from thermal equilibrium,
@@ -211,6 +215,7 @@ class T1Populator(LevelBasedPopulator):
     ):
         """
         Computes the initial population vector with inverted populations for resonant transitions.
+
         This method first obtains the thermal equilibrium populations (or context-defined ones),
         then swaps the populations of the lower and upper states for each resonant transition
         to simulate full inversion (π-pulse condition).

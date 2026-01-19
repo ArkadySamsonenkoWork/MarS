@@ -7,7 +7,7 @@ import typing as tp
 
 
 def signal_to_amplitude(y_vals):
-    """ Rotate the signal so that the mean imaginary part is zero, then compute amplitude. """
+    """Rotate the signal so that the mean imaginary part is zero, then compute amplitude."""
 
     img = np.imag(y_vals)
     real = np.real(y_vals)
@@ -22,7 +22,7 @@ def signal_to_amplitude(y_vals):
 def create_baseline_mask(x_vals: np.ndarray,
                          baseline_areas: list[tuple[float, float]]):
     """
-    Create a mask that includes only baseline regions
+    Create a mask that includes only baseline regions.
 
     Parameters:
     -----------
@@ -46,9 +46,7 @@ def create_baseline_mask(x_vals: np.ndarray,
 
 
 def correct_baseline_polynomial(x_vals: np.ndarray, y_vals: np.ndarray, mask: np.ndarray, poly_order: int):
-    """
-    Remove baseline by fitting polynomial to regions excluding the peak
-    """
+    """Remove baseline by fitting polynomial to regions excluding the peak."""
     coeffs = np.polyfit(x_vals[mask], y_vals[mask], poly_order)
     baseline = np.polyval(coeffs, x_vals)
     y_corrected = y_vals - baseline
@@ -56,9 +54,7 @@ def correct_baseline_polynomial(x_vals: np.ndarray, y_vals: np.ndarray, mask: np
 
 
 def correct_baseline_saturation(y_vals: np.ndarray, sat_last_indexes: int):
-    """
-    Remove baseline by fitting polynomial to regions excluding the peak
-    """
+    """Remove baseline by fitting polynomial to regions excluding the peak."""
     satur_value = y_vals[-sat_last_indexes:].mean()
     baseline = np.ones_like(y_vals) * satur_value
     y_corrected = y_vals - satur_value
@@ -67,7 +63,7 @@ def correct_baseline_saturation(y_vals: np.ndarray, sat_last_indexes: int):
 
 def correct_baseline_als(y_vals: np.ndarray, mask: np.ndarray, lam=1e6, p=0.01, niter=10):
     """
-    ALS baseline with masking capability
+    ALS baseline with masking capability.
 
     Parameters:
     -----------
@@ -109,6 +105,7 @@ def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
                          proximity_threshold=0.15):
     """
     Detect baseline using local percentile analysis.
+
     Points close to local low percentile are likely baseline.
     """
     if window_size is None:
@@ -132,6 +129,7 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
                      method="poly", poly_order=0, lam=2e7, p=0.05, niter=10, sat_last_indexes=10):
     """
     Correct baseline line in spectral data.
+
     :param x_vals: np.ndarray
            X-axis coordinates (e.g., fields or time points).
     :param y_vals:np.ndarray
@@ -180,7 +178,7 @@ def normalize_spectrum(x: tp.Union[torch.Tensor, np.ndarray],
                        y: tp.Union[torch.Tensor, np.ndarray],
                        mode: str = "integral") -> tp.Union[torch.Tensor, np.ndarray]:
     """
-    Normalize a 1D spectrum
+    Normalize a 1D spectrum.
 
     :param x:  tp.Union[torch.Tensor, np.ndarray]
         X-axis coordinates (e.g., magnetic field values).
@@ -222,7 +220,7 @@ def normalize_spectrum2d(
         y: tp.Union[torch.Tensor, np.ndarray],
         mode: str = "integral") -> torch.Tensor:
     """
-    Normalize a 2D spectrum
+    Normalize a 2D spectrum.
 
     :param x1:  tp.Union[torch.Tensor, np.ndarray]
         X1-axis coordinates (e.g., magnetic field values).

@@ -17,6 +17,7 @@ class BaseObjectiveFunction:
 
 class MSEObjective(BaseObjectiveFunction):
     """Mean Squared Error (MSE) objective for EPR spectral fitting.
+
     Computes the average squared difference between simulated and experimental spectra.
     """
 
@@ -49,7 +50,7 @@ class CrossCorrelation(BaseObjectiveFunction):
         vx = pred - pred.mean(dim=-1, keepdim=True)
         vy = target - target.mean(dim=-1, keepdim=True)
         corr =\
-            torch.sum(vx * vy, dim=-1) / \
+            torch.sum(vx * vy, dim=-1) /\
             (torch.sqrt(torch.sum(vx ** 2, dim=-1)) * torch.sqrt(torch.sum(vy ** 2, dim=-1)))
         return 1 - corr
 

@@ -7,14 +7,14 @@ The time evolution of the spin density matrix :math:`\rho(t)` is governed by the
 
    \frac{d\rho}{dt} = -\frac{i}{\hbar} [\hat{H}, \rho] + \mathcal{R}[\rho]
 
-where :math:`\hat{H}` is the system Hamiltonian and :math:`\mathcal{R}[\rho]` is the dissipative part of the Liouvillian superoperator, responsible for irreversible dynamics.
+where :math:`\hat{H}` is the system Hamiltonian and :math:`\mathcal{R}[\rho]` is the relaxation superoperator.
 
-The dissipator :math:`\mathcal{R}[\rho]` accounts for four physically distinct processes that govern population and coherence dynamics in time-resolved EPR:
+The relaxation superoperator :math:`\mathcal{R}[\rho]` accounts for four physically distinct processes that govern population and coherence dynamics in time-resolved EPR:
 
 - **Free probabilities**: thermalizing transitions between eigenstates obeying detailed balance,
 - **Driven probabilities**: coherent or incoherent microwave-induced transitions,
 - **Out probabilities**: irreversible population loss (e.g., radiative or non-radiative decay),
-- **Dephasinge rates**: pure dephasing between energy levels.
+- **Dephasing rates**: pure dephasing between energy levels.
 
 These processes are encoded in the **Lindblad master equation**, which provides the explicit form of :math:`\mathcal{R}[\rho]`:
 
@@ -33,14 +33,16 @@ Two computational strategies are available for time propagation:
   The Hamiltonian is transformed into a frame rotating at the excitation frequency, and fast-oscillating terms are discarded. This yields a time-independent effective Liouvillian, enabling efficient simulation near resonance.
 
 - **Full Propagator Construction**  
-  The complete Liouvillian (including full time dependence, if present) is used to construct the exact evolution superoperator via matrix exponentiation:  
+  The complete Liouvillian (including full time dependence, if present) is used to construct the exact evolution superoperator via matrix exponentiation:
+
   .. math::
+
      \mathcal{U}(\Delta t) = \exp\!\big( \mathcal{L} \, \Delta t \big), \quad \text{where} \quad \mathcal{L}[\rho] = -\frac{i}{\hbar}[\hat{H}, \rho] + \mathcal{R}[\rho]
 
-While RWA reduces computational cost, it suffers from limitations: 
+While RWA reduces computational cost, it suffers from limitations:
+
 - The electron Zeeman interaction must be isotropic: :math:`\hat{G}_x = g \mu_B \hat{S}_x`, etc.
 - The static part of the Hamiltonian :math:`\hat{F}` (all terms except Zeeman) must commute with :math:`\hat{G}_z`: :math:`[\hat{F}, \hat{G}_z] = 0`.
 - The relaxation superoperator only couples matrix elements :math:`\rho_{ij}` and :math:`\rho_{kl}` when :math:`i - j = k - l`.
 
-
-All relaxation terms and jump operators alike--re first defined in the user-specified basis (e.g., ``"zfs"``, ``"eigen"``) and then transformed into the Hamiltonian eigenbasis
+All relaxation terms and jump operators alike are first defined in the user-specified basis (e.g., ``"zfs"``, ``"eigen"``) and then transformed into the Hamiltonian eigenbasis.

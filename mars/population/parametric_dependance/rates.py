@@ -86,7 +86,7 @@ class ExponentialRate(ParametricRate):
 
 
 class PowerRate(ParametricRate):
-    """Power low dependance A * T^(n)"""
+    """Power low dependance A * T^(n)."""
 
     def __init__(self, amplitude: torch.Tensor, power: torch.Tensor):
         self.amplitude = amplitude
@@ -128,7 +128,9 @@ class ParametricRateMatrix:
 
     def __call__(self, temp: torch.Tensor) -> torch.Tensor:
         """
-        :param temp: The time-dependant temperature. The shape is [batch_size, time_size]
+        :param temp: The time-dependant temperature.
+
+        The shape is [batch_size, time_size]
         :return: Relaxation rates matrix at temp points
         relaxation matrix at specific temperature.
         The output shape is [..., spin dimension, spin dimension]

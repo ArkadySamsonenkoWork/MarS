@@ -57,8 +57,8 @@ Computational Workflow
 
 1. **Receive transition parameters**
    
-   - Zeeman operator components **G**ₓ, **G**ᵧ, **G**_z
-   - Eigenvectors of lower (|ψ_down⟩) and upper (|ψ_up⟩) states
+   - Zeeman operator components **G_x**, **G_y**, **G_z**
+   - Eigenvectors of lower (:math:`|\psi_\mathrm{down}\rangle`) and upper (:math:`|\psi_\mathrm{up}\rangle`) states
    - Energy level indices of transition levels and eigenvalues of spin Hamiltonian
    - Resonance manifold values (fields or frequencies)
 

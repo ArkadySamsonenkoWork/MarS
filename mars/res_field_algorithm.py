@@ -41,6 +41,7 @@ class BaseEigenSolver(nn.Module, ABC):
     def forward(self, F: torch.Tensor, G: torch.Tensor, B: torch.Tensor):
         """
         Compute only eigenvalues for H = F + G * B.
+
         :param F: Field-free Hamiltonian part, shape [..., K, K].
         :param G: Field-dependent Hamiltonian part, shape [..., K, K].
         :param B: Magnetic field at which to compute eigenvalues, shape [..., L].
@@ -52,6 +53,7 @@ class BaseEigenSolver(nn.Module, ABC):
     def compute_eigenvalues(self, F: torch.Tensor, G: torch.Tensor, B: torch.Tensor):
         """
         Compute only eigenvalues for H = F + G * B.
+
         :param F: Field-free Hamiltonian part, shape [..., K, K].
         :param G: Field-dependent Hamiltonian part, shape [..., K, K].
         :param B: Magnetic field at which to compute eigenvalues, shape [..., L].
@@ -60,9 +62,7 @@ class BaseEigenSolver(nn.Module, ABC):
         pass
 
 class EighEigenSolver(BaseEigenSolver):
-    """
-    Default eigen solver based on torch.linalg.eigh.
-    """
+    """Default eigen solver based on torch.linalg.eigh."""
     def forward(self, Hamiltonian: torch.Tensor):
         vals, vecs = torch.linalg.eigh(Hamiltonian)
         return vals, vecs
@@ -73,7 +73,8 @@ class EighEigenSolver(BaseEigenSolver):
 # IT WAS BE REBUILDED
 def has_sign_change(res_low: torch.Tensor, res_high: torch.Tensor) -> torch.Tensor:
     """
-    calculate the criteria that delta_1N < resonance_frequency
+    Calculate the criteria that delta_1N < resonance_frequency.
+
     :param res_low: resonance function for the lower magnetic field in the interval. The shape is [..., num_pairs],
     where K is spin system dimension
     :param res_high: resonance function for the higher magnetic field in the interval. The shape is [..., num_pairs],
@@ -88,7 +89,8 @@ def has_sign_change(res_low: torch.Tensor, res_high: torch.Tensor) -> torch.Tens
 def has_rapid_variation(res_low: torch.Tensor, res_high: torch.Tensor,
                             deriv_max: torch.Tensor, B_low: torch.Tensor, B_high: torch.Tensor) -> torch.Tensor:
     """
-    calculate the criteria that delta_1N < resonance_frequency
+    Calculate the criteria that delta_1N < resonance_frequency.
+
     :param res_low: resonance function for the lower magnetic field in the interval. The shape is [..., num_pairs],
     where K is spin system dimension
     :param res_high: resonance function for the higher magnetic field in the interval. The shape is [..., num_pairs],
@@ -127,9 +129,7 @@ def has_rapid_variation(res_low: torch.Tensor, res_high: torch.Tensor,
 # Можно ввести ещё одну размерность.
 
 class BaseResonanceIntervalSolver(nn.Module, ABC):
-    """
-    Base class for algorithm of resonance interval search
-    """
+    """Base class for algorithm of resonance interval search."""
     def __init__(self, spin_dim: int,
                  eigen_finder: tp.Optional[BaseEigenSolver] = EighEigenSolver(), r_tol: float = 1e-5,
                  max_iterations: float = 20,
@@ -144,7 +144,8 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
     def _compute_resonance_functions(self, eig_values_low: torch.Tensor, eig_values_high: torch.Tensor,
                                     resonance_frequency: torch.Tensor) -> (torch.Tensor, torch.Tensor):
         """
-        calculate the resonance functions for eig_values.
+        Calculate the resonance functions for eig_values.
+
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -158,10 +159,10 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         eig_values_high_expanded = eig_values_high.unsqueeze(-2)
         eig_values_low_expanded = eig_values_low.unsqueeze(-2)
 
-        res_low = \
+        res_low =\
             (eig_values_low_expanded[..., v] - eig_values_low_expanded[..., u]).squeeze(
                 -2) - resonance_frequency
-        res_high = \
+        res_high =\
             (eig_values_high_expanded[..., v] - eig_values_high_expanded[..., u]).squeeze(
                 -2) - resonance_frequency
         return res_low, res_high
@@ -170,7 +171,8 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
     def _has_monotonically_rule(self, eig_values_low: torch.Tensor, eig_values_high: torch.Tensor,
                                resonance_frequency: torch.Tensor) -> torch.Tensor:
         """
-        calculate the criteria that delta_1N < resonance_frequency
+        Calculate the criteria that delta_1N < resonance_frequency.
+
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -185,7 +187,9 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
                         B_low: torch.Tensor, B_high: torch.Tensor, resonance_frequency: torch.Tensor,
                         baseline_sign: tp.Optional[torch.Tensor], derivative_max: tp.Optional[torch.Tensor]):
         """
-        Check the presence of the resonance at the interval for the general case. I
+        Check the presence of the resonance at the interval for the general case.
+
+        I
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -205,14 +209,13 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
     @abstractmethod
     def loop_dependant_mask(self, eig_values_low, eig_values_high, B_low, B_high, resonance_frequency,
                             baseline_sign: tp.Optional[torch.Tensor], derivative_max: tp.Optional[torch.Tensor]):
-        """
-        Compute a mask based on loop-dependent resonance conditions.
-        """
+        """Compute a mask based on loop-dependent resonance conditions."""
         pass
 
     def _compute_derivative(self, eigen_vector: torch.Tensor, G: torch.Tensor):
         """
-        :param eigen_vector: eigen vectors of Hamiltonian
+        :param eigen_vector: eigen vectors of Hamiltonian.
+
         :param G: Magnetic dependant part of the Hamiltonian: H = F + B * G
         :return: Derivatives of energies by magnetic field. The calculations are based on Feynman's theorem.
         """
@@ -228,7 +231,8 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
                       G: torch.Tensor,
                       row_indexes: torch.Tensor):
         """
-        Compute the error after division of the interval
+        Compute the error after division of the interval.
+
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_mid: energies in the ascending order at B_mid magnetic field.
@@ -332,7 +336,8 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor],
         torch.Tensor]:
         """
-        :param idx_xor: the xor indexes of the left and right mask
+        :param idx_xor: the xor indexes of the left and right mask.
+
          It means that resonance happens in the one interval left or right. The shape is [...]
         :param mask_left: the left mask with the values in batches where resonance happens. The shape is [reduced number of  indexes]
         :param mask_right: the right mask with the values in batches where resonance happens. The shape is [...]
@@ -497,7 +502,8 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
                         baseline_sign: tp.Optional[torch.Tensor],
                         derivative_max: tp.Optional[torch.Tensor]):
         """
-        :param batch: tuple of next values: (eig_values_low, eig_values_high),
+        :param batch: tuple of next values: (eig_values_low, eig_values_high),.
+
         (eig_vectors_low, eig_vectors_high), (B_low, B_high), indexes
         :param F:
         :param Gz:
@@ -515,7 +521,7 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         )
         # It is only one    single
         # point where gradient should be calculated
-        error, (derivatives_low, derivatives_high) = \
+        error, (derivatives_low, derivatives_high) =\
             self.compute_error(eig_values_low, eig_values_mid, eig_values_high,
                                eig_vectors_low, eig_vectors_high,
                                B_low, B_high, Gz, row_indexes
@@ -545,7 +551,7 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
                     row_indexes_conv, resonance_frequency, baseline_sign, derivative_max)
             )
             """
-            final_batches.append((
+            Final_batches.append((
                 (eig_values_low[converged_mask], eig_values_high[converged_mask]),
                 (eig_vectors_low[converged_mask], eig_vectors_high[converged_mask]),
                 (derivatives_low[converged_mask], derivatives_high[converged_mask]),
@@ -590,6 +596,7 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
             ]:
         """
         Calculate the resonance intervals, where the resonance field is possible.
+
         :param F: Magnetic filed free stationary Hamiltonian matrix. The shape is [..., K, K],
         where K is spin system dimension
         :param Gz: Magnetic field dependant part of stationary Hamiltonian with the shape [..., K, K].
@@ -608,7 +615,6 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
              (energy_derivatives_low, energy_derivatives_high) - the derivatives of the energy
              at low and high magnetic field
              indexes, where mask is valid
-
         """
         a_tol = resonance_frequency * self.r_tol
         B_low = B_low[..., None, None]
@@ -650,6 +656,7 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
 class GeneralResonanceIntervalSolver(BaseResonanceIntervalSolver):
     """
     Find resonance interval for the general Hamiltonian case.
+
     The general case determines form the conditcion:
         delta_1N. If it is greater nu_0, than looping resonance are possible. If not, the resonance interval
         can be determined by change sign of resonance function at the ends of the interval.
@@ -662,6 +669,7 @@ class GeneralResonanceIntervalSolver(BaseResonanceIntervalSolver):
                         ):
         """
         Check the mask depending on the presence of the looping resonance.
+
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -700,7 +708,9 @@ class GeneralResonanceIntervalSolver(BaseResonanceIntervalSolver):
 
 class ZeroFreeResonanceIntervalSolver(BaseResonanceIntervalSolver):
     """
-    Find the resonance intervals for the case when delta_1N < nu_o. For this case the looping resonance is impossible.
+    Find the resonance intervals for the case when delta_1N < nu_o.
+
+    For this case the looping resonance is impossible.
     The general case determines form the condition:
         delta_1N. If it is greater nu_0, than looping resonance are possible. If not, the resonance interval
         can be determined by change sign of resonance function at the ends of the interval.
@@ -712,6 +722,7 @@ class ZeroFreeResonanceIntervalSolver(BaseResonanceIntervalSolver):
                         ):
         """
         Check the mask depending on the presence of the looping resonance.
+
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -777,6 +788,7 @@ class BaseResonanceLocator(nn.Module):
             self, coef_3: torch.Tensor, coef_2: torch.Tensor, coef_1: torch.Tensor, coef_0: torch.Tensor):
         """
         Finds the solution of the equation:
+
         coef_3 * t^3 + coef_2 * t^2 + coef_1 * t + coef_0 = 0.
 
         It works when there is only one singe root
@@ -803,7 +815,8 @@ class BaseResonanceLocator(nn.Module):
                                     diff_deriv_high: torch.Tensor,
                                     resonance_frequency: torch.Tensor):
         """
-        Finds the magnetic field value (B_mid) where a resonance occurs by solving a cubic equation
+        Finds the magnetic field value (B_mid) where a resonance occurs by solving a cubic equation.
+
         using the Newton–Raphson method. It suggested that the resonance point is just one
 
         The cubic polynomial is defined by:
@@ -837,6 +850,7 @@ class BaseResonanceLocator(nn.Module):
     def _compute_linear_interpolation_weights(self, step_B):
         """
         :param step_B:
+
         :return:
         """
         weights_low = step_B.unsqueeze(-1)
@@ -872,6 +886,7 @@ class BaseResonanceLocator(nn.Module):
     def _interpolate_vectors(self, vec_low, vec_high, weights_low, weights_high, eps=1e-12):
         """
         Differences / improvements:
+
         - Avoids computing a division for entries where the inner product is (near) zero by using a boolean mask
           and doing the division only for true entries (reduces work and avoids creating large temporaries).
         - Uses vec.abs().square().sum(...).sqrt() for norm which is usually cheaper than conj()*sum or linalg.norm.
@@ -892,7 +907,8 @@ class BaseResonanceLocator(nn.Module):
 
     def _split_mask(self, mask_res: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        :param mask_res: Boolean tensor of shape [batch_size, num_transitions],
+        :param mask_res: Boolean tensor of shape [batch_size, num_transitions],.
+
                 where each element indicates whether a specific transition occurred in that batch item.
 
         :return: tuple[torch.Tensor, torch.Tensor]:
@@ -944,6 +960,7 @@ class BaseResonanceLocator(nn.Module):
             weights_low: torch.Tensor, weights_high: torch.Tensor) -> torch.Tensor:
         """
         :param eig_vectors_low:
+
         :param eig_vectors_high:
         :param lvl_down:
         :param lvl_up:
@@ -968,6 +985,7 @@ class BaseResonanceLocator(nn.Module):
             weights_low: torch.Tensor, weights_high: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         :param eig_vectors_low:
+
         :param eig_vectors_high:
         :param lvl_down:
         :param lvl_up:
@@ -995,6 +1013,7 @@ class BaseResonanceLocator(nn.Module):
             step_B: torch.Tensor) -> tuple[tuple[torch.Tensor, torch.Tensor], tp.Union[torch.Tensor, None]]:
         """
         :param eig_vectors_low:
+
         :param eig_vectors_high:
         :param lvl_down:
         :param lvl_up:
@@ -1021,6 +1040,7 @@ class BaseResonanceLocator(nn.Module):
         torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Apply transition mask filtering and update related tensors efficiently.
+
         :param mask_trans: Current transition mask [batch_size, num_transitions]
         :param mask_trans_i: New mask to apply [batch_size, num_transitions]
         :param mask_triu: Upper triangular mask to update [num_transitions]
@@ -1034,7 +1054,9 @@ class BaseResonanceLocator(nn.Module):
                      mask_triu: torch.Tensor,
                      row_indexes: torch.Tensor):
         """
-    :param mask_trans: The mask of True and False of real transitions. The shape is [..., n],
+        Am mask_trans: The mask of True and False of real transitions.
+
+        The shape is [..., n],
     where n is valid columns number
     :param mask_triu: The mask of True and False. The shape is [N], where N is number of all transitions.
     The number of True == n
@@ -1076,11 +1098,9 @@ class BaseResonanceLocator(nn.Module):
         with corresponding mask_triu_updated = torch.Tensor([False, False, True, False, True, False])
                              and batch_updated.shape = [2, 2, ...]
 
-
         [Flase, False, True],
         with corresponding mask_triu_updated = torch.Tensor([False, False, False, False, True, False])
                              and batch_updated.shape = [1, 1, ...]
-
         """
         original_shape = mask_trans.shape
         flattened_mask = mask_trans.view(-1, original_shape[-1])
@@ -1163,6 +1183,7 @@ class BaseResonanceLocator(nn.Module):
                     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]]:
         """
         :param batch: Tuple with the parameters of the interval:
+
              (eig_values_low, eig_values_high) - eigen values of Hamiltonian
              at the low and high magnetic fields
              (eig_vectors_low, eig_vectors_high) - eigen vectors of Hamiltonian
@@ -1177,7 +1198,7 @@ class BaseResonanceLocator(nn.Module):
         args are additional arguments to compute resonance mask
         :return:
         """
-        eig_values_low, eig_values_high, eig_vectors_low, eig_vectors_high, deriv_low, deriv_high, \
+        eig_values_low, eig_values_high, eig_vectors_low, eig_vectors_high, deriv_low, deriv_high,\
             B_low, B_high, row_indexes, delta_B, lvl_down, lvl_up = self._prepare_inputs(batch)
 
 
@@ -1251,9 +1272,7 @@ class BaseResonanceLocator(nn.Module):
 
 class GeneralResonanceLocator(BaseResonanceLocator):
     def _find_three_roots(self, a: torch.Tensor, p: torch.Tensor, q: torch.Tensor):
-        """
-        coefficients of 3-order polynomial
-        """
+        """Coefficients of 3-order polynomial."""
         p_m3 = torch.sqrt(-p / 3)
 
         acos_argument = (-q / 2) / (p_m3 ** 3)
@@ -1270,6 +1289,7 @@ class GeneralResonanceLocator(BaseResonanceLocator):
     def _filter_three_roots(self, three_roots: torch.Tensor) -> torch.Tensor:
         """
         Filter three toorch to make number of inf less.
+
         :param three_roots: The tensor with the shape [N, 3]. The root can be number or inf
         :return: three_roots with minima infs
         """
@@ -1300,7 +1320,9 @@ class GeneralResonanceLocator(BaseResonanceLocator):
                                   mask_three_roots: torch.Tensor, mask_one_root: torch.Tensor) ->\
             list[tuple[torch.Tensor, torch.Tensor]]:
         """
-        :param three_roots: The tensor with the shape [N, 3]. The root can be number or inf
+        :param three_roots: The tensor with the shape [N, 3].
+
+        The root can be number or inf
         :param one_root: The tensor with the shape [M, 1].
         :param mask_three_roots: The mask where can be three roots. The shape [N + M]
         :param mask_one_root: ~mask_three_roots: The mask where can be only one root. The shape [N + M]
@@ -1336,7 +1358,8 @@ class GeneralResonanceLocator(BaseResonanceLocator):
                                      diff_deriv_high: torch.Tensor,
                                      resonance_frequency: torch.Tensor):
         """
-        Finds the magnetic field value (B_mid) where a resonance occurs by solving a cubic equation
+        Finds the magnetic field value (B_mid) where a resonance occurs by solving a cubic equation.
+
         using the Newton–Raphson method. It suggested that the resonance point is just one
 
         The cubic polynomial is defined by:
@@ -1355,7 +1378,6 @@ class GeneralResonanceLocator(BaseResonanceLocator):
         :return: list of tuples (magnetic field, mask)
         Estimated magnetic field values where resonance occurs, shape matching input pair dimensions.
         and mask where transition occurs
-
         """
         eps = torch.tensor(1e-11, device=diff_eig_high.device)
         tresshold = torch.tensor(1e-10, device=diff_eig_high.device)
@@ -1396,7 +1418,8 @@ class GeneralResonanceLocator(BaseResonanceLocator):
     def _has_rapid_variation(self, res_low: torch.Tensor, res_high: torch.Tensor,
                             B_low: torch.Tensor, B_high: torch.Tensor, deriv_max: torch.Tensor) -> torch.Tensor:
         """
-        calculate the criteria that delta_1N < resonance_frequency
+        Calculate the criteria that delta_1N < resonance_frequency.
+
         :param res_low: resonance function for the lower magnetic field in the interval. The shape is [..., num_pairs],
         where K is spin system dimension
         :param res_high: resonance function for the higher magnetic field in the interval. The shape is [..., num_pairs],
@@ -1418,6 +1441,7 @@ class GeneralResonanceLocator(BaseResonanceLocator):
                            baseline_sign_mask: torch.Tensor, deriv_max: torch.Tensor):
         """
         :param diff_eig_low:
+
         :param diff_eig_high:
         :param resonance_frequency:
         :return:
@@ -1433,6 +1457,7 @@ class GeneralResonanceLocator(BaseResonanceLocator):
             tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Apply transition mask filtering and update related tensors efficiently.
+
         :param mask_trans: Boolean current transition mask [batch_size, num of old valid transitions]
         :param mask_trans_i: Boolean New mask to apply [batch_size, num of new valid transitions]
         :param mask_triu: Boolean upper triangular mask to update [num of all possible transitions]
@@ -1451,7 +1476,8 @@ class GeneralResonanceLocator(BaseResonanceLocator):
 
 class ResField(nn.Module):
     """
-    Computes resonance fields, transition eigenvectors, and associated resonance energies for a spin system
+    Computes resonance fields, transition eigenvectors, and associated resonance energies for a spin system.
+
     over a user-defined magnetic field interval using a robust root-finding algorithm based on adaptive interval bisection
     and cubic interpolation of energy differences.
 
@@ -1527,10 +1553,11 @@ class ResField(nn.Module):
         self.device = device
         self.eigen_finder = eigen_finder
 
-    def _solver_fabric(self, system, F: torch.Tensor, resonance_frequency: torch.Tensor) \
+    def _solver_fabric(self, system, F: torch.Tensor, resonance_frequency: torch.Tensor)\
             -> tuple[BaseResonanceIntervalSolver, BaseResonanceLocator, tuple[tp.Any]]:
         """
-        :param F: The part of Hamiltonian that doesn't depend on the magnetic field
+        :param F: The part of Hamiltonian that doesn't depend on the magnetic field.
+
         :param resonance_frequency: The frequency of resonance
         :return:
         """
@@ -1554,7 +1581,9 @@ class ResField(nn.Module):
     @staticmethod
     def _compute_zero_field_resonance(F: torch.tensor, resonance_frequency: torch.tensor):
         """
-        :param F: Magnetic filed free stationary Hamiltonian matrix. The shape is [..., K, K],
+        :param F: Magnetic filed free stationary Hamiltonian matrix.
+
+        The shape is [..., K, K],
         where K is spin system dimension
         :param resonance_frequency: the resonance frequency. The shape is []
         :return: The mask, where True if resonance function > 0, and False otherwise
@@ -1568,6 +1597,7 @@ class ResField(nn.Module):
                                ) -> tuple[list[tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]], int]:
         """
         'occurrences' is list of the next data:
+
         the batch index
         The row-batch indexes
         The column indexes with respect to the triangular matrix of transitions
@@ -1635,7 +1665,7 @@ class ResField(nn.Module):
         cached_batches = []
         occurences = []
         for bi, batch in enumerate(batches):
-            (vectors_u, vectors_v), (valid_lvl_down, valid_lvl_up), \
+            (vectors_u, vectors_v), (valid_lvl_down, valid_lvl_up),\
                 Bres, mask_triu, row_indexes, resonance_energies, vector_full_system = batch
 
             col_idx = torch.nonzero(mask_triu, as_tuple=False).squeeze(-1)
@@ -1664,6 +1694,7 @@ class ResField(nn.Module):
     ]:
         """
         :param batches: list of next data:
+
         - tuple of eigen vectors for resonance energy levels of low and high levels
         - tuple of valid indexes of levels between which transition occurs
         - magnetic field of transitions
@@ -1744,7 +1775,8 @@ class ResField(nn.Module):
             tuple[torch.Tensor, torch.Tensor],
             torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]:
         """
-        :param sample: The sample for which the resonance parameters need to be found
+        :param sample: The sample for which the resonance parameters need to be found.
+
         :param resonance_frequency: the resonance frequency. The shape is []
         :param B_low: low limit of magnetic field intervals. The shape is [batch_dim]
         :param B_high: high limit of magnetic field intervals. The shape is [batch_dim]

@@ -4,7 +4,7 @@ import typing as tp
 from dataclasses import dataclass
 
 class Profile:
-    """Base class for temperature / power -time dependencies"""
+    """Base class for temperature / power -time dependencies."""
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -40,7 +40,7 @@ class NegatedProfile(Profile):
 
 
 class ConstantProfile(Profile):
-    """Constant profile for power / temperature"""
+    """Constant profile for power / temperature."""
 
     def __init__(self, value: float):
         self.value = torch.tensor(value)
@@ -51,6 +51,7 @@ class ConstantProfile(Profile):
 
 class LinearProfile(Profile):
     """Linear profile (temperature / power) change over time in the specific region:
+
     T(t) = slope* t / delta t + intercept for t in [start_time, end_time]
     T(t) = intercept for t < start_time
     T(t) = slope + intercept for t > end_time
@@ -58,7 +59,9 @@ class LinearProfile(Profile):
     """
     def __init__(self, slope: float, intercept: float, start_time: float, end_time: float):
         """
-        :param slope: The slope of the linear curve. The unit is value
+        :param slope: The slope of the linear curve.
+
+        The unit is value
         :param intercept: The intercept in K
         :param start_time: time in s
         :param end_time: time in s
@@ -71,7 +74,9 @@ class LinearProfile(Profile):
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         """
-        :param time: time in s units. The shape is [...]
+        :param time: time in s units.
+
+        The shape is [...]
         :return: The dependence of the value on time
         """
         final_value = self.slope + self.intercept
@@ -95,7 +100,8 @@ class ExponentialDecayProfile(Profile):
 
     def __init__(self, initial_value: float, steady_value: float, decay_tau: float):
         """
-        :param initial_value: initial temperature of the system in K
+        :param initial_value: initial temperature of the system in K.
+
         :param steady_value: final temperature of the system in K
         :param decay_tau: the time of temperature change in s
         """
@@ -122,10 +128,10 @@ class StepProfile(Profile):
 class LinearExpDecayProfile(Profile):
     """
     Linear ramp combined with exponential decay.
+
     T(t) = base + ramp(t) + (initial_offset - base - end_ramp) * exp(-(t - start_time)/tau) for t >= start_time
     Before start: returns intercept
     After end of ramp: ramp is complete, then decay applies to offset
-
     """
     def __init__(
         self,
@@ -143,7 +149,9 @@ class LinearExpDecayProfile(Profile):
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         """
-        :param time: time in s units. The shape is [...]
+        :param time: time in s units.
+
+        The shape is [...]
         :return: The dependence of the value on time
         """
         result = torch.zeros_like(time)
@@ -173,11 +181,13 @@ class Segment:
 
 
 class PiecewiseProfile(Profile):
-    """Piecewise profile with different dependencies in time segments"""
+    """Piecewise profile with different dependencies in time segments."""
 
     def __init__(self, segments: list[Segment]):
         """
-        :param segments: List of segment definitions. Each segment should contain:
+        :param segments: List of segment definitions.
+
+        Each segment should contain:
             - 'profile': string specifying dependency type (linear, exponential, etc.)
             - 'start': start time of the segment
             - 'end': end time of the segment
@@ -204,19 +214,19 @@ class PiecewiseProfile(Profile):
         return result
 
     def add_segment(self, segment: Segment):
-        """Add a new segment to the piecewise profile"""
+        """Add a new segment to the piecewise profile."""
         self.segments = self._validate_segments(self.segments + [segment])
 
 
 class ThermalProperty:
-    """Base class for temperature-dependent thermal properties"""
+    """Base class for temperature-dependent thermal properties."""
 
     def __call__(self, temperature: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
 
 class ConstantProperty(ThermalProperty):
-    """Constant value independent of temperature"""
+    """Constant value independent of temperature."""
     def __init__(self, value: float):
         self.value = torch.tensor(value)
 
@@ -225,7 +235,7 @@ class ConstantProperty(ThermalProperty):
 
 
 class DebyeHeatCapacity(ThermalProperty):
-    """Debye model heat capacity with temperature dependence"""
+    """Debye model heat capacity with temperature dependence."""
 
     def __init__(self, debye_temp: float, molar_mass: float, n_atoms: int):
         self.debye_temp = torch.tensor(debye_temp)
@@ -240,7 +250,7 @@ class DebyeHeatCapacity(ThermalProperty):
 
 
 class ThermalEquationProfile(Profile):
-    """Temperature profile from power input and thermal properties"""
+    """Temperature profile from power input and thermal properties."""
 
     def __init__(self, power_profile: Profile,
                  heat_capacity: tp.Callable[[torch.Tensor], torch.Tensor],

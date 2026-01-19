@@ -24,7 +24,14 @@ Both operations automatically handle:
 Addition: Combining Relaxation Mechanisms
 ------------------------------------------
 
-The addition operator combines multiple relaxation pathways that act simultaneously on the same set of quantum states. This is the most common operation for building realistic relaxation models.
+The addition operator combines multiple relaxation pathways that act simultaneously on the same set of quantum states. This is the more common operation for building realistic relaxation models.
+
+For the addition the :class:`mars.population.contexts.SummedContext` is used. In the general for speed up it can be instantiated directly:
+
+.. code-block:: python
+
+   summ_context = population.SummedContext(contexts=[context_1, context_2, ..., context_N])
+   # Equivalent to: context_1 + context_2 + ... + context_N, but more efficient
 
 Mathematical Formulation
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +76,7 @@ A triplet state formed by intersystem crossing typically exhibits:
    
    # Define triplet system
    g_tensor = spin_system.Interaction(2.0032, dtype=torch.float64)
-   zfs = spin_system.DEInteraction([540e6, -78e6], dtype=torch.float64)
+   zfs = spin_system.DEInteraction([540e6, 78e6], dtype=torch.float64)
    
    triplet_system = spin_system.SpinSystem(
        electrons=[1.0],
@@ -243,12 +250,16 @@ Properties of Addition
 
 4. **Initial state:** All initial populations are summed up. 
 
-5. **Detailed balance:** Applied separately to each context free_probs before summation
-
 Multiplication: Composite Quantum Systems
 ------------------------------------------
 
 The multiplication operator (``@``) constructs a composite quantum system from two (or more) independent subsystems. This is essential for modeling weakly coupled or non-interacting spin systems.
+
+For the multiplication the :class:`mars.population.contexts.CompositeContext` is used. In the general for speed up it can be instantiated directly
+
+.. code-block:: python
+
+   mul_context = population.CompositeContext(contexts=[context_1, context_2, context_N])  # The same as context_1 @ context_2 @ context_N, but more efficiently
 
 Mathematical Formulation
 ^^^^^^^^^^^^^^^^^^^^^^^^

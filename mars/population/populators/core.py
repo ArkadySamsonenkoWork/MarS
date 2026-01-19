@@ -47,7 +47,8 @@ class BasePopulator(nn.Module):
 
     def _init_context_meta(self):
         """
-        Initialize data depending on context
+        Initialize data depending on context.
+
         :return: None
         """
         if self._context is not None:
@@ -66,15 +67,13 @@ class BasePopulator(nn.Module):
 
     @property
     def context(self) -> contexts.BaseContext:
-        """
-        :return: The context object
-        """
+        """:return: The context object."""
         return self._context
 
     @context.setter
     def context(self, context: contexts.BaseContext) -> None:
         """
-        Set the new context for populator
+        Set the new context for populator.
 
         :param context: Base Context object
         :return:
@@ -90,6 +89,7 @@ class BasePopulator(nn.Module):
     ) -> torch.Tensor:
         """
         :param energies:
+
             The energies of spin states. The shape is [..., R, N], where R is number of resonance transitions
         :param lvl_down : array-like
             Indexes of energy levels of lower states from which transitions occur.
@@ -173,7 +173,7 @@ class BaseTimeDepPopulator(BasePopulator):
         - `init_solver`: selects appropriate integrator based on time-dependence,
         - `_init_tr_matrix_generator`: builds generator for relaxation superoperator,
         - `forward`: orchestrates the full computation pipeline.
-      """
+    """
     def __init__(self,
                  context: tp.Optional[contexts.BaseContext],
                  tr_matrix_generator_cls: tp.Type[matrix_generators.BaseGenerator],
@@ -183,6 +183,7 @@ class BaseTimeDepPopulator(BasePopulator):
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
         :param context: context is a dataclass / Dict with any objects that are used to compute relaxation matrix.
+
         :param tr_matrix_generator_cls: class of Matrix Generator
             that will be used to compute probabilities of transitions
         :param solver: It solves the general equation dn/dt = A(n,t) @ n.
@@ -223,7 +224,8 @@ class BaseTimeDepPopulator(BasePopulator):
 
     def _post_compute(self, time_intensities: torch.Tensor, *args, **kwargs):
         """
-        :param time_intensities: The population difference between transitioning energy levels depending on time
+        :param time_intensities: The population difference between transitioning energy levels depending on time.
+
         :return: intensity of transitions due to population difference
         """
         if self.difference_out:
@@ -236,6 +238,7 @@ class BaseTimeDepPopulator(BasePopulator):
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
+
         :param args: tuple, optional.
         :param kwargs : dict, optional
         :param return:

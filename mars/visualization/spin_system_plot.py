@@ -208,7 +208,9 @@ class SpinSystemPlotter:
     # -----------------------------
     def plot_plotly(self, show_tensors: bool = True, node_positions: Optional[Dict[str, np.ndarray]] = None,
                     width: int = 900, height: int = 700):
-        """Interactive plot with plotly. Hovering nodes/edges shows tensor values.
+        """Interactive plot with plotly.
+
+        Hovering nodes/edges shows tensor values.
 
         If plotly is not installed, raises ImportError.
         """

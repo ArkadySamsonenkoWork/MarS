@@ -41,14 +41,23 @@ MarS provides four predefined bases:
    - :math:`m_k` is the projection of the :math:`k`-th electron spin
    - States sorted by **decreasing** spin projections
 
-Custom Transformation Matrix
+
+4. **"xyz"**
+   
+   This is a common basis for the triplet molecules, where basis is given in the frame of molecule.
+   
+   - :math:`m_k` is the projection of the :math:`k`-th electron spin
+   - States sorted by **decreasing** spin projections
+
+
+Custom Transformation Basis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Users can also provide a custom transformation matrix :math:`U` with shape :math:`[\ldots, R, 1, N, N]`:
+Users can also provide a custom transformation basis with shape :math:`[\ldots, R, 1, N, N]`: 
 
 - :math:`R` is the number of orientations
 - :math:`N` is the spin system dimension
-- Matrix transforms from custom basis to target basis
+- This basis should be defined in laboratory frame (with repspect to orientations) and in the basis of individual spin projections.
 
 Transformation Rules
 --------------------
@@ -69,9 +78,6 @@ This is computed using :func:`mars.population.transform.basis_transformation`:
    # Columns are eigenvectors
    U = basis_transformation(basis_old, basis_new)
    # Result: transformation matrix [..., N, N]
-
-Different quantities transform according to their physical nature:
-
 
 Populations and Out Probabilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,3 +210,109 @@ The relaxation superoperator transforms in Liouville space:
    R_old = relaxation_superop  # Shape: [..., N², N²]
    R_new = transform_liouville_superop(R_old, T_liouville)
    # Applies: T @ R_old @ T.conj().T
+
+Context Transformation Interface
+----------------------------------
+
+The :class:`mars.population.contexts.Context` class provides a convenient interface to transform all internally stored relaxation and initialization parameters into an arbitrary target basis.
+
+Consider the following setup for a triplet spin system:
+
+.. code-block:: python
+
+    import torch
+    from mars.population import Context
+
+    # Define initial parameters in the "zfs" basis
+    init_density = torch.tensor(
+        [[0.2, 0.3, 0.5],
+         [0.4, 0.3, 0.1],
+         [0.2, 0.2, 0.5]],
+        dtype=torch.complex128
+    )
+
+    out_probs = torch.tensor([1.0, 1.0, 1.0], device=device, dtype=dtype) * 100
+    free_probs = torch.tensor([[0.0, 1.0, 0.0],
+                               [1.0, 0.0, 1.0],
+                               [0.0, 1.0, 0.0]], device=device, dtype=dtype) * 1000
+    driven_probs = torch.tensor([[0.0, 1.0, 0.0],
+                                 [1.0, 0.0, 1.0],
+                                 [0.0, 1.0, 0.0]], device=device, dtype=dtype) * 1000
+
+    context = Context(
+        sample=triplet,
+        basis="zfs",
+        init_density=init_density,
+        free_probs=free_probs,
+        out_probs=out_probs,
+        driven_probs=driven_probs,
+        device=device,
+        dtype=dtype
+    )
+
+Now, suppose we wish to evaluate the model at a low magnetic field (e.g., 10 mT). We first compute the eigenbasis of the full Hamiltonian:
+
+.. code-block:: python
+
+    F, _, _, Gz = triplet.get_hamiltonian_terms()
+    field = 0.01  # 10 mT
+    values, vectors = torch.linalg.eigh(F + field * Gz)
+    vectors = vectors.unsqueeze(-3)  # Shape: [orientations, 1, N, N]
+
+The ``vectors`` tensor now represents the target basis (columns are eigenvectors of the full Hamiltonian). The :class:`~mars.population.contexts.Context` instance can transform all its internal quantities into this basis using the following methods:
+
+- **Initial populations (diagonal of the density matrix):**  
+  See :meth:`mars.population.contexts.Context.get_transformed_init_populations`.
+
+  .. code-block:: python
+
+      pop = context.get_transformed_init_populations(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N]
+
+- **Full initial density matrix:**  
+  See :meth:`mars.population.contexts.Context.get_transformed_init_density`.
+
+  .. code-block:: python
+
+      rho = context.get_transformed_init_density(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N, N]
+
+- **Outgoing probabilities (scalar rates per state):**  
+  See :meth:`mars.population.contexts.Context.get_transformed_out_probs`.
+
+  .. code-block:: python
+
+      out = context.get_transformed_out_probs(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N]
+
+- **Free transition probabilities (between states):**  
+  See :meth:`mars.population.contexts.Context.get_transformed_free_probs`.
+
+  .. code-block:: python
+
+      W = context.get_transformed_free_probs(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N, N]
+
+- **Free relaxation superoperator (in Liouville space):**  
+  See :meth:`mars.population.contexts.Context.get_transformed_free_superop`.
+
+  .. code-block:: python
+
+      R_free = context.get_transformed_free_superop(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N², N²]
+
+- **Driven relaxation superoperator (in Liouville space):**  
+  See :meth:`mars.population.contexts.Context.get_transformed_driven_superop`.
+
+  .. code-block:: python
+
+      R_driven = context.get_transformed_driven_superop(full_system_vectors=vectors)
+      # Returns: tensor of shape [..., N², N²]
+
+These methods automatically handle the appropriate transformation rules:
+
+- Populations and out-probabilities use the squared-modulus transformation :math:`|U|^2`.
+- Transition probability matrices use the bilinear form :math:`|U|^\top W |U|`.
+- Density matrices and superoperators use the full unitary transformation :math:`U \rho U^\dagger` or its Liouville-space equivalent.
+
+

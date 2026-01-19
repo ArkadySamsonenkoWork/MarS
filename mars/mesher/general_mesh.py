@@ -40,7 +40,8 @@ class CrystalMesh(BaseMesh):
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32,
                  convention: str = "zyz"):
         """
-        :param euler_angles: torch.Tensor of shape (..., 3) containing Euler angles in radians
+        :param euler_angles: torch.Tensor of shape (..., 3) containing Euler angles in radians.
+
         :param convention: str, rotation convention (default 'xyz')
                        Supported: 'zyz', 'xyz', 'xzy', 'yxz', 'yzx', 'zxy', 'zyx'
         :return: torch.Tensor of shape (..., 3, 3) containing rotation matrices
@@ -87,7 +88,8 @@ class BaseMeshPowder(BaseMesh):
 
     def _create_rotation_matrices(self):
         """
-        Given tensors phi and theta (of the same shape), returns a tensor
+        Given tensors phi and theta (of the same shape), returns a tensor.
+
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (phi, theta).
 
@@ -129,7 +131,8 @@ class BaseMeshPowder(BaseMesh):
     @staticmethod
     def spherical_triangle_areas(vertices: torch.Tensor, triangles: torch.Tensor):
         """
-        vertices: tensor of shape (N,2), each row is [phi, theta]
+        Vertices: tensor of shape (N,2), each row is [phi, theta].
+
         triangles: tensor of shape (M,3) with indices into vertices defining the triangles.
 
         Returns:
@@ -212,7 +215,8 @@ class BaseMeshAxial(BaseMeshPowder):
 
     def _create_rotation_matrices(self):
         """
-        Given tensors phi and theta (of the same shape), returns a tensor
+        Given tensors phi and theta (of the same shape), returns a tensor.
+
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (theta).
 
@@ -244,7 +248,8 @@ class BaseMeshAxial(BaseMeshPowder):
     @staticmethod
     def spherical_triangle_areas(vertices: torch.Tensor, triangles: torch.Tensor):
         """
-        vertices: tensor of shape (N,1), each row is [theta]
+        Vertices: tensor of shape (N,1), each row is [theta].
+
         triangles: tensor of shape (M,2) with indices into vertices defining the lines.
 
         Returns:

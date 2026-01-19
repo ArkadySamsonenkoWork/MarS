@@ -55,7 +55,7 @@ Initial populations are determined by:
 1. **Thermal equilibrium** at temperature T (Boltzmann distribution)
 2. **Context-defined** populations (e.g., triplet mechanism with selective population)
 
-Populations defined in a molecular basis are transformed to the field-dependent eigenbasis using the squared overlap matrix |U|².
+Populations defined in a molecular basis are transformed to the field-dependent eigenbasis using the squared overlap matrix :math:`|U|^{2}`.
 
 Relaxation Mechanisms
 ~~~~~~~~~~~~~~~~~~~~~

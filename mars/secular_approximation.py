@@ -9,7 +9,8 @@ from . import spin_system
 
 class SecSolver(nn.Module):
     """
-    Computes resonance fields and associated transition data under the secular approximation,
+    Computes resonance fields and associated transition data under the secular approximation,.
+
     where only diagonal elements of the Zeeman interaction in the eigenbasis of the field-free Hamiltonian F
     contribute to the resonance condition.
 
@@ -52,7 +53,8 @@ class SecSolver(nn.Module):
 
     def _merge_edges(self, lvl_down: torch.Tensor, lvl_up: torch.Tensor, mask_out: torch.Tensor):
         """
-        Aggregates identical (lower, upper) level-pair transitions across batch elements into
+        Aggregates identical (lower, upper) level-pair transitions across batch elements into.
+
         a unified set of unique transitions.
 
         Returns:
@@ -143,14 +145,14 @@ class SecSolver(nn.Module):
         valid_transition_mask = torch.abs(delta_gz) > self.mz_threshold
         B_resonance = (resonance_frequency - delta_E_F) / (delta_gz + self.tolerance)
 
-        in_range_mask = (B_resonance >= B_low[..., None, None]) & \
+        in_range_mask = (B_resonance >= B_low[..., None, None]) &\
                         (B_resonance <= B_high[..., None, None]) & valid_transition_mask
 
         union_mask = in_range_mask.any(dim=0)
         low_idx, high_idx = torch.where(union_mask)
 
         B_resonance_union = B_resonance[..., low_idx, high_idx]
-        mask_valid = (B_resonance_union >= B_low.unsqueeze(-1)) & \
+        mask_valid = (B_resonance_union >= B_low.unsqueeze(-1)) &\
                      (B_resonance_union <= B_high.unsqueeze(-1))
 
         indices_safe, out_mask = self._select_indices_with_padding(mask_valid)
@@ -180,6 +182,7 @@ class SecSolver(nn.Module):
                                    lower_level_in_eigenbasis: torch.Tensor):
         """
         :param energy_to_eigenbasis: energy_to_eigenbasis: Mapping from energy levels to eigenbasis, shape [..., k, n].
+
         :param upper_level_in_eigenbasis:  upper_level_in_eigenbasis: Upper level indices in F eigenbasis, shape [m].
         :param lower_level_in_eigenbasis: lower_level_in_eigenbasis: Lower level indices in F eigenbasis, shape [m].
         :return:
@@ -241,7 +244,7 @@ class SecSolver(nn.Module):
                 B_low: torch.Tensor, B_high: torch.Tensor,
                 resonance_frequency: torch.Tensor, *args):
         """
-        B = (ℏω - ΔE_F) / Δgz
+        B = (ℏω - ΔE_F) / Δgz.
 
         Calculate the resonance fields, where the resonance field is possible.
         :param F: Magnetic filed free stationary Hamiltonian matrix. The shape is [..., K, K],
@@ -297,7 +300,8 @@ class SecSolver(nn.Module):
 
 class ResSecular(nn.Module):
     """
-    Class that enforces the secular approximation to compute EPR resonance parameters
+    Class that enforces the secular approximation to compute EPR resonance parameters.
+
     over a batched grid of spin systems.
 
     This approach is valid when [F, Gz] = 0 or close to 0
@@ -315,9 +319,7 @@ class ResSecular(nn.Module):
                  eigen_finder: BaseEigenSolver = EighEigenSolver(), output_full_eigenvector: bool = False,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
-        """
-        :param eigen_finder: The eigen solver that should find eigen values and eigen vectors
-        """
+        """:param eigen_finder: The eigen solver that should find eigen values and eigen vectors."""
         super().__init__()
         self.register_buffer('spin_system_dim', torch.tensor(spin_system_dim))
         self.output_full_eigenvector = output_full_eigenvector
@@ -335,7 +337,8 @@ class ResSecular(nn.Module):
             tuple[torch.Tensor, torch.Tensor],
             torch.Tensor, torch.Tensor, tp.Union[torch.Tensor, None]]:
         """
-        :param sample: The sample for which the resonance parameters need to be found
+        :param sample: The sample for which the resonance parameters need to be found.
+
         :param resonance_frequency: the resonance frequency. The shape is []
         :param B_low: low limit of magnetic field intervals. The shape is [batch_dim]
         :param B_high: high limit of magnetic field intervals. The shape is [batch_dim]

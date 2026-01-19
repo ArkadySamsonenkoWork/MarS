@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 def plot_energy_system(B: torch.Tensor, energies: torch.Tensor,
                        vecs: torch.Tensor, levels: list[int], saved_order=False) -> None:
     """
-    :param B: magnetic field range in T. The shape is [num_points, 1, 1]
+    :param B: magnetic field range in T.
+
+    The shape is [num_points, 1, 1]
     :param energies: The energies of the levels. The shape is [num_points, spin_dimension]
     :param vecs: The eigen vectors of the levels. The shape is [num_points, spin_dimension, spin_dimension]
     :param levels: The numbers of the levels to be plotted on the graph
@@ -37,7 +39,9 @@ def plot_energy_system(B: torch.Tensor, energies: torch.Tensor,
 
 def get_saved_order(energies: np.ndarray, vecs: np.ndarray) -> np.ndarray:
     """
-    :param energies: The energies of the levels. The shape is [num_points, spin_dimension]
+    :param energies: The energies of the levels.
+
+    The shape is [num_points, spin_dimension]
     :param vecs: The eigen vectors of the levels. The shape is [num_points, spin_dimension, spin_dimension]
     :return: tracked_eps: energies in saved order. The shape is [num_points, spin_dimension]
     """

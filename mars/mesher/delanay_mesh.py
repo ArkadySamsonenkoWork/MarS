@@ -185,7 +185,7 @@ class MeshProcessor:
 # Reimplement approximation processs
 class DelaunayMeshClough(BaseMesh):
     """Delaunay triangulation-based spherical mesh implementation."""
-    """It uses CloughTocher2DInterpolator to interpolate Data"""
+    """It uses CloughTocher2DInterpolator to interpolate Data."""
     def __init__(self,
                  eps: float = 1e-7,
                  phi_limit: float = 2 * np.pi,

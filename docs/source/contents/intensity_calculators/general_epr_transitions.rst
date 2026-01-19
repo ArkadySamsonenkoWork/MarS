@@ -26,7 +26,7 @@ This complex vector fully characterizes the transition coupling to electromagnet
 Note: This concept is **only meaningful in incoherent regimes**. In density matrix formalism in MarS, transitions are not described by isolated matrix elements but by the full evolution of :math:`\rho(t)`.
 
 Standard Resonator Geometry
---------------------------
+---------------------------
 
 In conventional EPR (:math:`\mathbf{B}_1 \perp \mathbf{B}_0`, linear polarization), the relevant quantity is:
 
@@ -68,7 +68,7 @@ For disordered samples, angular integration yields closed forms involving :math:
 Usage Examples
 
 Example 1: Unpolarized radiation in a powder sample (Voigt geometry)
--------------------------------------------------------------------
+--------------------------------------------------------------------
 
 .. code-block:: python
 

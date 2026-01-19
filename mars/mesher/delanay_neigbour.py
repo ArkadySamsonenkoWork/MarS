@@ -163,8 +163,8 @@ class NearestNeighborsInterpolator(nn.Module):
                  extended_vertices: list[tuple[float, float]],
                  k: int = 4, device: torch.device = torch.device("cpu")):
         """
-
         Initialize the interpolator with the base mesh vertices and extended mesh vertices.
+
         Uses a BallTree for efficient nearest neighbor search.
         """
         super().__init__()
@@ -192,6 +192,7 @@ class NearestNeighborsInterpolator(nn.Module):
     def forward(self, f_values: torch.Tensor) -> torch.Tensor:
         """
         Interpolate values at extended points using inverse distance weighting.
+
         :param f_values: Tensor of shape (..., N), where N is the number of base vertices.
         :return: Interpolated values of shape (..., M), where M is the number of extended vertices.
         """
@@ -275,7 +276,7 @@ class MeshProcessorBase(nn.Module):
         )
 
     def _create_triangular_dict(self, K: int):
-        """Vectorized version using NumPy operations"""
+        """Vectorized version using NumPy operations."""
         i_vals = np.arange(K)
         i_grid, j_grid = np.meshgrid(i_vals, i_vals, indexing='ij')
 
@@ -389,7 +390,7 @@ def mesh_processor_factory(init_grid_frequency,
 
 class DelaunayMeshNeighbour(BaseMeshPowder):
     """Delaunay triangulation-based spherical mesh implementation."""
-    """It uses Close Neighbour method to interpolate"""
+    """It uses Close Neighbour method to interpolate."""
     def __init__(self,
                  eps: float = 1e-7,
                  phi_limits: tuple[float, float] = (0, 2 * math.pi),

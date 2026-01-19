@@ -16,6 +16,7 @@ class VaryInteraction:
                  device=torch.device("cpu"), dtype=torch.float32):
         """
         :param vary_components:
+
         torch.Tensor | Sequence[float] | float
             The tensor components, provided in one of the following forms:
               - A scalar (for the same varying for all components).
@@ -51,6 +52,7 @@ class VaryDEInteraction:
                  device=torch.device("cpu"), dtype=torch.float32):
         """
         :param vary_components:
+
         torch.Tensor | Sequence[float] | float
             The tensor components, provided in one of the following forms:
               - A scalar (varying only D component).

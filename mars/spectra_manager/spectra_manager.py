@@ -22,6 +22,7 @@ from ..population import contexts
 def compute_matrix_element(vector_down: torch.Tensor, vector_up: torch.Tensor, G: torch.Tensor):
     """
     Compute transition matrix element <ψ_up| G |ψ_down>.
+
     :param vector_down: Lower-state eigenvector. Shape [..., N]
     :param vector_up: Upper-state eigenvector. Shape [..., N]
     :param G: Operator matrix (e.g., g-tensor component). Shape [..., N, N]
@@ -43,7 +44,9 @@ class PostSpectraProcessing(nn.Module):
     """
     def __init__(self, *args, **kwargs):
         """
-        :param gauss: The gauss parameter. The shape is [batch_size] or []
+        :param gauss: The gauss parameter.
+
+        The shape is [batch_size] or []
         :param lorentz: The lorentz parameter. The shape is [batch_size] or []
         """
         super().__init__()
@@ -70,7 +73,8 @@ class PostSpectraProcessing(nn.Module):
     def forward(self, gauss: torch.Tensor, lorentz: torch.Tensor,
                 magnetic_field: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """
-        :param gauss: Tensor of shape [] or [*batch_dims]
+        :param gauss: Tensor of shape [] or [*batch_dims].
+
         :param lorentz: Tensor of shape [] or [*batch_dims]
         :param magnetic_field: Tensor of shape [N] or [*batch_dims, N]
         :param spec: Spectrum tensor of shape [N] or [*batch_dims, N]
@@ -97,7 +101,8 @@ class PostSpectraProcessing(nn.Module):
 
     def _build_lorentz_kernel(self, magnetic_field: torch.Tensor, fwhm_lorentz: torch.Tensor) -> torch.Tensor:
         """
-        :param magnetic_field: Shape [*batch_dims, N]
+        :param magnetic_field: Shape [*batch_dims, N].
+
         :param fwhm_lorentz: Shape [*batch_dims]
         :return: Kernel of shape [*batch_dims, N]
         """
@@ -120,7 +125,8 @@ class PostSpectraProcessing(nn.Module):
 
     def _build_gauss_kernel(self, magnetic_field: torch.Tensor, fwhm_gauss: torch.Tensor) -> torch.Tensor:
         """
-        :param magnetic_field: Shape [*batch_dims, N]
+        :param magnetic_field: Shape [*batch_dims, N].
+
         :param fwhm_gauss: Shape [*batch_dims]
         :return: Kernel of shape [*batch_dims, N]
         """
@@ -146,7 +152,8 @@ class PostSpectraProcessing(nn.Module):
                             fwhm_gauss: torch.Tensor,
                             fwhm_lorentz: torch.Tensor) -> torch.Tensor:
         """
-        :param magnetic_field: Shape [*batch_dims, N]
+        :param magnetic_field: Shape [*batch_dims, N].
+
         :param fwhm_gauss: Shape [*batch_dims]
         :param fwhm_lorentz: Shape [*batch_dims]
         :return: Kernel of shape [*batch_dims, N]
@@ -166,6 +173,7 @@ class PostSpectraProcessing(nn.Module):
     def _apply_convolution(self, spec: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
         """
         Apply convolution via FFT.
+
         :param spec: Shape [*batch_dims, N]
         :param kernel: Shape [*batch_dims, N]
         :return: Convolved spectrum of shape [*batch_dims, N]
@@ -179,7 +187,8 @@ class PostSpectraProcessing(nn.Module):
                        gauss: torch.Tensor, lorentz: torch.Tensor,
                        magnetic_field: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """
-        :param gauss: Shape [*batch_dims]
+        :param gauss: Shape [*batch_dims].
+
         :param magnetic_field: Shape [*batch_dims, N]
         :param spec: Shape [*batch_dims, N]
         """
@@ -190,7 +199,8 @@ class PostSpectraProcessing(nn.Module):
                          gauss: torch.Tensor, lorentz: torch.Tensor,
                          magnetic_field: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """
-        :param lorentz: Shape [*batch_dims]
+        :param lorentz: Shape [*batch_dims].
+
         :param magnetic_field: Shape [*batch_dims, N]
         :param spec: Shape [*batch_dims, N]
         """
@@ -200,7 +210,8 @@ class PostSpectraProcessing(nn.Module):
     def _voigt_broader(self, gauss: torch.Tensor, lorentz: torch.Tensor,
                        magnetic_field: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """
-        :param gauss: Shape [*batch_dims]
+        :param gauss: Shape [*batch_dims].
+
         :param lorentz: Shape [*batch_dims]
         :param magnetic_field: Shape [*batch_dims, N]
         :param spec: Shape [*batch_dims, N]
@@ -232,7 +243,8 @@ class BaseProcessing(nn.Module, ABC):
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param mesh: Mesh object defining orientation sampling grid
+        :param mesh: Mesh object defining orientation sampling grid.
+
         :param spectra_integrator: Integrator for computing spectra from resonance lines.
         Default is None and initialized with respect to class
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
@@ -261,10 +273,12 @@ class BaseProcessing(nn.Module, ABC):
 
     @abstractmethod
     def _transform_data_to_mesh_format(
-            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) -> \
+            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        :param res_fields: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param res_fields: the tensor of resonance fields.
+
+        The shape is [..., num_resonance fields]
         :param intensities: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :return:
@@ -276,10 +290,11 @@ class BaseProcessing(nn.Module, ABC):
         pass
 
     def _final_mask(self, res_fields: torch.Tensor, width: torch.Tensor,
-                    intensities: torch.Tensor, areas: torch.Tensor) -> \
+                    intensities: torch.Tensor, areas: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Apply intensity-based masking to discard negligible transitions.
+
         Transitions are retained only if their normalized intensity exceeds
         the internal threshold (default 1e-4). This reduces computational load
         during integration by excluding insignificant contributions.
@@ -289,7 +304,6 @@ class BaseProcessing(nn.Module, ABC):
         :param intensities: Transition intensities. Shape [..., M]
         :param areas: Integration weights (e.g., spherical triangle areas). Shape [..., M]
         :return: Filtered tensors (res_fields, width, intensities, areas), all with reduced last dimension
-
         """
         max_intensity = torch.amax(abs(intensities), dim=-1, keepdim=True)
         mask = ((intensities / max_intensity).abs() > self.threshold).any(dim=tuple(range(intensities.dim() - 1)))
@@ -311,6 +325,7 @@ class BaseProcessing(nn.Module, ABC):
                 fields: torch.Tensor):
         """
         Execute the full spectral processing pipeline:
+
         1. Map resonance data onto mesh geometry
         2. Apply intensity-based masking
         3. Precompute integration inputs
@@ -365,7 +380,8 @@ class PowderStationaryProcessing(BaseProcessing):
                  dtype: torch.dtype = torch.float32
                  ):
         """
-        :param mesh: Powder mesh object (BaseMeshPowder) defining spherical grid
+        :param mesh: Powder mesh object (BaseMeshPowder) defining spherical grid.
+
         :param spectra_integrator: Custom integrator. Default is None (auto-initialized based on mesh parameters)
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
@@ -381,6 +397,7 @@ class PowderStationaryProcessing(BaseProcessing):
             -> BaseSpectraIntegrator:
         """
         Initialize the appropriate spectra integrator based on mesh symmetry.
+
         Uses AxialSpectraIntegratorStationary for axial powder meshes;
         otherwise uses general SpectraIntegratorStationary.
 
@@ -399,7 +416,8 @@ class PowderStationaryProcessing(BaseProcessing):
 
     def _compute_areas(self, expanded_size: int, device: torch.device) -> torch.Tensor:
         """
-        Compute spherical triangle areas from the powder mesh and expand
+        Compute spherical triangle areas from the powder mesh and expand.
+
         to match batch dimensions required for integration.
 
         :param expanded_size: Leading batch size before flattening (e.g., number of orientations)
@@ -413,7 +431,8 @@ class PowderStationaryProcessing(BaseProcessing):
 
     def _process_tensor(self, data_tensor: torch.Tensor) -> torch.Tensor:
         """
-        Interpolate input resonance data (fields, intensities, widths) onto
+        Interpolate input resonance data (fields, intensities, widths) onto.
+
         the Delaunay triangulation defined by the powder mesh.
 
         :param data_tensor: Input tensor of shape [..., num_orientations, num_transitions]
@@ -425,7 +444,8 @@ class PowderStationaryProcessing(BaseProcessing):
 
     def _compute_batched_tensors(self, *args) -> torch.Tensor:
         """
-        Stack multiple resonance-related tensors (e.g., fields, intensities, widths),
+        Stack multiple resonance-related tensors (e.g., fields, intensities, widths),.
+
         then remap them jointly onto the orientation mesh using `_process_tensor`.
 
         :param args: Tensors of identical shape [..., num_orientations, num_transitions]
@@ -436,10 +456,12 @@ class PowderStationaryProcessing(BaseProcessing):
         return batched_matrix
 
     def _transform_data_to_mesh_format(
-            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) -> \
+            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        :param res_fields: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param res_fields: the tensor of resonance fields.
+
+        The shape is [..., num_resonance fields]
         :param intensities: the tensor of resonance fields. The shape is [time, ..., num_resonance fields]
         :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :return:
@@ -482,7 +504,8 @@ class CrystalStationaryProcessing(BaseProcessing):
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param mesh: Crystal mesh object defining single or discrete orientations
+        :param mesh: Crystal mesh object defining single or discrete orientations.
+
         :param spectra_integrator: Custom integrator. Default is None (MeanIntegrator initialized)
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
@@ -508,6 +531,7 @@ class CrystalStationaryProcessing(BaseProcessing):
                     intensities: torch.Tensor, areas: torch.Tensor):
         """
         Apply intensity thresholding for crystal (non-powder) samples.
+
         Unlike powder case, res_fields lacks triangle vertex dimension (no [..., 3]).
         Masking logic remains consistent: retain transitions above relative intensity threshold.
 
@@ -527,10 +551,12 @@ class CrystalStationaryProcessing(BaseProcessing):
         return res_fields, width, intensities, areas
 
     def _transform_data_to_mesh_format(
-            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) -> \
+            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        :param res_fields: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param res_fields: the tensor of resonance fields.
+
+        The shape is [..., num_resonance fields]
         :param intensities: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :return:
@@ -563,7 +589,7 @@ class PowderTimeProcessing(PowderStationaryProcessing):
     """
 
     def _integration_precompute(self, res_fields: torch.Tensor, width: torch.Tensor,
-                                intensities: torch.Tensor, areas: torch.Tensor, fields: torch.Tensor) -> \
+                                intensities: torch.Tensor, areas: torch.Tensor, fields: torch.Tensor) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         return res_fields.unsqueeze(-3),\
             width.unsqueeze(-2), intensities, areas.unsqueeze(-2), fields.unsqueeze(-2)
@@ -572,7 +598,9 @@ class PowderTimeProcessing(PowderStationaryProcessing):
                                        intensities: torch.Tensor,
                                        width: torch.Tensor):
         """
-        :param res_fields: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param res_fields: the tensor of resonance fields.
+
+        The shape is [..., num_resonance fields]
         :param intensities: the tensor of resonance fields. The shape is [time_dim, ..., num_resonance fields]
         :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
         :return:
@@ -596,7 +624,7 @@ class PowderTimeProcessing(PowderStationaryProcessing):
 
 class CrystalTimeProcessing(CrystalStationaryProcessing):
     """
-    Integrate time-resolved EPR spectra over single-crystal or many-crystal sample
+    Integrate time-resolved EPR spectra over single-crystal or many-crystal sample.
 
     This class extends PowderStationaryProcessing to handle time-dependent intensities
     while keeping resonance fields and widths time-independent
@@ -658,7 +686,7 @@ class Broadener(nn.Module):
 
     def _compute_field_free_strain_square(self,
                                           strained_data: tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
-                                          vector_down: torch.Tensor, vector_up: torch.Tensor) \
+                                          vector_down: torch.Tensor, vector_up: torch.Tensor)\
             -> torch.Tensor:
         correlation_matrix, tensor_components_A, tensor_components_B, transformation_matrix = strained_data
         return (
@@ -674,6 +702,7 @@ class Broadener(nn.Module):
             torch.Tensor:
         """
         Adds residual broadening due to unresolved interactions.
+
         :param sample: The MultiOrientedSample object
         :param squared_width: The square of gaussian broadening
         :return: Total gaussian broadening
@@ -685,6 +714,7 @@ class Broadener(nn.Module):
                  vector_down: torch.Tensor, vector_up: torch.Tensor, B_trans: torch.Tensor) -> torch.Tensor:
         """
         Compute total Gaussian linewidth (FWHM) for each transition by combining:
+
         - Field-dependent strain contributions (from g-, D-tensor distributions)
         - Field-independent zero-field strain terms
         - Residual Hamiltonian strain (e.g., unresolved hyperfine)
@@ -713,6 +743,7 @@ class Broadener(nn.Module):
 class BaseIntensityCalculator(nn.Module):
     """
     Base class for computing EPR transition intensities.
+
     Handles calculation of transition intensities based on:
     - Transition matrix elements (magnetization)
     - Level populations (thermal, time-dependent, or custom)
@@ -726,7 +757,8 @@ class BaseIntensityCalculator(nn.Module):
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param spin_system_dim: Dimension of spin system Hilbert space
+        :param spin_system_dim: Dimension of spin system Hilbert space.
+
         :param temperature: Temperature in Kelvin of a sample.
         :param populator: BasePopulator object. Default is None
         (auto-initialized based on specific calculator).
@@ -751,7 +783,8 @@ class BaseIntensityCalculator(nn.Module):
                         context: tp.Optional[contexts.BaseContext], disordered: bool,
                         device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
-        :param temperature: Sample temperature in Kelvin
+        :param temperature: Sample temperature in Kelvin.
+
         :param populator: Optional custom population function
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
@@ -765,19 +798,21 @@ class BaseIntensityCalculator(nn.Module):
                                       vector_down: torch.Tensor, vector_up: torch.Tensor):
         """
         Compute powder-averaged transition intensity.
+
         :param Gx, Gy, Gz: Cartesian components of Zeeman operator. Shape [..., N, N]
         :param vector_down: Lower-state eigenvector. Shape [..., N]
         :param vector_up: Upper-state eigenvector. Shape [..., N]
         :return: Intensity proportional to |<up|Gx|down>|² + |<up|Gy|down>|², in (J·s/μ_B)²
         """
-        magnitization = compute_matrix_element(vector_down, vector_up, Gx).square().abs() + \
+        magnitization = compute_matrix_element(vector_down, vector_up, Gx).square().abs() +\
                         compute_matrix_element(vector_down, vector_up, Gy).square().abs()
         return magnitization * (constants.PLANCK / constants.BOHR) ** 2
 
     def _compute_magnitization_crystal(self, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
                                        vector_down: torch.Tensor, vector_up: torch.Tensor):
         """
-        Compute crystal transition intensity
+        Compute crystal transition intensity.
+
         The orientation of the wave magnetic field is along the x-axis.
         :param Gx, Gy, Gz: Cartesian components of Zeeman operator. Shape [..., N, N]
         :param vector_down: Lower-state eigenvector. Shape [..., N]
@@ -793,6 +828,7 @@ class BaseIntensityCalculator(nn.Module):
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
         """
         Compute intensity of transitions.
+
         :param Gx, Gy, Gz: Zeeman operator components
         :param vector_down, vector_up: Transition eigenvectors
         :param lvl_down, lvl_up: Energy level indices
@@ -808,7 +844,8 @@ class BaseIntensityCalculator(nn.Module):
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
         """
-        :param Gx, Gy, Gz: Zeeman operator components
+        :param Gx, Gy, Gz: Zeeman operator components.
+
         :param vector_down, vector_up: Transition eigenvectors
         :param lvl_down, lvl_up: Energy level indices
         :param resonance_energies: Hamiltonian eigenvalues
@@ -835,7 +872,8 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
                  disordered: bool = True,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
-        :param spin_system_dim: Dimension of spin system Hilbert space
+        :param spin_system_dim: Dimension of spin system Hilbert space.
+
         :param temperature: Temperature in Kelvin of a sample.
         :param populator: BasePopulator object. Default is None
         (auto-initialized based as stationary populator)
@@ -851,7 +889,8 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
                         context: tp.Optional[contexts.BaseContext],
                         disordered: bool, device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
-        :param temperature: Sample temperature in Kelvin
+        :param temperature: Sample temperature in Kelvin.
+
         :param populator: Optional population computation instance of BasePopulator
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
@@ -872,6 +911,7 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
                           full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
         """
         Compute CW-EPR transition intensities as the product of:
+
         :param Gx, Gy, Gz: Zeeman operator components. Shape [..., N, N]
         :param vector_down: Lower-state eigenvector. Shape [..., N]
         :param vector_up: Upper-state eigenvector. Shape [..., N]
@@ -889,7 +929,8 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
 
 class TimeIntensityCalculator(BaseIntensityCalculator):
     """
-    Calculate time-dependent transition intensities for time-resolved EPR experiments based on relxation of
+    Calculate time-dependent transition intensities for time-resolved EPR experiments based on relxation of.
+
     populations.
 
     Handles calculation of transition intensities based on:
@@ -903,7 +944,8 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32,
                  ):
         """
-        :param spin_system_dim: Dimension of spin system Hilbert space
+        :param spin_system_dim: Dimension of spin system Hilbert space.
+
         :param temperature: Temperature in Kelvin of a sample.
         :param populator:
             Specifies the population calculator to use.
@@ -927,7 +969,8 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                         context: tp.Optional[contexts.BaseContext],
                         disordered: bool, device: torch.device, dtype: torch.dtype) -> BaseTimeDepPopulator:
         """
-        :param temperature: Sample temperature in Kelvin
+        :param temperature: Sample temperature in Kelvin.
+
         :param populator: Optional BaseTimeDepPopulator object
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
@@ -947,6 +990,7 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                           *args, **kwargs):
         """
         Compute time-resolved EPR intensities based solely on transition matrix elements.
+
         Population dynamics are handled separately via `calculate_population`.
         This method returns the "geometric" part of intensity (|<ψ_up|G|ψ_down>|²).
 
@@ -975,7 +1019,8 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
 
 class TimeDensityCalculator(TimeIntensityCalculator):
     """
-    Calculate time-dependent transition intensities for time-resolved EPR experiments based on
+    Calculate time-dependent transition intensities for time-resolved EPR experiments based on.
+
     matrix density relaxation formalism
 
     Default RWADensityPopulator populator is used
@@ -1004,7 +1049,8 @@ class TimeDensityCalculator(TimeIntensityCalculator):
 @dataclass
 class ParamSpec:
     """
-    Let's consider the Hamiltonian with shape [..., N, N], where N is spin system size
+    Let's consider the Hamiltonian with shape [..., N, N], where N is spin system size.
+
     Its resonance fields have dimension [...., K]. Let's call it 'scalar'
     Its eigen values have dimension [..., K, N], where K is number of resonance transitions. Let's call it 'vector'
     Its eigen vectors have dimension [..., K, N, N], where K is number of resonance transitions. Let's call it 'matrix'
@@ -1056,7 +1102,7 @@ class BaseSpectra(nn.Module, ABC):
                  dtype: torch.dtype = torch.float32,
                  ):
         """
-        :param resonance_parameter: Resonance parameter of experiment: frequency or field
+        :param resonance_parameter: Resonance parameter of experiment: frequency or field.
 
         :param sample: MultiOrientedSample.
             It is just an example of spin system to extract meta information (spin_system_dim, batch_dims, mesh)
@@ -1205,6 +1251,7 @@ class BaseSpectra(nn.Module, ABC):
                                 mesh: tp.Optional[mesher.BaseMesh]):
         """
         Initilize the sample hyperparameters:
+
         -spin_system dimension
         -batch dimension
         -mesh size
@@ -1235,7 +1282,7 @@ class BaseSpectra(nn.Module, ABC):
             return intensity_calculator
 
     def _freq_to_field(self, vector_down: torch.Tensor, vector_up: torch.Tensor, Gz: torch.Tensor):
-        """Compute frequency-to-field contribution"""
+        """Compute frequency-to-field contribution."""
         factor_1 = compute_matrix_element(vector_up, vector_up, Gz)
         factor_2 = compute_matrix_element(vector_down, vector_down, Gz)
 
@@ -1253,7 +1300,9 @@ class BaseSpectra(nn.Module, ABC):
 
     def _get_param_specs(self) -> list[ParamSpec]:
         """
-        :return: list[ParamSpec]. The number of parameters and
+        :return: list[ParamSpec].
+
+        The number of parameters and
         their order must coincide with output of method _add_to_mask_additional
         """
         return []
@@ -1262,13 +1311,13 @@ class BaseSpectra(nn.Module, ABC):
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
         if not self._cashed_flag:
-            (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields, \
-                self.resonance_energies, self.full_eigen_vectors = \
+            (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields,\
+                self.resonance_energies, self.full_eigen_vectors =\
                 self._recomputed_resfield(sample, B_low, B_high, F, Gz)
 
             self._cashed_flag = True
 
-        return (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields, \
+        return (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields,\
             self.resonance_energies, self.full_eigen_vectors
 
     def _recomputed_resfield(self, sample: spin_system.MultiOrientedSample,
@@ -1284,7 +1333,8 @@ class BaseSpectra(nn.Module, ABC):
                  sample: spin_system.MultiOrientedSample,
                  fields: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
-        :param sample: MultiOrientedSample object
+        :param sample: MultiOrientedSample object.
+
         :param fields: The magnetic fields in Tesla units
         :param time: It is used only for time resolved spectra
         :param kwargs:
@@ -1297,7 +1347,7 @@ class BaseSpectra(nn.Module, ABC):
 
         F, Gx, Gy, Gz = self._hamiltonian_getter(sample)
 
-        (vector_down, vector_up), (lvl_down, lvl_up), res_fields, \
+        (vector_down, vector_up), (lvl_down, lvl_up), res_fields,\
             resonance_energies, full_system_vectors = self._resfield_method(sample, B_low, B_high, F, Gz)
 
         if (vector_down.shape[-2] == 0):
@@ -1386,7 +1436,8 @@ class BaseSpectra(nn.Module, ABC):
                            full_system_vectors: tp.Optional[torch.Tensor]) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, tp.Optional[torch.Tensor], tuple[tp.Any]]:
         """
-        :param sample: The sample which transitions must be found
+        :param sample: The sample which transitions must be found.
+
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G
         :param Gx: x-part of Hamiltonian Zeeman Term
         :param Gy: y-part of Hamiltonian Zeeman Term
@@ -1454,7 +1505,8 @@ class BaseSpectra(nn.Module, ABC):
 
 class StationarySpectra(BaseSpectra):
     """
-    Simulates standard EPR experiments where microwave frequency is fixed and
+    Simulates standard EPR experiments where microwave frequency is fixed and.
+
     magnetic field is swept. Computes absorption or first-derivative spectra
     with proper orientation averaging for powder samples.
 
@@ -1492,7 +1544,7 @@ class StationarySpectra(BaseSpectra):
                  dtype: torch.dtype = torch.float32,
                  ):
         """
-        :param freq: Resonance frequency of experiment at Hz
+        :param freq: Resonance frequency of experiment at Hz.
 
         :param sample: MultiOrientedSample.
             It is just an example of spin system to extract meta information (spin_system_dim, batch_dims, mesh)
@@ -1589,7 +1641,8 @@ class StationarySpectra(BaseSpectra):
                 sample: spin_system.MultiOrientedSample,
                 fields: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
-        :param sample: MultiOrientedSample object
+        :param sample: MultiOrientedSample object.
+
         :param fields: The magnetic fields in Tesla units
         :param time: It is used only for time resolved spectra
         :param kwargs:
@@ -1601,6 +1654,7 @@ class StationarySpectra(BaseSpectra):
 class TruncTimeSpectra(BaseSpectra):
     """
     Compute time-resolved EPR spectra for populations relaxation formalism.
+
     Uses truncated eigen vectors computation. For the general case use CoupledTimeSpectra
 
     Unlike CoupledTimeSpectra, only computes eigenvectors for resonant transitions
@@ -1637,6 +1691,7 @@ class TruncTimeSpectra(BaseSpectra):
 
         """
         Note that by default these spin systems (energies, vectors, etc.) are calculated once and then cached.
+
         Default harmoinc is None
 
         :param freq: Resonance frequency of experiment
@@ -1701,7 +1756,6 @@ class TruncTimeSpectra(BaseSpectra):
         :param dtype: float32 / float64
         Base dtype for all types of operations. If complex parameters is used,
         they will be converted in complex64, complex128
-
         """
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator, populator,
                          spectra_integrator, harmonic, post_spectra_processor,
@@ -1713,7 +1767,8 @@ class TruncTimeSpectra(BaseSpectra):
     def __call__(self, sample: spin_system.MultiOrientedSample, field: torch.Tensor, time: torch.Tensor, **kwargs) ->\
             torch.Tensor:
         """
-        :param sample: MultiOrientedSample object
+        :param sample: MultiOrientedSample object.
+
         :param fields: The magnetic fields in Tesla units
         :param time: Time to compute time resolved spectra
         :param kwargs:
@@ -1780,6 +1835,7 @@ class TruncTimeSpectra(BaseSpectra):
     def _init_recompute_spin_flag(self) -> bool:
         """
         If flag is False: resfield data is cached.
+
         If flag is True: resfield recomputes every time
         :return:
         """
@@ -1787,7 +1843,7 @@ class TruncTimeSpectra(BaseSpectra):
 
     def update_context(self, new_context: contexts.BaseContext) -> None:
         """
-        Update context
+        Update context.
 
         :param new_context: New context object with updated parameters
         :return:
@@ -1797,7 +1853,7 @@ class TruncTimeSpectra(BaseSpectra):
 
 class CoupledTimeSpectra(TruncTimeSpectra):
     """
-    Compute time-resolved EPR spectra for populations relaxation formalism
+    Compute time-resolved EPR spectra for populations relaxation formalism.
 
     Provides the complete pipeline for computing EPR spectra from spin Hamiltonian:
     1. Compute resonance fields/frequencies by diagonalizing Hamiltonian
@@ -1817,6 +1873,7 @@ class CoupledTimeSpectra(TruncTimeSpectra):
 class DensityTimeSpectra(CoupledTimeSpectra):
     """
     Compute time-resolved EPR spectra for density matrix relaxation formalism.
+
     Default the rotating wave approximation is used
 
     Provides the complete pipeline for computing EPR spectra from spin Hamiltonian:
@@ -1851,6 +1908,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
 
         """
         Note that by default these spin systems (energies, vectors, etc.) are calculated once and then cached.
+
         Default harmoinc is None
 
         :param freq: Resonance frequency of experiment
@@ -1919,7 +1977,6 @@ class DensityTimeSpectra(CoupledTimeSpectra):
         :param dtype: float32 / float64
         Base dtype for all types of operations. If complex parameters is used,
         they will be converted in complex64, complex128
-
         """
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator, populator,
                          spectra_integrator, harmonic, post_spectra_processor,
@@ -1961,6 +2018,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
 class StationaryFreqSpectra(StationarySpectra):
     """
     Compute stationary EPR spectra at frequency domain.
+
     Default the rotating wave approximation is used
 
     Provides the complete pipeline for computing EPR spectra from spin Hamiltonian:
@@ -1992,7 +2050,7 @@ class StationaryFreqSpectra(StationarySpectra):
                  dtype: torch.dtype = torch.float32
                  ):
         """
-        :param field: Resonance field of experiment
+        :param field: Resonance field of experiment.
 
         :param sample: MultiOrientedSample.
             It is just an example of spin system to extract meta information (spin_system_dim, batch_dims, mesh)
@@ -2045,7 +2103,6 @@ class StationaryFreqSpectra(StationarySpectra):
             The instance of BaseContext which describes the relaxation mechanism.
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
-
         """
         super().__init__(field, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
@@ -2068,7 +2125,8 @@ class StationaryFreqSpectra(StationarySpectra):
                 sample: spin_system.MultiOrientedSample,
                 freq: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
-        :param sample: MultiOrientedSample object
+        :param sample: MultiOrientedSample object.
+
         :param freq: The frequency in Hz units
         :param time: It is used only for time resolved spectra
         :param kwargs:
@@ -2088,7 +2146,8 @@ class StationaryFreqSpectra(StationarySpectra):
                            full_system_vectors: tp.Optional[torch.Tensor]) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, tp.Optional[torch.Tensor], tuple[tp.Any]]:
         """
-        :param sample: The sample which transitions must be found
+        :param sample: The sample which transitions must be found.
+
         :param F: Magnetic free part of spin Hamiltonian H = F + B * G
         :param Gx: x-part of Hamiltonian Zeeman Term
         :param Gy: y-part of Hamiltonian Zeeman Term

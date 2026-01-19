@@ -24,12 +24,14 @@ Out Probabilities (out_probs)
    :widths: 60 40
    
    * - .. image:: _static/context/out_probs.png
-          :width: 100%
+          :width: 1000%
           :alt: Out probabilities diagram
      - **Physical Meaning**
        
        Out probabilities describe irreversible population loss from energy levels.
+
        **Mathematical Form**
+
        A diagonal vector where element :math:`o_i` represents the loss rate from level :math:`|i\rangle`.
 
 **Example: Triplet State Phosphorescence**
@@ -72,7 +74,7 @@ Free Probabilities (free_probs)
    :widths: 60 40
    
    * - .. image:: _static/context/free_probs.png
-          :width: 100%
+          :width: 1000%
           :alt: Free probabilities diagram
      - **Physical Meaning**
        
@@ -140,7 +142,7 @@ Driven Probabilities (driven_probs)
    :widths: 60 40
    
    * - .. image:: _static/context/driven_probs.png
-          :width: 100%
+          :width: 1000%
           :alt: Driven probabilities diagram
      - **Physical Meaning**
        
@@ -151,7 +153,7 @@ Driven Probabilities (driven_probs)
        
        A matrix :math:`D` where :math:`d_{ij}` is the stimulated rate from :math:`|j\rangle` to :math:`|i\rangle`.
        
-       **Not modified** by detailed balance.
+       *Not modified* by detailed balance.
 
 **Example: Selective Microwave Excitation**
 
@@ -194,7 +196,7 @@ Dephasing (dephasing)
    :widths: 60 40
    
    * - .. image:: _static/context/dephasing.png
-          :width: 100%
+          :width: 1000%
           :alt: Dephasing diagram
      - **Physical Meaning**
        
@@ -204,7 +206,7 @@ Dephasing (dephasing)
        
        A vector :math:`\boldsymbol{\gamma}` where :math:`\gamma_i` is the dephasing rate for level :math:`|i\rangle`.
        
-       **Only relevant** for density matrix calculations.
+       *Only relevant* for density matrix calculations.
 
 **Example: T₂ Relaxation in Density Matrix Dynamics**
 

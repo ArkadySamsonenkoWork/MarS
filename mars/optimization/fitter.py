@@ -90,7 +90,8 @@ def print_trial_results(results: tp.Union[TrialResult, list[TrialResult]], max_p
 
 def print_params(params: dict[str, float], max_params=None, precision=6) -> None:
     """
-    :param params: the dict of parameter names and their values
+    :param params: the dict of parameter names and their values.
+
     :param max_params: maximum number of parameters
     :param precision: Number of decimal places for numeric values
     :return: None
@@ -162,7 +163,7 @@ class TrialsTracker:
 
     def __call__(self, optimizer: ng.optimization.Optimizer,
                  candidate: ng.p.Instrumentation, loss: float):
-        """Callback function called after each evaluation"""
+        """Callback function called after each evaluation."""
         self.trials.append(candidate.value[0])
         self.losses.append(loss)
         self.step += 1
@@ -172,7 +173,7 @@ class TrialsTracker:
             print(f"Step {self.step}: Loss = {loss:.6f}")
 
     def get_best_trial(self):
-        """Get the trial with the lowest loss"""
+        """Get the trial with the lowest loss."""
         best_idx = np.argmin(self.losses)
         return {
             '_trial_id': best_idx + 1,
@@ -181,7 +182,7 @@ class TrialsTracker:
         }
 
     def get_all_trials(self):
-        """Get all trials as a list of dictionaries"""
+        """Get all trials as a list of dictionaries."""
         return [
             {
                 '_trial_id': i + 1,
@@ -217,7 +218,6 @@ class ParamSpec:
         vary: bool: Whether the parameter should vary or not.
         In the latter case, this is equivalent to specifying the parameter in fixed_parameters.
         If you don't plan to vary the parameter, then the more correct way is to specify it in fixed_parameters.
-
     """
     name: str
     bounds: tp.Tuple[float, float]
@@ -245,6 +245,7 @@ class ParameterSpace:
                  fixed_params: tp.Optional[tp.Dict[str, float]] = None):
         """
         :param specs: The sequence of ParamSpec instances.
+
         The list include parameters that should be varied (if spec.vary = True. For more details
         see ParamSpec documentation)
         :param fixed_params: The parameters that are fixed during fit.
@@ -302,9 +303,7 @@ class ParameterSpace:
         return iter(self.__dict__().items())
 
     def __repr__(self) -> str:
-        """
-        Print parameters space
-        """
+        """Print parameters space."""
 
         text = ""
 
@@ -366,7 +365,9 @@ class ParameterSpace:
 
     def freeze(self, name: str, value: tp.Optional[float] = None):
         """
-        Freeze a parameter by name. If value is provided, use it; otherwise
+        Freeze a parameter by name.
+
+        If value is provided, use it; otherwise
         use its default (or current) value.
         """
         if name not in self.varying_names:
@@ -397,7 +398,8 @@ class ParameterSpace:
         self.varying_params = {s.name: s.default for s in self._varying_specs}
 
     def vector_to_dict(self, vec: tp.Sequence[float]) -> tp.Dict[str, float]:
-        """Convert an optimizer vector (ordered only over *varying* params)
+        """Convert an optimizer vector (ordered only over *varying* params).
+
         into a full parameter dict that includes fixed parameters.
         """
         if len(vec) != len(self._varying_specs):
@@ -408,7 +410,8 @@ class ParameterSpace:
         return out
 
     def varying_vector_to_dict(self, vec: tp.Sequence[float]) -> tp.Dict[str, float]:
-        """Convert an optimizer vector (ordered only over *varying* params)
+        """Convert an optimizer vector (ordered only over *varying* params).
+
         into a full parameter dict that includes fixed parameters.
         """
         if len(vec) != len(self._varying_specs):
@@ -433,7 +436,8 @@ class ParameterSpace:
 
     def _set_single_bounds(self, param_name: str, bounds: tp.Tuple[float, float]):
         """
-        :param param_name: name of the varying parameter
+        :param param_name: name of the varying parameter.
+
         :param bounds: new bounds of the parameter
         :return: None
         """
@@ -451,7 +455,9 @@ class ParameterSpace:
 
     def set_default(self, params: dict[str, float]):
         """
-        :param params: the dict of parameters. Set default value for parameters given in params
+        :param params: the dict of parameters.
+
+        Set default value for parameters given in params
         :return:
         """
         for key, value in params.items():
@@ -468,7 +474,9 @@ class ParameterSpace:
 
     def reduce_bounds(self, names: tp.Optional[str] = None, alpha: float = 0.2):
         """
-        Reduces bounds of varying parameters. If bounds was (a, b) and default value c than the new bounds are:
+        Reduces bounds of varying parameters.
+
+        If bounds was (a, b) and default value c than the new bounds are:
         delta = (b-a)*alpha
         new_bounds = (c - delta, c+delta)
         :param names: names of parameters to reduce
@@ -488,7 +496,8 @@ class ParameterSpace:
 
     def set_bounds(self, bounds_dict: tp.Dict[str, tp.Tuple[float, float]]):
         """
-        :param bounds_dict: the dict with names of parameters and their new bounds
+        :param bounds_dict: the dict with names of parameters and their new bounds.
+
         :return: None
         """
         for param_name, bounds in bounds_dict.items():
@@ -511,14 +520,13 @@ class ParameterSpace:
 
 
 class CWSpectraSimulator:
-    """
-    Example of CW spectra simulator.
-    """
+    """Example of CW spectra simulator."""
     def __init__(self,
                  sample_updator: tp.Callable[[dict[str, float], tp.Any], tp.Any],
                  spectra_creator: tp.Callable[[tp.Any, torch.Tensor], torch.Tensor], *args):
         """
-        :param sample_updator: Callable object that updates sample
+        :param sample_updator: Callable object that updates sample.
+
         :param spectra_creator: Callable object that creates spectra
         :param args:
         """
@@ -528,7 +536,8 @@ class CWSpectraSimulator:
 
     def __call__(self, fields: torch.Tensor, params: dict[str, float]):
         """
-        :param fields: magnetic fields in Tesla units
+        :param fields: magnetic fields in Tesla units.
+
         :param params: parameters of param space
         :return:
         """
@@ -537,9 +546,7 @@ class CWSpectraSimulator:
 
 
 class BaseSpectrumFitter(ABC):
-    """
-    Base class for spectrum fitting.
-    """
+    """Base class for spectrum fitting."""
     __available_optimizer__ = {
         "nevergrad": sorted(ng.optimizers.registry.keys()),
         "optuna": [
@@ -564,7 +571,7 @@ class BaseSpectrumFitter(ABC):
         device: tp.Optional[torch.device] = None,
     ):
         """
-        :param param_space: The object of ParameterSpace class where all varying parameters are included
+        :param param_space: The object of ParameterSpace class where all varying parameters are included.
         :param spectra_simulator: Callable that takes x-data and parameters and returns simulated spectra
         :param norm_mode: Norm mode to fit data. 'integral' / 'max'
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
@@ -585,15 +592,14 @@ class BaseSpectrumFitter(ABC):
 
     @abstractmethod
     def _set_experimental(self, *args, **kwargs):
-        """
-        Process experimental data and set  them self.x_exp, self.y_exp, self.multisample.
-        """
+        """Process experimental data and set  them self.x_exp, self.y_exp, self.multisample."""
         pass
 
     @abstractmethod
     def _simulate_single_spectrum(self, params: dict[str, float], **kwargs) -> torch.Tensor:
         """
-        Simulate spectrum from set of parameters
+        Simulate spectrum from set of parameters.
+
         :param params: Full parameter dictionary
         :return: Normalized single simulated spectrum
         """
@@ -602,7 +608,8 @@ class BaseSpectrumFitter(ABC):
     @abstractmethod
     def _simulate_spectral_set(self, params: dict[str, float], **kwargs) -> list[torch.Tensor]:
         """
-        Simulate set of spectra from set of parameters
+        Simulate set of spectra from set of parameters.
+
         :param params: Full parameter dictionary
         :return: List of normalized simulated spectra
         """
@@ -618,6 +625,7 @@ class BaseSpectrumFitter(ABC):
             tp.Union[list[torch.Tensor], torch.Tensor]:
         """
         :param params: fict of parameter names: parameter values.
+
         The names of parameters are names from param_space.
         Example:
         fitter.simulate_spectroscopic_data(dict(param_space))
@@ -630,10 +638,11 @@ class BaseSpectrumFitter(ABC):
             model = self._simulate_single_spectrum(params, **kwargs)
         return model
 
-    def simulate_spectra_from_trial_params(self, trial_params: tp.Dict[str, float], **kwargs) -> \
+    def simulate_spectra_from_trial_params(self, trial_params: tp.Dict[str, float], **kwargs) ->\
             tp.Union[list[torch.Tensor], torch.Tensor]:
         """
-        :param trial_params: Simulate spectra from parameters given as trial_params (only varied parameters)
+        :param trial_params: Simulate spectra from parameters given as trial_params (only varied parameters).
+
         As fixed_parameters the parameters from self.param_space are used
         :param kwargs:
         :return: Simulated spectra - list or single spectra
@@ -771,7 +780,7 @@ class BaseSpectrumFitter(ABC):
             **backend_kwargs,
     ) -> FitResult:
         """
-        All fitting methods can be viewed in SpectrumFitter.__available_optimizer__
+        All fitting methods can be viewed in SpectrumFitter.__available_optimizer__.
 
         :param backend: optuna / nevergrad. Sets which library should be used to fit data.
             Optuna supports not as many methods as nevergrad but they are quite powerful. Default fitting method is TPE.
@@ -809,6 +818,7 @@ class BaseSpectrumFitter(ABC):
 class SpectrumFitter(BaseSpectrumFitter):
     """
     General fitter for spectra.
+
     The user must provide either a `simulate_spectrum_callable` that maps a
     parameter dict -> torch.Tensor (spectrum on the same B-grid), or override
     the `simulate_spectrum` method in a subclass.
@@ -845,7 +855,9 @@ class SpectrumFitter(BaseSpectrumFitter):
             device: tp.Optional[torch.device] = None,
     ) -> None:
         """
-        :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
+        :param x_exp: Experimental x-axis data.
+
+        It can be magnetic field (T), time (s)
             It is possible to pass a list for multi-object fit
         :param y_exp: Experimental y-axis data.
         :param param_space: The object of ParameterSpace class where all varying parameters are included
@@ -888,7 +900,8 @@ class SpectrumFitter(BaseSpectrumFitter):
                   y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, bool]:
         """
-        Set expereimental given parameter
+        Set expereimental given parameter.
+
         :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
         :param y_exp: Experimental y-axis data.
         :return: x_exp, y_exp in appropriate format and flag that is multisample fitting data
@@ -922,7 +935,9 @@ class SpectrumFitter(BaseSpectrumFitter):
 
 class Spectrum2DFitter(BaseSpectrumFitter):
     """
-    Spectrum Fitter for 2D data. y_exp should be 2d array, x1_exp and x2_exp are axis
+    Spectrum Fitter for 2D data.
+
+    y_exp should be 2d array, x1_exp and x2_exp are axis
     """
     def __init__(
             self,
@@ -942,7 +957,9 @@ class Spectrum2DFitter(BaseSpectrumFitter):
             device: tp.Optional[torch.device] = None,
     ):
         """
-        :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s),
+        :param x1_exp: Experimental x1-axis data.
+
+        It can be magnetic field (T), time (s),
             It is possible to pass a list for multi-object fit
         :param x2_exp: Experimental x2-axis data. It can be magnetic field (T), time (s),
             It is possible to pass a list for multi-object fit
@@ -990,7 +1007,8 @@ class Spectrum2DFitter(BaseSpectrumFitter):
                   y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, bool]:
         """
-        Set experimental given parameter
+        Set experimental given parameter.
+
         :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
         :param x2_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
         :param y_exp: Experimental y-axis data.
@@ -1029,6 +1047,7 @@ class Spectrum2DFitter(BaseSpectrumFitter):
 class SpaceSearcher:
     """
     For some cases not only the best fitting parameters are useful but all 'good' parameters.
+
     Space searcher try to catch 'good' parameters that are far from the best fit parameters.
     """
     def __init__(
@@ -1038,7 +1057,8 @@ class SpaceSearcher:
         distance_fraction: float = 0.2,
     ):
         """
-        :param loss_rel_tol: loss_trial / loss_best: cutoff parameter
+        :param loss_rel_tol: loss_trial / loss_best: cutoff parameter.
+
             that sets the acceptable loss of trial. Default is 1
         :param top_k: Returns only top_k lowest-loss trials.
         :param distance_fraction: Among all 'good' trials with low loss it
@@ -1077,7 +1097,8 @@ class SpaceSearcher:
     def _extract_trials_from_fit(self, fit_result: FitResult,
                                    param_names: tp.Optional[list[str]] = None):
         """
-        Return arrays: (param_matrix, losses, trial_indices)
+        Return arrays: (param_matrix, losses, trial_indices).
+
         param_matrix shape: (n_trials, n_varying_params)
         losses: array of length n_trials (float)
         trial_indices: list of optuna trial numbers corresponding to rows
@@ -1102,6 +1123,7 @@ class SpaceSearcher:
             tp.List[tp.Dict[str, tp.Any]]:
         """
         :param fit_result: The output of fitter.
+
         :param param_names: The names of parameters that should be included in search procedure.
         Default value is None means that all spec (varying) parameters should be included.
         :return: The results of fitting searching

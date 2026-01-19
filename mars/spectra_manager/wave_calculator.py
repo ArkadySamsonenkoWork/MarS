@@ -32,13 +32,13 @@ def wigner_term_square(helicity: int, num: int, theta: torch.Tensor):
 
 
 class PlaneWaveTerms(nn.Module):
-    """
-    Base module for polarization-dependent term computation for plane waves
-    """
+    """Base module for polarization-dependent term computation for plane waves."""
     def __init__(self, polarization: str, theta: float,
                  phi: tp.Optional[float], device: torch.device, dtype: torch.dtype):
         """
-        :param polarization: Radiation polarization state. Must be one of:
+        :param polarization: Radiation polarization state.
+
+        Must be one of:
                 1) '+1' or '-1' for circular polarization
                 2) 'un' for unpolarized radiation
                 3) 'lin' for linear polarization
@@ -47,7 +47,6 @@ class PlaneWaveTerms(nn.Module):
         magnetic field of radiation for linear polarization orientation. It is used only fot linear polarization
         :param device: torch.device
         :param dtype: torch.dtype
-
         """
         super().__init__()
         self.register_buffer("theta", torch.tensor(theta, device=device, dtype=dtype))
@@ -79,9 +78,7 @@ class PlaneWaveTerms(nn.Module):
 
 
 class PowderPlaneWaveTerms(PlaneWaveTerms):
-    """
-    Polarization terms calculator for disordered (powder) samples for plane wave radiation
-    """
+    """Polarization terms calculator for disordered (powder) samples for plane wave radiation."""
     def _circle(self, wave_len: tp.Optional[float]):
         def _xy_term(
                 helicity: int, theta: torch.Tensor, phi: torch.Tensor,
@@ -156,9 +153,7 @@ class PowderPlaneWaveTerms(PlaneWaveTerms):
 
 
 class CrystalPlaneWaveTerms(PlaneWaveTerms):
-    """
-    Polarization terms calculator for single-crystal or many-crystal samples for plane wave radiation
-    """
+    """Polarization terms calculator for single-crystal or many-crystal samples for plane wave radiation."""
     def _circle(self, wave_len: tp.Optional[float]):
         def _xy_term(
                 helicity: int, theta: torch.Tensor, phi: torch.Tensor):
@@ -213,7 +208,8 @@ class CrystalPlaneWaveTerms(PlaneWaveTerms):
 
 class WaveIntensityCalculator(StationaryIntensityCalculator):
     """
-    Computes the intensity of transitions for general type of radiation, when the radiation has different orientation
+    Computes the intensity of transitions for general type of radiation, when the radiation has different orientation.
+
     with respect to static magnetic field.
 
     Handles calculation of transition intensities based on:
@@ -341,7 +337,8 @@ class WaveIntensityCalculator(StationaryIntensityCalculator):
             resonance_manifold: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs
     ) -> torch.Tensor:
         """
-        Compute  EPR intensities under polarized radiation
+        Compute  EPR intensities under polarized radiation.
+
         :param Gx, Gy, Gz: Zeeman operator components
         :param vector_down, vector_up: Eigenvectors of lower/upper states
         :param ...: Other parameters (unused here but kept for interface consistency)

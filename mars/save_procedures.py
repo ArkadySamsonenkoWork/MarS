@@ -408,7 +408,8 @@ def save(
         format_type="torch"
 ):
     """
-    Save experimental and sample parameters
+    Save experimental and sample parameters.
+
     :param filepath: The file path where data should be saved. Should include the desired
         file extension or directory path depending on format_type.
     :param sample: BaseSample instance. Default is None
@@ -796,7 +797,8 @@ class CreatorLoader:
 
 def load(filepath: str, format_type: str = None) -> tp.Dict[str, tp.Any]:
     """
-    :param filepath: load data from filepath
+    :param filepath: load data from filepath.
+
     :param format_type: {'pytorch', 'npy', 'easyspin'}, optional
         The output format for saved data:
 
@@ -871,7 +873,7 @@ def load_npy(filepath: str) -> tp.Dict[str, tp.Any]:
 
 
 def load_mat_file(filepath):
-    """Load and properly parse MATLAB .mat file with structured arrays"""
+    """Load and properly parse MATLAB .mat file with structured arrays."""
     data = scipy.io.loadmat(filepath)
     clean_data = {k: v for k, v in data.items() if not k.startswith('__')}
     result = {}

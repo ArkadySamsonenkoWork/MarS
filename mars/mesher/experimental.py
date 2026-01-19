@@ -37,7 +37,8 @@ class Mesh3D(delanay_neigbour.DelaunayMeshNeighbour):
 
     def _create_rotation_matrices(self):
         """
-        Given tensors phi and theta (of the same shape), returns a tensor
+        Given tensors phi and theta (of the same shape), returns a tensor.
+
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (phi, theta).
 

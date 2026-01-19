@@ -5,7 +5,8 @@ from . import constants
 
 def apply_expanded_rotations(R: torch.Tensor, T: torch.Tensor):
     """
-    Rotate tensor T with respect to rotation matrices R according formula T' = RTR'
+    Rotate tensor T with respect to rotation matrices R according formula T' = RTR'.
+
     :param R: the rotation matrices. The shape is [*rotation_dims, 3, 3]
     :param T: tensor that must be rotated. The shape is [... 3, 3]
     :return: The rotated tensors with the shape [..., *rotation_dims, 3, 3]
@@ -43,6 +44,7 @@ def calculate_deriv_max(g_tensors_el: torch.Tensor, g_factors_nuc: torch.Tensor,
                         el_numbers: torch.Tensor, nuc_numbers: torch.Tensor) -> torch.Tensor:
     """
     Calculate the maximum value of the energy derivatives with respect to magnetic field.
+
     It is assumed that B has direction along z-axis
     :param g_tensors_el: g-tensors of electron spins. The shape is [..., 3, 3]
     :param g_factors_nuc: g-factors of the nuclei spins. The shape is [...]
@@ -56,9 +58,7 @@ def calculate_deriv_max(g_tensors_el: torch.Tensor, g_factors_nuc: torch.Tensor,
 
 
 def rotation_matrix_to_euler_angles(R: torch.Tensor, convention: str = "zyz"):
-    """
-    Convert a 3x3 rotation matrix to ZYZ Euler angles.
-    """
+    """Convert a 3x3 rotation matrix to ZYZ Euler angles."""
     r11, r12, r13 = R[..., 0, 0], R[..., 0, 1], R[..., 0, 2]
     r21, r22, r23 = R[..., 1, 0], R[..., 1, 1], R[..., 1, 2]
     r31, r32, r33 = R[..., 2, 0], R[..., 2, 1], R[..., 2, 2]
@@ -89,7 +89,8 @@ def rotation_matrix_to_euler_angles(R: torch.Tensor, convention: str = "zyz"):
 
 def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
     """
-    :param euler_angles: torch.Tensor of shape (..., 3) containing Euler angles in radians
+    :param euler_angles: torch.Tensor of shape (..., 3) containing Euler angles in radians.
+
     :param convention: str, rotation convention (default 'zyz')
                    Supported: 'zyz', 'xyz', 'xzy', 'yxz', 'yzx', 'zxy', 'zyx'
     :return: torch.Tensor of shape (..., 3, 3) containing rotation matrices
@@ -204,7 +205,8 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
 
 def mean_rotation_svd(Rs: torch.Tensor):
     """
-    Compute mean rotation matrix as SVD projection of mean value of rotation matrices
+    Compute mean rotation matrix as SVD projection of mean value of rotation matrices.
+
     :param Rs: rotation matrices with shape [..., n, 3, 3], where n is number for mean computation.
     :return: R_mean - mean rotation matrix with shape [..., 3, 3]
     """
@@ -224,7 +226,8 @@ def mean_rotation_svd(Rs: torch.Tensor):
 
 def get_canonical_orientations(angles: torch.Tensor):
     """
-    Compute Canonical angles for set of angles using SVD mean projection
+    Compute Canonical angles for set of angles using SVD mean projection.
+
     :param angles: euler angles in convention zyz. The shape is [..., n, 3], where n is set size
     :return: Canonical angles
     """

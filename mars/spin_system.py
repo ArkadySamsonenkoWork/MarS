@@ -37,12 +37,20 @@ def scalar_tensor_multiplication(
 ) -> torch.Tensor:
     """
     Computes the scalar product of two tensor components after applying a transformation.
-    Parameters:
-        tensor_components_A (torch.Tensor): Input tensor components with shape [..., 3, K, K].
-        tensor_components_B (torch.Tensor): Input tensor components with shape [..., 3, K, K].
-        transformation_matrix (torch.Tensor): Transformation matrix with shape [..., 3, 3].
-    Returns:
-        torch.Tensor: Scalar product with shape [..., K, K].
+
+    :param tensor_components_A:
+        'torch.Tensor'
+        Input tensor components with shape [..., 3, K, K].
+    :param tensor_components_B:
+        'torch.Tensor'
+        Input tensor components with shape [..., 3, K, K].
+    :param transformation_matrix:
+        'torch.Tensor'
+        Transformation matrix with shape [..., 3, 3].
+
+    :return:
+        'torch.Tensor'
+        Scalar product with shape [..., K, K].
     """
     return torch.einsum(
         '...ij, jnl, ilm->...nm',
@@ -55,16 +63,21 @@ def scalar_tensor_multiplication(
 def transform_tensor_components(tensor_components: torch.Tensor, transformation_matrix: torch.Tensor) -> torch.Tensor:
     """
     Applies a matrix transformation to a collection of tensor components.
-    Parameters:
-        tensor_components (torch.Tensor): Input tensor components with shape [..., 3, K, K]
-            where 3 represents different components (e.g., x,y,z) and K is the system dimension. For example,
-            [Sx, Sy, Sz]
-        transformation_matrix (torch.Tensor): Transformation matrix with shape [..., 3, 3]. For example, g - tensor
-    Returns:
-        torch.Tensor: Transformed tensor components with shape [..., 3, K, K]
+
+    :param tensor_components:
+        'torch.Tensor'
+        Input tensor components with shape [..., 3, K, K]
+        where 3 represents different components (e.g., x,y,z) and K is the system dimension. For example,
+        [Sx, Sy, Sz]
+    :param transformation_matrix:
+        'torch.Tensor'
+        Transformation matrix with shape [..., 3, 3]. For example, g - tensor
+
+    :return:
+        'torch.Tensor'
+        Transformed tensor components with shape [..., 3, K, K]
     """
     return torch.einsum('...ij,...jkl->...ikl', transformation_matrix, tensor_components)
-
 
 # Возможно, стоит переделать логику работы расчёта тензоров через тенорное произведение. Сделать отдельный тип данных.
 # Сейчас каждый спин даёт матрицу [K, K] и расчёт взаимодействией не оптимальный
@@ -200,9 +213,7 @@ class BaseInteraction(nn.Module, ABC):
     @property
     @abstractmethod
     def strain_correlation(self):
-        """
-        :return: The correlation matrix of strain parameters
-        """
+        """:return: The correlation matrix of strain parameters."""
         pass
 
     def __len__(self):
@@ -300,6 +311,7 @@ class Interaction(BaseInteraction):
                  device=torch.device("cpu"), dtype=torch.float32):
         """
         :param components:
+
         torch.Tensor | Sequence[float] | float
             The tensor components, provided in one of the following forms:
               - A scalar (for isotropic interaction).
@@ -387,15 +399,14 @@ class Interaction(BaseInteraction):
 
     def _tensor(self):
         """
-        :return: the tensor in the spin system axis
+        :return: the tensor in the spin system axis.
+
         the shape of the returned tensor is [..., 3, 3]
         """
         return utils.apply_single_rotation(self._rot_matrix, torch.diag_embed(self.components))
 
     def _strained_tensor(self) -> tp.Optional[torch.Tensor]:
-        """
-        :return: return the None or the tensor with the shape [..., 3, 3, 3] or None
-        """
+        """:return: return the None or the tensor with the shape [..., 3, 3, 3] or None."""
         if self._strain is None:
             return None
         else:
@@ -404,23 +415,17 @@ class Interaction(BaseInteraction):
 
     @property
     def tensor(self):
-        """
-        :return: the full tensor of interaction with shape [..., 3, 3] with applied rotation
-        """
+        """:return: the full tensor of interaction with shape [..., 3, 3] with applied rotation."""
         return self._tensor()
 
     @property
     def strain(self):
-        """
-        :return: None or tensor with shape [..., 3]
-        """
+        """:return: None or tensor with shape [..., 3]."""
         return self._strain
 
     @property
     def strained_tensor(self):
-        """
-        :return: None or the tensor with shape [...., 3, 3, 3], where first '3' is x, y, z components
-        """
+        """:return: None or the tensor with shape [...., 3, 3, 3], where first '3' is x, y, z components."""
         return self._strained_tensor()
 
     @property
@@ -429,16 +434,12 @@ class Interaction(BaseInteraction):
 
     @property
     def components(self):
-        """
-        :return: tensor with shape [..., 3] - the principle components of a tensor
-        """
+        """:return: tensor with shape [..., 3] - the principle components of a tensor."""
         return self._components
 
     @property
     def frame(self):
-        """
-        :return: angles with ZYZ' notation.
-        """
+        """:return: angles with ZYZ' notation."""
         return self._frame
 
     @frame.setter
@@ -453,6 +454,7 @@ class Interaction(BaseInteraction):
     def strain_correlation(self):
         """
         In some cases the components of the interaction can correlate.
+
         To implement this correlation the strain_correlation matrix is used. For example, in the case of D/E interaction
         strain_correlation = [[-1/3, 1], [-1/3, -1], [2/3, 0]] - the matrix of trnasformation of Dx, Dy, Dz to D and E
         :return:
@@ -516,7 +518,9 @@ class DEInteraction(Interaction):
                  frame: torch.Tensor = None, strain: torch.Tensor = None,
                  device=torch.device("cpu"), dtype=torch.float32):
         """
-        DEInteraction is given by two components D and E. To transform to x, y, z components the next equation is used:
+        DEInteraction is given by two components D and E.
+
+        To transform to x, y, z components the next equation is used:
         Dx = -D * 1/3 + E
         Dy = -D * 1/3 - E
         Dz = D * 2/3
@@ -600,6 +604,7 @@ class SpinSystem(nn.Module):
 
         """
         :param electrons:
+
         list[Electron] | list[float]
             Electron spins in the system. Can be specified as:
               - A list of `Electron` particle instances.
@@ -672,7 +677,7 @@ class SpinSystem(nn.Module):
                                interactions: list[tuple[int, int, BaseInteraction]] | None,
                                module_list: nn.ModuleList,
                                index_list: list):
-        """Helper to register interactions and store indices"""
+        """Helper to register interactions and store indices."""
         if interactions:
             for idx1, idx2, interaction in interactions:
                 module_list.append(interaction)
@@ -698,7 +703,7 @@ class SpinSystem(nn.Module):
 
     @property
     def config_shape(self) -> tp.Iterable:
-        """shape of the tensor"""
+        """Shape of the tensor."""
         return self.g_tensors[0].config_shape
 
     @property
@@ -751,6 +756,7 @@ class SpinSystem(nn.Module):
     def get_electron_z_operator(self) -> torch.Tensor:
         """
         Compute the total Sz operator for all electron spins in the system.
+
         This method sums the individual Sz operators from each electron spin operator
         cache to produce the total spin projection operator along the z-axis.
 
@@ -769,6 +775,7 @@ class SpinSystem(nn.Module):
     def get_electron_squared_operator(self) -> torch.Tensor:
         """
         Compute the total S² operator for all electron spins in the system.
+
         This method calculates S² = Sx² + Sy² + Sz² by first summing the individual
         spin vector operators from each electron, then computing the dot product of
         the total spin vector with itself.
@@ -787,6 +794,7 @@ class SpinSystem(nn.Module):
     def get_spin_multiplet_basis(self) -> torch.Tensor:
         """
         Compute eigenvector in the |S, M⟩ basis (total spin and projection basis).
+
         This method diagonalizes a combination of sS² and Sz operators to obtain
         eigenvectors ordered by total spin quantum number S, then by magnetic
         quantum number M (spin projection).
@@ -810,6 +818,7 @@ class SpinSystem(nn.Module):
     def get_product_state_basis(self) -> torch.Tensor:
         """
         Return the identity matrix representing the computational product state basis.
+
         The product state basis is |ms1, ms2, ..., msk, is1, ..., ism⟩ where:
         - ms1, ms2, ..., msk are magnetic quantum numbers for electrons through k
         - is1, is2, ..., ism are magnetic quantum numbers for nuclei through m
@@ -829,6 +838,7 @@ class SpinSystem(nn.Module):
     def get_total_projections(self) -> torch.Tensor:
         """
         Compute the total magnetic quantum number M for each product state.
+
         This method calculates M = Σmsi + Σisj (sum of all electron and nuclear
         spin projections) for each basis state in the product state representation.
 
@@ -918,7 +928,9 @@ class SpinSystem(nn.Module):
                electron_electron: tp.Union[list[tuple[int, int, BaseInteraction]], None] = None,
                nuclei_nuclei: tp.Union[list[tuple[int, int, BaseInteraction]], None] = None):
         """
-        Update the parameters of spin system. No recomputation of spin vectors does not occur
+        Update the parameters of spin system.
+
+        No recomputation of spin vectors does not occur
         :param g_tensors:
         list[BaseInteraction]
             g-tensors corresponding to each electron in `electrons`.
@@ -1041,9 +1053,7 @@ class SpinSystem(nn.Module):
 
 
 class BaseSample(nn.Module):
-    """
-    Base Class for any type of Samples.
-    """
+    """Base Class for any type of Samples."""
     def __init__(self, spin_system: SpinSystem,
                  ham_strain: tp.Optional[tp.Union[torch.Tensor, float]] = None,
                  gauss: tp.Optional[tp.Union[torch.Tensor, float]] = None,
@@ -1052,6 +1062,7 @@ class BaseSample(nn.Module):
                  *args, **kwargs):
         """
         :param spin_system:
+
         SpinSystem
             The spin system describing electrons, nuclei, and their interactions.
 
@@ -1147,7 +1158,9 @@ class BaseSample(nn.Module):
                lorentz: tp.Union[torch.Tensor, float] = None
                ):
         """
-        Update the parameters of a sample. No recomputation of spin vectors does not occur
+        Update the parameters of a sample.
+
+        No recomputation of spin vectors does not occur
         :param g_tensors:
         list[BaseInteraction]
             g-tensors corresponding to each electron in `electrons`.
@@ -1237,7 +1250,7 @@ class BaseSample(nn.Module):
         return F
 
     def build_first_order_interactions(self) -> torch.Tensor:
-        """Constructs the zero-field Hamiltonian F of the first order operators"""
+        """Constructs the zero-field Hamiltonian F of the first order operators."""
         return self.build_nuclei_nuclei() + self.build_electron_nuclei() + self.build_electron_electron()
 
     def build_zero_field_term(self) -> torch.Tensor:
@@ -1245,7 +1258,10 @@ class BaseSample(nn.Module):
         return self.build_first_order_interactions()
 
     def _build_electron_zeeman_terms(self) -> torch.Tensor:
-        """Constructs the Zeeman interaction terms Gx, Gy, Gz. for electron spins with give g-tensors"""
+        """Constructs the Zeeman interaction terms Gx, Gy, Gz.
+
+        for electron spins with give g-tensors
+        """
         G = torch.zeros((*self.config_shape, 3,
                          self.spin_system_dim, self.spin_system_dim),
                         dtype=self.complex_dtype,
@@ -1258,7 +1274,10 @@ class BaseSample(nn.Module):
         return G
 
     def _build_nucleus_zeeman_terms(self) -> torch.Tensor:
-        """Constructs the Nucleus interaction terms Gx, Gy, Gz. for nucleus spins"""
+        """Constructs the Nucleus interaction terms Gx, Gy, Gz.
+
+        for nucleus spins
+        """
         G = torch.zeros((*self.config_shape, 3,
                          self.spin_system_dim,
                          self.spin_system_dim),
@@ -1272,13 +1291,17 @@ class BaseSample(nn.Module):
         return G
 
     def build_zeeman_terms(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Constructs the Zeeman interaction terms Gx, Gy, Gz. for the system"""
+        """Constructs the Zeeman interaction terms Gx, Gy, Gz.
+
+        for the system
+        """
         G = self._build_electron_zeeman_terms() + self._build_nucleus_zeeman_terms()
         return G[..., 0, :, :], G[..., 1, :, :], G[..., 2, :, :]
 
     def calculate_derivative_max(self):
         """
         Calculate the maximum value of the energy derivatives with respect to magnetic field.
+
         It is assumed that B has direction along z-axis
         :return: the maximum value of the energy derivatives with respect to magnetic field
         """
@@ -1326,15 +1349,18 @@ class BaseSample(nn.Module):
     def get_hamiltonian_terms_secular(self) -> tuple:
         """
         Returns F0, Gx, Gy, Gz.
+
         F0 is a part of magnetic field free term, which commutes with Gz
         Gx, Gy, Gz are terms multiplied to Bx, By, Bz respectively
 
         The next approach for computation is used:
 
         1) The mask M is created
-                m = diag(Sz)  # shape (.., n)
-                M[i,j] = 1 if m[i] == m[j], else 0
-        2) Then F0 = F * M is used
+                'm = diag(Sz)'  # shape [.., N]
+                'M[i,j] = 1' if 'm[i] == m[j]', else 0
+        2) Then the transformation F0 = F * M is used
+
+        This approach is correct when Gz is diagonal in the initial basis.
         """
         Gx, Gy, Gz = self.build_zeeman_terms()
         diag = torch.diagonal(Gz, dim1=-2, dim2=-1).real
@@ -1343,7 +1369,8 @@ class BaseSample(nn.Module):
 
     def build_field_dep_strain(self):
         """
-        Calculate electron Zeeman field dependant strained part
+        Calculate electron Zeeman field dependant strained part.
+
         :return:
         """
         operator_cache = self.modified_spin_system.operator_cache
@@ -1431,13 +1458,15 @@ class BaseSample(nn.Module):
 
 class SpinSystemOrientator:
     """
-    The helper class that allow toa
+    The helper class that allow toa.
+
     transform spin system to spin system at different rotation angles.
     Effectively rotate all Hamiltonian parts
     """
     def __call__(self, spin_system: SpinSystem, rotation_matrices: torch.Tensor) -> SpinSystem:
         """
-        :param spin_system: spin_system with interactions
+        :param spin_system: spin_system with interactions.
+
         :param rotation_matrices: rotation_matrices that rotate spin system
         :return: modified spin system with all rotated interactions
         """
@@ -1481,10 +1510,10 @@ class SpinSystemOrientator:
     def transform_spin_system_to_oriented(self, spin_system: SpinSystem, rotation_matrices: torch.Tensor):
         #rotation_matrices = rotation_matrices.to(torch.complex64)
         config_shape = torch.Size([*spin_system.config_shape, rotation_matrices.shape[0]])
-        interactions = [g_tensor for g_tensor in spin_system.g_tensors] + \
+        interactions = [g_tensor for g_tensor in spin_system.g_tensors] +\
                        [el_nuc[-1] for el_nuc in spin_system.electron_nuclei] +\
                        [el_el[-1] for el_el in spin_system.electron_electron]
-        strain_correlations = [g_tensor.strain_correlation for g_tensor in spin_system.g_tensors] + \
+        strain_correlations = [g_tensor.strain_correlation for g_tensor in spin_system.g_tensors] +\
                        [el_nuc[-1].strain_correlation for el_nuc in spin_system.electron_nuclei] +\
                        [el_el[-1].strain_correlation for el_el in spin_system.electron_electron]
 
@@ -1503,6 +1532,7 @@ class SpinSystemOrientator:
 class MultiOrientedSample(BaseSample):
     """
     A sample class that is used to define any solid and crystalline samples: crystals, powders, glasses.
+
     Allows you to specify the required extensions present in the solid phase.
     """
     def __init__(self, spin_system: SpinSystem,
@@ -1516,6 +1546,7 @@ class MultiOrientedSample(BaseSample):
                  ):
         """
         :param spin_system:
+
         SpinSystem
             The spin system describing electrons, nuclei, and their interactions.
 
@@ -1649,7 +1680,7 @@ class MultiOrientedSample(BaseSample):
         return rotation_matrices[..., -1, :]
 
     def build_ham_strain(self) -> torch.Tensor:
-        """Constructs the zero-field strained part of Hamiltonian"""
+        """Constructs the zero-field strained part of Hamiltonian."""
         return self._ham_strain
 
     def update(self,
@@ -1662,7 +1693,9 @@ class MultiOrientedSample(BaseSample):
                lorentz: tp.Union[torch.Tensor, float] = None
                ):
         """
-        Update the parameters of a sample. No recomputation of spin vectors does not occur
+        Update the parameters of a sample.
+
+        No recomputation of spin vectors does not occur
         :param g_tensors:
         list[BaseInteraction]
             g-tensors corresponding to each electron in `electrons`.

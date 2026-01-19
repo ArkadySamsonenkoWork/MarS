@@ -29,9 +29,7 @@ class BaseIntegrand(nn.Module, ABC):
 
 
 class ZeroOrderIntegrand(BaseIntegrand):
-    """
-    Calculates the term like in EasySpin article
-    """
+    """Calculates the term like in EasySpin article."""
 
     def __init__(self, harmonic: int, device: torch.device = torch.device("cpu")):
         super().__init__()
@@ -77,13 +75,14 @@ class BaseSpectraIntegrator(nn.Module):
                   width: torch.Tensor, A_mean: torch.Tensor,
                   area: torch.Tensor, spectral_field: torch.Tensor):
         """
-        :param res_fields: The resonance fields with the shape [..., M, 3]
+        :param res_fields: The resonance fields with the shape [..., M, 3].
+
         :param width: The width of transitions. The shape is [..., M]
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
         :return: result: Tensor of shape (..., N) with the value of the integral for each B
-         """
+        """
         pass
 
 
@@ -91,7 +90,9 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
     def __init__(self, harmonic: int = 1, natural_width: float = 1e-5, chunk_size=128,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
-        :param harmonic: The harmonic of the spectra. 0 is an absorptions, 1 is derivative
+        :param harmonic: The harmonic of the spectra.
+
+        0 is an absorptions, 1 is derivative
         """
         super().__init__(harmonic, natural_width, chunk_size, device=device, dtype=dtype)
 
@@ -144,7 +145,8 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
 
         def integrand(B_val: torch.Tensor):
             """
-            :param B_val: the value of  spectral magnetic field
+            :param B_val: the value of  spectral magnetic field.
+
             :return: The total intensity at this magnetic field
             """
             ratio = self.infty_ratio(B_mean, c_extended, B_val)
@@ -160,7 +162,9 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         super().__init__(harmonic, natural_width, chunk_size, device=device, dtype=dtype)
         """
-        :param harmonic: The harmonic of the spectra. 0 is an absorptions, 1 is derivative
+        :param harmonic: The harmonic of the spectra.
+
+        0 is an absorptions, 1 is derivative
         """
         self.register_buffer("two", torch.tensor(2.0, device=device, dtype=dtype))
 
@@ -198,7 +202,8 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
 
         def integrand(B_val: torch.Tensor):
             """
-            :param B_val: the value of  spectral magnetic field
+            :param B_val: the value of  spectral magnetic field.
+
             :return: The total intensity at this magnetic field
             """
             ratio = self.infty_ratio(B_mean, c_extended, B_val)
@@ -214,7 +219,9 @@ class MeanIntegrator(BaseSpectraIntegrator):
     def __init__(self, harmonic: int = 1, natural_width: float = 1e-4, chunk_size: int = 128,
                  device: torch.device = torch.device("cpu")):
         """
-        :param harmonic: The harmonic of the spectra. 0 is an absorptions, 1 is derivative
+        :param harmonic: The harmonic of the spectra.
+
+        0 is an absorptions, 1 is derivative
         """
         super().__init__(harmonic, natural_width, chunk_size, device=device)
         self.infty_ratio = ZeroOrderIntegrand(harmonic)
@@ -239,7 +246,8 @@ class MeanIntegrator(BaseSpectraIntegrator):
 
         def integrand(B_val: torch.Tensor):
             """
-            :param B_val: the value of  spectral magnetic field
+            :param B_val: the value of  spectral magnetic field.
+
             :return: The total intensity at this magnetic field
             """
             ratio = self.infty_ratio(res_fields, c_extended, B_val)

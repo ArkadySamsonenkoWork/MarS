@@ -1,5 +1,5 @@
-Context
-=========
+Relaxation Context
+==================
 
 The :class:`mars.population.contexts.Context` class provides a comprehensive framework for defining relaxation mechanisms and initial states in time-resolved EPR spectroscopy. 
 It encapsulates the physical model of how spin systems evolve after initial excitation.

@@ -1,8 +1,7 @@
-.. _detailed_balance: 
-
+.. _detailed_balance:
 
 Detailed Balance Enforcement
-=============================
+============================
 
 Overview
 --------
@@ -19,31 +18,37 @@ This document describes how MarS modifies free transitions to satisfy detailed b
 
 
 Detailed Balance in the Kinetic Approach
------------------------------------------
+----------------------------------------
 
 Input Convention
 ~~~~~~~~~~~~~~~~
 
-The input matrix of free transition probabilities, denoted `free_probs`, may be *arbitrary*. However, MarS provides two modes of processing this input, controlled by the flag `symmetry_probs`:
+The input matrix of free transition probabilities, denoted ``free_probs``, may be *arbitrary*. However, MarS provides two modes of processing this input, controlled by the flag ``symmetry_probs``:
 
-1. **Symmetric mode** (`symmetry_probs=True`, default):  
+1. **Symmetric mode** (``symmetry_probs=True``, default):  
    The class **symmetrizes** the input internally by computing:
+
    .. math::
+
       w'_{ij} = \frac{1}{2}(w_{ij} + w_{ji})
+
    This symmetric average is then used as the base rate for Boltzmann correction.  
    This mode is appropriate when the user provides raw or unstructured rates and wishes MarS to enforce physical symmetry before thermal scaling.
 
-2. **Asymmetric mode** (`symmetry_probs=False`):  
+2. **Asymmetric mode** (``symmetry_probs=False``):  
    No symmetrization is performed. The input is interpreted as containing the **backward** rates :math:`w_{ji}` directly. Forward rates are derived via detailed balance:
+
    .. math::
+
       w_{ij} = w_{ji} \cdot \exp\left(\frac{E_j - E_i}{k_B T}\right)
+
    This mode is useful when the user already has a physically meaningful asymmetric rate structure (e.g., from microscopic modeling).
 
 
 Boltzmann Correction
 ~~~~~~~~~~~~~~~~~~~~
 
-For each pair of energy levels i and j with energy difference ΔE_{ij} = E_i - E_j, the corrected transition rates are:
+For each pair of energy levels i and j with energy difference :math:`\Delta E_{ij} = E_i - E_j`, the corrected transition rates are:
 
 .. math::
 
@@ -53,7 +58,7 @@ For each pair of energy levels i and j with energy difference ΔE_{ij} = E_i - E
 
    w_{ji}^* = \frac{2w'_{ij}}{1 + \exp(\Delta E_{ij} / k_B T)} = w_{ij}^* \exp(\Delta E_{ij} / k_B T)
 
-where w'_{ij} is the symmetric input rate.
+where :math:`w'_{ij}` is the symmetric input rate.
 
 **Verification**: The corrected probabilities satisfy:
 
@@ -69,7 +74,7 @@ and their sum is conserved:
 
 
 Kinetic Matrix Construction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The full kinetic matrix K is constructed as:
 
@@ -79,11 +84,11 @@ The full kinetic matrix K is constructed as:
 
 where:
 
-* **W^*** is the matrix of Boltzmann-corrected free transitions
-* **D** is the matrix of driven transitions (no Boltzmann correction)
-* **O** is the vector of outgoing loss rates (e.g., phosphorescence)
+- **W\*** is the matrix of Boltzmann-corrected free transitions
+- **D** is the matrix of driven transitions (no Boltzmann correction)
+- **O** is the vector of outgoing loss rates (e.g., phosphorescence)
 
-The diagonal elements of W^* and D are set to enforce probability conservation:
+The diagonal elements of W\* and D are set to enforce probability conservation:
 
 .. math::
 
@@ -99,10 +104,10 @@ This ensures that in the absence of losses (O = 0), the column sums are zero and
 
 
 Detailed Balance in the Density Matrix Approach
-------------------------------------------------
+-----------------------------------------------
 
 Liouville Space Representation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the density matrix formalism, the evolution equation in Liouville space is:
 
@@ -112,15 +117,15 @@ In the density matrix formalism, the evolution equation in Liouville space is:
 
 where:
 
-* :math:`\hat{H}` is the Hamiltonian superoperator: :math:`\hat{H} = H \otimes I - I \otimes H`
-* :math:`\hat{R}_{\text{free}}` is the spontaneous relaxation superoperator (subject to detailed balance)
-* :math:`\hat{R}_{\text{driv}}` is the driven relaxation superoperator (no detailed balance)
+- :math:`\hat{H}` is the Hamiltonian superoperator: :math:`\hat{H} = H \otimes I - I \otimes H`
+- :math:`\hat{R}_{\text{free}}` is the spontaneous relaxation superoperator (subject to detailed balance)
+- :math:`\hat{R}_{\text{driv}}` is the driven relaxation superoperator (no detailed balance)
 
-The density matrix ρ (N×N) is vectorized into :math:`\hat{\rho}` (N²×1), and superoperators are N²×N² matrices.
+The density matrix :math:`\rho` (:math:`N \times N`) is vectorized into :math:`\hat{\rho}` (:math:`N^2 \times 1`), and superoperators are :math:`N^2 \times N^2` matrices.
 
 
 Population Transfer Block
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The relaxation superoperator couples elements of the density matrix. For population transfers, only the diagonal block matters:
 
@@ -128,18 +133,19 @@ The relaxation superoperator couples elements of the density matrix. For populat
 
    \hat{R}[|i\rangle\langle i|, |j\rangle\langle j|] \equiv R_{iijj}
 
-This represents the rate of transition from population ρ_{jj} to population ρ_{ii}.
+This represents the rate of transition from population :math:`\rho_{jj}` to population :math:`\rho_{ii}`.
+
 
 Detailed Balance Correction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MarS applies Boltzmann correction only to the population-population coupling block of the free relaxation superoperator.
 
 **Algorithm**:
 
-1. Extract the population block indices: for N-level system, the population elements of the vectorized density matrix are at positions {0, N+1, 2(N+1), ..., (N-1)(N+1)} corresponding to {ρ₀₀, ρ₁₁, ..., ρₙₙ}.
+1. Extract the population block indices: for N-level system, the population elements of the vectorized density matrix are at positions {0, N+1, 2(N+1), ..., (N-1)(N+1)} corresponding to {:math:`\rho_{00}`, :math:`\rho_{11}`, ..., :math:`\rho_{N-1,N-1}`}.
 
-2. Extract the N×N population transfer sub-matrix:
+2. Extract the :math:`N \times N` population transfer sub-matrix:
 
    .. math::
 
@@ -157,7 +163,7 @@ MarS applies Boltzmann correction only to the population-population coupling blo
 
       P'_{ij} = (P_{ij} + P_{ji}) \cdot \frac{1}{1 + \exp(-\Delta E_{ij}/k_B T)}
 
-   for all i ≠ j.
+   for all :math:`i \neq j`.
 
 5. Restore diagonal elements to preserve total decay:
 
@@ -175,13 +181,14 @@ MarS applies Boltzmann correction only to the population-population coupling blo
 
 for population-population coupling elements, while all coherence-related elements (dephasing, coherence-population coupling if present) remain unchanged.
 
+
 Total Decay Correction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 The diagonal element :math:`R_{iiii}` represents the total rate of depopulation from level i, including:
 
-* Transfers to other levels: :math:`-\sum_{j \neq i} R_{jjii}`
-* Pure losses (e.g., phosphorescence): part of the original :math:`R_{iiii}`
+- Transfers to other levels: :math:`-\sum_{j \neq i} R_{jjii}`
+- Pure losses (e.g., phosphorescence): part of the original :math:`R_{iiii}`
 
 When Boltzmann correction is applied, the sum :math:`\sum_{j \neq i} R_{jjii}` changes. To maintain the correct total loss rate (which is a physical observable), we adjust :math:`R_{iiii}` so that:
 
@@ -193,27 +200,26 @@ This ensures that spontaneous emission rates (if included in the model) are not 
 
 
 Implementation Notes
----------------------
+--------------------
 
 In MarS, relaxation parameters are organized into distinct categories:
 
 **For kinetic (population-based) computations**:
 
-* **free_probs**: Spontaneous transition rates between energy levels (subject to detailed balance)
-* **driven_probs**: Induced transition rates from external perturbations (no detailed balance)
-* **out_probs**: Irreversible loss rates from individual levels (no detailed balance)
+- **free_probs**: Spontaneous transition rates between energy levels (subject to detailed balance)
+- **driven_probs**: Induced transition rates from external perturbations (no detailed balance)
+- **out_probs**: Irreversible loss rates from individual levels (no detailed balance)
 
 **For density matrix computations**:
 
-* **free_superop** (:math:`\hat{R}_{\text{free}}`): Combines free_probs, out_probs, and dephasing rates into a single spontaneous relaxation superoperator (subject to detailed balance correction on the population block)
-* **driven_superop** (:math:`\hat{R}_{\text{driv}}`): Induced relaxation processes (no detailed balance)
-
+- **free_superop** (:math:`\hat{R}_{\text{free}}`): Combines free_probs, out_probs, and dephasing rates into a single spontaneous relaxation superoperator (subject to detailed balance correction on the population block)
+- **driven_superop** (:math:`\hat{R}_{\text{driv}}`): Induced relaxation processes (no detailed balance)
 
 The enforcement of detailed balance for spontaneous (free) relaxation processes is implemented in two core utility classes within the "MarS" library:
 
-- class:`mars.population.tr_utils.EvolutionMatrix`:  
+- :class:`mars.population.tr_utils.EvolutionMatrix`:  
   Handles detailed balance correction in the *kinetic (population-based)* framework.
-It symmetrizes the input free transition probabilities, applies Boltzmann weighting to satisfy thermal equilibrium, and constructs a column-conservative kinetic matrix.
+  It symmetrizes the input free transition probabilities, applies Boltzmann weighting to satisfy thermal equilibrium, and constructs a column-conservative kinetic matrix.
 
-- class:`mars.population.tr_utils.EvolutionSuper`:  
+- :class:`mars.population.tr_utils.EvolutionSuper`:  
   Performs analogous corrections in the *density matrix (Liouville space)* formalism.

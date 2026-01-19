@@ -71,6 +71,7 @@ def get_spin_operators(s):
 @dataclass
 class Particle:
     """Represents a particle with spin and associated matrices.
+
     Spin must be an integer or half-integer.
     """
     spin: float
@@ -85,7 +86,8 @@ class Particle:
 
 @dataclass
 class Electron(Particle):
-    """Represents the electron Particle
+    """Represents the electron Particle.
+
     Spin must be an integer or half-integer.
     """
 

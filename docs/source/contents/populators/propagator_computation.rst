@@ -109,7 +109,7 @@ Since the microwave period T ~ 0.1 ns is much shorter than typical detection tim
 Relaxation Parameter Constraints
 ---------------------------------
 
-For the propagator method, all relaxation parameters in the Context **must be time-independent.
+For the propagator method, all relaxation parameters in the Context *must be time-independent*.
 The Floquet approach relies on the periodicity of the evolution operator. If the relaxation superoperator R depends on time (e.g., due to temperature changes), the propagator loses its periodic structure and cannot be efficiently computed via [G(T, 0)]^k.
 
 If relaxation parameters vary with time, use the kinetic approach or RWA with adaptive ODE integration instead.

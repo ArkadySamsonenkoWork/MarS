@@ -76,7 +76,8 @@ def read_dsc(filename):
 
 def read_dta(filepath, metadata):
     """
-    Read Bruker .DTA file with complex data for EPR spectroscopy
+    Read Bruker .DTA file with complex data for EPR spectroscopy.
+
     Parameters:
     - x_values: numpy array of x-axis values
     """
@@ -169,7 +170,8 @@ def read_bruker_spc_par_data(path: str | pathlib.Path) -> tuple[dict[str, tp.Any
 
 def read_bruker_dsc_dta_data(path: str | pathlib.Path) -> tuple[dict[str, tp.Any], dict[str, np.array]]:
     """
-    :param path: path to bruker file
+    :param path: path to bruker file.
+
     :return: metadata and the results
     """
     path = pathlib.Path(path)
@@ -181,7 +183,7 @@ def read_bruker_dsc_dta_data(path: str | pathlib.Path) -> tuple[dict[str, tp.Any
 
 
 def read_bruker_data(path: str | pathlib.Path) -> tuple[dict[str, tp.Any], dict[str, np.array]]:
-    """Read data from Bruker spectrometer using dta/dsc of pra/spc files"""
+    """Read data from Bruker spectrometer using dta/dsc of pra/spc files."""
     path = pathlib.Path(path)
 
     if (path.with_suffix('.dsc').exists() and path.with_suffix('.dta').exists()):

@@ -26,7 +26,6 @@ Welcome to MarS!
    contents/interactions/index
    contents/spectra_creators/index
    contents/intensity_calculators/index
-   contents/optimization/index
    contents/populators/index
    contents/context/index
 

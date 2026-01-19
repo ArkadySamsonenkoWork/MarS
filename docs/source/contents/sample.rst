@@ -123,7 +123,8 @@ You can retrieve them directly:
    # Full Hamiltonian decomposition
    F, Gx, Gy, Gz = sample.get_hamiltonian_terms()
 
-   # Secular approximation: only retain elements of F that commute with Gz
+   # Secular approximation: only retain elements of F that commute with Gz.
+   # This function is valid in MarS when Gz is giagonal in the basis of individual spin projections
    F_sec, Gx, Gy, Gz = sample.get_hamiltonian_terms_secular()
 
 In the secular form, non-commuting matrix elements of **F** with respect to **G_z** are zeroed out, enforcing the high-field selection rule:
@@ -136,5 +137,5 @@ In the secular form, non-commuting matrix elements of **F** with respect to **G_
      0,      & \text{otherwise}
    \end{cases}
 
-with a small threshold :math:`\varepsilon` (default: :math:`10^{-9}`). This is commonly used to suppress forbidden transitions in high-field EPR simulations.
+with a small threshold :math:`\varepsilon` (default: :math:`10^{-9}`).
 

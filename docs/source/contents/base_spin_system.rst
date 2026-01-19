@@ -79,7 +79,7 @@ The following methods allow you to construct and switch between common represent
 Below is a detailed description of each method.
 
 `:meth:`mars.spin_system.SpinSystem.get_electron_z_operator()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Returns the total electron spin projection operator along the *z*-axis:
 
@@ -92,7 +92,7 @@ Returns the total electron spin projection operator along the *z*-axis:
 - **Example**: For two spin-½ electrons, returns a 4×4 diagonal matrix with entries `[1, 0, 0, -1]`.
 
 `:meth:`mars.spin_system.SpinSystem.get_electron_squared_operator()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Returns the total electron spin-squared operator:
 
@@ -106,7 +106,7 @@ Returns the total electron spin-squared operator:
 - **Example**: For two spin-½ electrons, eigenvalues are `0` (singlet) and `2` (triplet).
 
 `:meth:`mars.spin_system.SpinSystem.get_spin_multiplet_basis()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Constructs a unitary transformation matrix that converts from the product-state basis to the total-spin multiplet basis :math:`|S, M\rangle`.
 
@@ -116,7 +116,7 @@ Constructs a unitary transformation matrix that converts from the product-state 
   :math:`|S=0, M=0\rangle,\ |S=1, M=-1\rangle,\ |S=1, M=0\rangle,\ |S=1, M=+1\rangle`.
 
 `:meth:`mars.spin_system.SpinSystem.get_product_state_basis()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Returns the identity matrix, confirming that internal operators are represented in the standard product-state basis:
 
@@ -128,7 +128,7 @@ Returns the identity matrix, confirming that internal operators are represented 
 - **Purpose**: Useful as a reference or for explicit basis-change operations.
 
 `:meth:`mars.spin_system.SpinSystem.get_electron_projections()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Returns a 1D tensor containing the total electron magnetic quantum number :math:`M_e = \sum_i m_{e_i}` for each product state.
 
@@ -137,7 +137,7 @@ Returns a 1D tensor containing the total electron magnetic quantum number :math:
 - **Example**: For one electron (S=½) and one nucleus (I=½), returns `[0.5, 0.5, -0.5, -0.5]`.
 
 `:meth:`mars.spin_system.SpinSystem.get_total_projections()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Returns the total magnetic quantum number :math:`M = \sum_i m_{e_i} + \sum_j m_{n_j}` for every product state.
 
