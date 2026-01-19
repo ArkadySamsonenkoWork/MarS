@@ -20,8 +20,7 @@ from ..population import contexts
 
 
 def compute_matrix_element(vector_down: torch.Tensor, vector_up: torch.Tensor, G: torch.Tensor):
-    """
-    Compute transition matrix element <ψ_up| G |ψ_down>.
+    """Compute transition matrix element <ψ_up| G |ψ_down>.
 
     :param vector_down: Lower-state eigenvector. Shape [..., N]
     :param vector_up: Upper-state eigenvector. Shape [..., N]
@@ -33,14 +32,17 @@ def compute_matrix_element(vector_down: torch.Tensor, vector_up: torch.Tensor, G
 
 
 class PostSpectraProcessing(nn.Module):
-    """
-    Apply line-broadening (Gaussian, Lorentzian, or Voigt) to raw stick spectra.
+    """Apply line-broadening (Gaussian, Lorentzian, or Voigt) to raw stick
+    spectra.
 
-    Supports batched and non-batched inputs. Automatically selects broadening
-    method based on non-zero FWHM parameters. Convolution performed in Fourier domain.
+    Supports batched and non-batched inputs. Automatically selects
+    broadening method based on non-zero FWHM parameters. Convolution
+    performed in Fourier domain.
 
-    :param gauss: Gaussian FWHM (in same units as magnetic_field). Shape [] or [*batch_dims]
-    :param lorentz: Lorentzian FWHM (in same units as magnetic_field). Shape [] or [*batch_dims]
+    :param gauss: Gaussian FWHM (in same units as magnetic_field). Shape
+        [] or [*batch_dims]
+    :param lorentz: Lorentzian FWHM (in same units as magnetic_field).
+        Shape [] or [*batch_dims]
     """
     def __init__(self, *args, **kwargs):
         """
@@ -171,8 +173,7 @@ class PostSpectraProcessing(nn.Module):
         return V
 
     def _apply_convolution(self, spec: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
-        """
-        Apply convolution via FFT.
+        """Apply convolution via FFT.
 
         :param spec: Shape [*batch_dims, N]
         :param kernel: Shape [*batch_dims, N]
@@ -221,8 +222,8 @@ class PostSpectraProcessing(nn.Module):
 
 
 class BaseProcessing(nn.Module, ABC):
-    """
-    Base class for spectral integration and spectral post-processing over orientation meshes.
+    """Base class for spectral integration and spectral post-processing over
+    orientation meshes.
 
     This abstract class provides the framework for transforming resonance field data
     (fields, intensities, widths) into integrated spectra. It handles mesh-based orientation
@@ -292,8 +293,7 @@ class BaseProcessing(nn.Module, ABC):
     def _final_mask(self, res_fields: torch.Tensor, width: torch.Tensor,
                     intensities: torch.Tensor, areas: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Apply intensity-based masking to discard negligible transitions.
+        """Apply intensity-based masking to discard negligible transitions.
 
         Transitions are retained only if their normalized intensity exceeds
         the internal threshold (default 1e-4). This reduces computational load
@@ -357,8 +357,7 @@ class BaseProcessing(nn.Module, ABC):
 
 
 class PowderStationaryProcessing(BaseProcessing):
-    """
-    Integrate stationary EPR spectra over spherical powder orientation mesh.
+    """Integrate stationary EPR spectra over spherical powder orientation mesh.
 
     This class provides the complete pipeline for transforming resonance field data
     (fields, intensities, widths) into integrated powder-averaged spectra for stationary
@@ -395,14 +394,15 @@ class PowderStationaryProcessing(BaseProcessing):
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator],
                                  harmonic: int, chunk_size: int, device: torch.device, dtype: torch.dtype)\
             -> BaseSpectraIntegrator:
-        """
-        Initialize the appropriate spectra integrator based on mesh symmetry.
+        """Initialize the appropriate spectra integrator based on mesh
+        symmetry.
 
         Uses AxialSpectraIntegratorStationary for axial powder meshes;
         otherwise uses general SpectraIntegratorStationary.
 
         :param spectra_integrator: Optional pre-defined integrator
-        :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative)
+        :param harmonic: Spectral harmonic (0 = absorption, 1 = first
+            derivative)
         :param chunk_size: Number of field points per integration chunk
         :param device: Computation device
         :param dtype: Floating-point precision
@@ -415,14 +415,15 @@ class PowderStationaryProcessing(BaseProcessing):
         return spectra_integrator
 
     def _compute_areas(self, expanded_size: int, device: torch.device) -> torch.Tensor:
-        """
-        Compute spherical triangle areas from the powder mesh and expand.
+        """Compute spherical triangle areas from the powder mesh and expand.
 
         to match batch dimensions required for integration.
 
-        :param expanded_size: Leading batch size before flattening (e.g., number of orientations)
+        :param expanded_size: Leading batch size before flattening
+            (e.g., number of orientations)
         :param device: Target computation device
-        :return: Flattened area tensor of shape [expanded_size * num_triangles]
+        :return: Flattened area tensor of shape [expanded_size *
+            num_triangles]
         """
         grid, simplices = self.mesh.post_mesh
         areas = self.mesh.spherical_triangle_areas(grid, simplices)
@@ -430,8 +431,7 @@ class PowderStationaryProcessing(BaseProcessing):
         return areas
 
     def _process_tensor(self, data_tensor: torch.Tensor) -> torch.Tensor:
-        """
-        Interpolate input resonance data (fields, intensities, widths) onto.
+        """Interpolate input resonance data (fields, intensities, widths) onto.
 
         the Delaunay triangulation defined by the powder mesh.
 
@@ -443,8 +443,8 @@ class PowderStationaryProcessing(BaseProcessing):
         return self.mesh.to_delaunay(processed, simplices)
 
     def _compute_batched_tensors(self, *args) -> torch.Tensor:
-        """
-        Stack multiple resonance-related tensors (e.g., fields, intensities, widths),.
+        """Stack multiple resonance-related tensors (e.g., fields, intensities,
+        widths),.
 
         then remap them jointly onto the orientation mesh using `_process_tensor`.
 
@@ -482,8 +482,8 @@ class PowderStationaryProcessing(BaseProcessing):
 
 
 class CrystalStationaryProcessing(BaseProcessing):
-    """
-    Integrate stationary spectra for single-crystal or many-crystal oriented sample.
+    """Integrate stationary spectra for single-crystal or many-crystal oriented
+    sample.
 
     This class provides the pipeline for transforming resonance field data into spectra
     for single-crystal samples or specific crystal orientations where no orientation
@@ -529,8 +529,7 @@ class CrystalStationaryProcessing(BaseProcessing):
 
     def _final_mask(self, res_fields: torch.Tensor, width: torch.Tensor,
                     intensities: torch.Tensor, areas: torch.Tensor):
-        """
-        Apply intensity thresholding for crystal (non-powder) samples.
+        """Apply intensity thresholding for crystal (non-powder) samples.
 
         Unlike powder case, res_fields lacks triangle vertex dimension (no [..., 3]).
         Masking logic remains consistent: retain transitions above relative intensity threshold.
@@ -575,8 +574,8 @@ class CrystalStationaryProcessing(BaseProcessing):
 
 
 class PowderTimeProcessing(PowderStationaryProcessing):
-    """
-    Integrate time-resolved EPR spectra over spherical powder orientation mesh.
+    """Integrate time-resolved EPR spectra over spherical powder orientation
+    mesh.
 
     This class extends PowderStationaryProcessing to handle time-dependent intensities
     while keeping resonance fields and widths time-independent
@@ -623,8 +622,8 @@ class PowderTimeProcessing(PowderStationaryProcessing):
 
 
 class CrystalTimeProcessing(CrystalStationaryProcessing):
-    """
-    Integrate time-resolved EPR spectra over single-crystal or many-crystal sample.
+    """Integrate time-resolved EPR spectra over single-crystal or many-crystal
+    sample.
 
     This class extends PowderStationaryProcessing to handle time-dependent intensities
     while keeping resonance fields and widths time-independent
@@ -643,13 +642,14 @@ class CrystalTimeProcessing(CrystalStationaryProcessing):
 
 
 class Broadener(nn.Module):
-    """
-    Compute inhomogeneous linewidths from spin Hamiltonian strain tensors.
+    """Compute inhomogeneous linewidths from spin Hamiltonian strain tensors.
 
-    Evaluates field-dependent and field-independent contributions to transition width
-    using perturbation theory on strained Hamiltonian components. Output is FWHM of Gaussian profile.
+    Evaluates field-dependent and field-independent contributions to
+    transition width using perturbation theory on strained Hamiltonian
+    components. Output is FWHM of Gaussian profile.
 
-    Final width = sqrt(Hamiltonian_strain² + Σ(strain_contributions)²) × (1/√(2 ln 2))
+    Final width = sqrt(Hamiltonian_strain² + Σ(strain_contributions)²) ×
+    (1/√(2 ln 2))
     """
     def __init__(self, device: torch.device = torch.device("cpu")):
         super().__init__()
@@ -700,8 +700,7 @@ class Broadener(nn.Module):
 
     def add_hamiltonian_straine(self, sample: spin_system.MultiOrientedSample, squared_width: torch.Tensor) ->\
             torch.Tensor:
-        """
-        Adds residual broadening due to unresolved interactions.
+        """Adds residual broadening due to unresolved interactions.
 
         :param sample: The MultiOrientedSample object
         :param squared_width: The square of gaussian broadening
@@ -712,8 +711,8 @@ class Broadener(nn.Module):
 
     def forward(self, sample: spin_system.MultiOrientedSample,
                  vector_down: torch.Tensor, vector_up: torch.Tensor, B_trans: torch.Tensor) -> torch.Tensor:
-        """
-        Compute total Gaussian linewidth (FWHM) for each transition by combining:
+        """Compute total Gaussian linewidth (FWHM) for each transition by
+        combining:
 
         - Field-dependent strain contributions (from g-, D-tensor distributions)
         - Field-independent zero-field strain terms
@@ -741,8 +740,7 @@ class Broadener(nn.Module):
 
 
 class BaseIntensityCalculator(nn.Module):
-    """
-    Base class for computing EPR transition intensities.
+    """Base class for computing EPR transition intensities.
 
     Handles calculation of transition intensities based on:
     - Transition matrix elements (magnetization)
@@ -796,8 +794,7 @@ class BaseIntensityCalculator(nn.Module):
 
     def _compute_magnitization_powder(self, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
                                       vector_down: torch.Tensor, vector_up: torch.Tensor):
-        """
-        Compute powder-averaged transition intensity.
+        """Compute powder-averaged transition intensity.
 
         :param Gx, Gy, Gz: Cartesian components of Zeeman operator. Shape [..., N, N]
         :param vector_down: Lower-state eigenvector. Shape [..., N]
@@ -810,8 +807,7 @@ class BaseIntensityCalculator(nn.Module):
 
     def _compute_magnitization_crystal(self, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
                                        vector_down: torch.Tensor, vector_up: torch.Tensor):
-        """
-        Compute crystal transition intensity.
+        """Compute crystal transition intensity.
 
         The orientation of the wave magnetic field is along the x-axis.
         :param Gx, Gy, Gz: Cartesian components of Zeeman operator. Shape [..., N, N]
@@ -826,14 +822,14 @@ class BaseIntensityCalculator(nn.Module):
                 vector_down: torch.Tensor, vector_up: torch.Tensor, lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
-        """
-        Compute intensity of transitions.
+        """Compute intensity of transitions.
 
-        :param Gx, Gy, Gz: Zeeman operator components
-        :param vector_down, vector_up: Transition eigenvectors
-        :param lvl_down, lvl_up: Energy level indices
+        :param Gx, Gy, Gz: Zeeman operator components :param
+        vector_down, vector_up: Transition eigenvectors :param lvl_down,
+        lvl_up: Energy level indices
         :param resonance_energies: Hamiltonian eigenvalues
-        :param resonance_manifold: Resonance condition values (fields/frequencies)
+        :param resonance_manifold: Resonance condition values
+            (fields/frequencies)
         :param full_system_vectors: Optional full eigenbasis
         :return: Transition intensities
         """
@@ -843,13 +839,13 @@ class BaseIntensityCalculator(nn.Module):
                 vector_down: torch.Tensor, vector_up: torch.Tensor, lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
                 full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
-        """
-        :param Gx, Gy, Gz: Zeeman operator components.
+        """:param Gx, Gy, Gz: Zeeman operator components.
 
-        :param vector_down, vector_up: Transition eigenvectors
-        :param lvl_down, lvl_up: Energy level indices
+        :param vector_down, vector_up: Transition eigenvectors :param
+        lvl_down, lvl_up: Energy level indices
         :param resonance_energies: Hamiltonian eigenvalues
-        :param resonance_manifold: Resonance condition values (fields/frequencies)
+        :param resonance_manifold: Resonance condition values
+            (fields/frequencies)
         :param full_system_vectors: Optional full eigenbasis
         :return: Transition intensities
         """
@@ -858,8 +854,7 @@ class BaseIntensityCalculator(nn.Module):
 
 
 class StationaryIntensityCalculator(BaseIntensityCalculator):
-    """
-    Calculate transition intensities for stationary (CW) EPR experiments.
+    """Calculate transition intensities for stationary (CW) EPR experiments.
 
     Handles calculation of transition intensities based on:
     - Transition matrix elements (magnetization)
@@ -928,8 +923,8 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
 
 
 class TimeIntensityCalculator(BaseIntensityCalculator):
-    """
-    Calculate time-dependent transition intensities for time-resolved EPR experiments based on relxation of.
+    """Calculate time-dependent transition intensities for time-resolved EPR
+    experiments based on relxation of.
 
     populations.
 
@@ -988,8 +983,8 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                           lvl_down: torch.Tensor, lvl_up: torch.Tensor, resonance_energies: torch.Tensor,
                           resonance_manifold: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor],
                           *args, **kwargs):
-        """
-        Compute time-resolved EPR intensities based solely on transition matrix elements.
+        """Compute time-resolved EPR intensities based solely on transition
+        matrix elements.
 
         Population dynamics are handled separately via `calculate_population`.
         This method returns the "geometric" part of intensity (|<ψ_up|G|ψ_down>|²).
@@ -1018,8 +1013,8 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
 
 
 class TimeDensityCalculator(TimeIntensityCalculator):
-    """
-    Calculate time-dependent transition intensities for time-resolved EPR experiments based on.
+    """Calculate time-dependent transition intensities for time-resolved EPR
+    experiments based on.
 
     matrix density relaxation formalism
 
@@ -1048,8 +1043,8 @@ class TimeDensityCalculator(TimeIntensityCalculator):
 
 @dataclass
 class ParamSpec:
-    """
-    Let's consider the Hamiltonian with shape [..., N, N], where N is spin system size.
+    """Let's consider the Hamiltonian with shape [..., N, N], where N is spin
+    system size.
 
     Its resonance fields have dimension [...., K]. Let's call it 'scalar'
     Its eigen values have dimension [..., K, N], where K is number of resonance transitions. Let's call it 'vector'
@@ -1067,8 +1062,7 @@ class ParamSpec:
 
 
 class BaseSpectra(nn.Module, ABC):
-    """
-    Base class for EPR spectral simulation.
+    """Base class for EPR spectral simulation.
 
     Provides the complete pipeline for computing EPR spectra from spin Hamiltonian:
     1. Compute resonance fields/frequencies by diagonalizing Hamiltonian
@@ -1504,8 +1498,8 @@ class BaseSpectra(nn.Module, ABC):
 
 
 class StationarySpectra(BaseSpectra):
-    """
-    Simulates standard EPR experiments where microwave frequency is fixed and.
+    """Simulates standard EPR experiments where microwave frequency is fixed
+    and.
 
     magnetic field is swept. Computes absorption or first-derivative spectra
     with proper orientation averaging for powder samples.
@@ -1652,8 +1646,7 @@ class StationarySpectra(BaseSpectra):
 
 
 class TruncTimeSpectra(BaseSpectra):
-    """
-    Compute time-resolved EPR spectra for populations relaxation formalism.
+    """Compute time-resolved EPR spectra for populations relaxation formalism.
 
     Uses truncated eigen vectors computation. For the general case use CoupledTimeSpectra
 
@@ -1689,8 +1682,8 @@ class TruncTimeSpectra(BaseSpectra):
                  dtype: torch.dtype = torch.float32,
                  ):
 
-        """
-        Note that by default these spin systems (energies, vectors, etc.) are calculated once and then cached.
+        """Note that by default these spin systems (energies, vectors, etc.)
+        are calculated once and then cached.
 
         Default harmoinc is None
 
@@ -1842,8 +1835,7 @@ class TruncTimeSpectra(BaseSpectra):
         return False
 
     def update_context(self, new_context: contexts.BaseContext) -> None:
-        """
-        Update context.
+        """Update context.
 
         :param new_context: New context object with updated parameters
         :return:
@@ -1852,8 +1844,7 @@ class TruncTimeSpectra(BaseSpectra):
 
 
 class CoupledTimeSpectra(TruncTimeSpectra):
-    """
-    Compute time-resolved EPR spectra for populations relaxation formalism.
+    """Compute time-resolved EPR spectra for populations relaxation formalism.
 
     Provides the complete pipeline for computing EPR spectra from spin Hamiltonian:
     1. Compute resonance fields/frequencies by diagonalizing Hamiltonian
@@ -1871,8 +1862,8 @@ class CoupledTimeSpectra(TruncTimeSpectra):
 
 
 class DensityTimeSpectra(CoupledTimeSpectra):
-    """
-    Compute time-resolved EPR spectra for density matrix relaxation formalism.
+    """Compute time-resolved EPR spectra for density matrix relaxation
+    formalism.
 
     Default the rotating wave approximation is used
 
@@ -1906,8 +1897,8 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                  dtype: torch.dtype = torch.float32,
                  ):
 
-        """
-        Note that by default these spin systems (energies, vectors, etc.) are calculated once and then cached.
+        """Note that by default these spin systems (energies, vectors, etc.)
+        are calculated once and then cached.
 
         Default harmoinc is None
 
@@ -2016,8 +2007,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
 
 
 class StationaryFreqSpectra(StationarySpectra):
-    """
-    Compute stationary EPR spectra at frequency domain.
+    """Compute stationary EPR spectra at frequency domain.
 
     Default the rotating wave approximation is used
 

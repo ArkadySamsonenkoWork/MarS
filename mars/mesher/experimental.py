@@ -15,8 +15,7 @@ class Mesh3D(delanay_neigbour.DelaunayMeshNeighbour):
                  interpolate=False,
                  dtype=torch.float32, device: torch.device = torch.device("cpu"),
                  gamma_size=20):
-        """
-        Initialize Delaunay mesh parameters with gamma angle.
+        """Initialize Delaunay mesh parameters with gamma angle.
 
         Args:
             eps: Small epsilon value for numerical stability
@@ -36,8 +35,7 @@ class Mesh3D(delanay_neigbour.DelaunayMeshNeighbour):
                                          device=device)
 
     def _create_rotation_matrices(self):
-        """
-        Given tensors phi and theta (of the same shape), returns a tensor.
+        """Given tensors phi and theta (of the same shape), returns a tensor.
 
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (phi, theta).

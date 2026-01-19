@@ -7,7 +7,8 @@ import typing as tp
 
 
 def signal_to_amplitude(y_vals):
-    """Rotate the signal so that the mean imaginary part is zero, then compute amplitude."""
+    """Rotate the signal so that the mean imaginary part is zero, then compute
+    amplitude."""
 
     img = np.imag(y_vals)
     real = np.real(y_vals)
@@ -21,8 +22,7 @@ def signal_to_amplitude(y_vals):
 
 def create_baseline_mask(x_vals: np.ndarray,
                          baseline_areas: list[tuple[float, float]]):
-    """
-    Create a mask that includes only baseline regions.
+    """Create a mask that includes only baseline regions.
 
     Parameters:
     -----------
@@ -62,8 +62,7 @@ def correct_baseline_saturation(y_vals: np.ndarray, sat_last_indexes: int):
 
 
 def correct_baseline_als(y_vals: np.ndarray, mask: np.ndarray, lam=1e6, p=0.01, niter=10):
-    """
-    ALS baseline with masking capability.
+    """ALS baseline with masking capability.
 
     Parameters:
     -----------
@@ -103,8 +102,7 @@ def correct_baseline_als(y_vals: np.ndarray, mask: np.ndarray, lam=1e6, p=0.01, 
 
 def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
                          proximity_threshold=0.15):
-    """
-    Detect baseline using local percentile analysis.
+    """Detect baseline using local percentile analysis.
 
     Points close to local low percentile are likely baseline.
     """
@@ -127,8 +125,7 @@ def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
 def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
                      baseline_areas: tp.Optional[list[tuple[float, float]]] = None,
                      method="poly", poly_order=0, lam=2e7, p=0.05, niter=10, sat_last_indexes=10):
-    """
-    Correct baseline line in spectral data.
+    """Correct baseline line in spectral data.
 
     :param x_vals: np.ndarray
            X-axis coordinates (e.g., fields or time points).
@@ -177,8 +174,7 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
 def normalize_spectrum(x: tp.Union[torch.Tensor, np.ndarray],
                        y: tp.Union[torch.Tensor, np.ndarray],
                        mode: str = "integral") -> tp.Union[torch.Tensor, np.ndarray]:
-    """
-    Normalize a 1D spectrum.
+    """Normalize a 1D spectrum.
 
     :param x:  tp.Union[torch.Tensor, np.ndarray]
         X-axis coordinates (e.g., magnetic field values).
@@ -219,8 +215,7 @@ def normalize_spectrum2d(
         x2: tp.Union[torch.Tensor, np.ndarray],
         y: tp.Union[torch.Tensor, np.ndarray],
         mode: str = "integral") -> torch.Tensor:
-    """
-    Normalize a 2D spectrum.
+    """Normalize a 2D spectrum.
 
     :param x1:  tp.Union[torch.Tensor, np.ndarray]
         X1-axis coordinates (e.g., magnetic field values).

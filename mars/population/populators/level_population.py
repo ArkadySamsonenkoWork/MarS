@@ -9,8 +9,8 @@ from . import core
 
 
 class LevelBasedPopulator(core.BaseTimeDepPopulator):
-    """
-    LevelBasedPopulator implements time-resolved EPR signal modeling within the kinetic.
+    """LevelBasedPopulator implements time-resolved EPR signal modeling within
+    the kinetic.
 
     (population-based) relaxation paradigm.
 
@@ -196,25 +196,28 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
 
 
 class T1Populator(LevelBasedPopulator):
-    """
-    T1Populator models time-resolved EPR signals initiated from an inverted population distribution,.
+    """T1Populator models time-resolved EPR signals initiated from an inverted
+    population distribution,.
 
     mimicking inversion-recovery relaxation experiments.
 
-    Unlike the standard LevelBasedPopulator, which starts from thermal equilibrium,
-    T1Populator swaps the populations of the resonant upper and lower levels at t = 0.
-    This simulates an idealized π-pulse excitation that fully inverts the transition.
+    Unlike the standard LevelBasedPopulator, which starts from thermal
+    equilibrium, T1Populator swaps the populations of the resonant upper
+    and lower levels at t = 0. This simulates an idealized π-pulse
+    excitation that fully inverts the transition.
 
-    This class is particularly useful for modeling relaxation dynamics after photoexcitation or microwave inversion
-    in triplet or radical-pair systems, where the initial non-equilibrium state drives the subsequent relaxation.
+    This class is particularly useful for modeling relaxation dynamics
+    after photoexcitation or microwave inversion in triplet or radical-
+    pair systems, where the initial non-equilibrium state drives the
+    subsequent relaxation.
     """
     def _initial_populations(
             self, energies: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor,
             full_system_vectors: tp.Optional[torch.Tensor],
             *args, **kwargs
     ):
-        """
-        Computes the initial population vector with inverted populations for resonant transitions.
+        """Computes the initial population vector with inverted populations for
+        resonant transitions.
 
         This method first obtains the thermal equilibrium populations (or context-defined ones),
         then swaps the populations of the lower and upper states for each resonant transition

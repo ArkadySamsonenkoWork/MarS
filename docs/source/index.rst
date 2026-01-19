@@ -23,8 +23,10 @@ Welcome to MarS!
    contents/base_spin_system
    contents/sample
    contents/spectrum_constraction
+   contents/fitting_tutorial
    contents/interactions/index
    contents/spectra_creators/index
+   contents/meshers/index
    contents/intensity_calculators/index
    contents/populators/index
    contents/context/index

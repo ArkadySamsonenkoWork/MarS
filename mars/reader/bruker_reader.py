@@ -48,7 +48,8 @@ def _handle_dvc_lines(key, value):
 
 
 def read_dsc(filename):
-    """Reads and cleans a Bruker DSC file, returning a structured dictionary."""
+    """Reads and cleans a Bruker DSC file, returning a structured
+    dictionary."""
     metadata = {}
     current_key = None
 
@@ -75,8 +76,7 @@ def read_dsc(filename):
 
 
 def read_dta(filepath, metadata):
-    """
-    Read Bruker .DTA file with complex data for EPR spectroscopy.
+    """Read Bruker .DTA file with complex data for EPR spectroscopy.
 
     Parameters:
     - x_values: numpy array of x-axis values

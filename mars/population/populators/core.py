@@ -12,8 +12,7 @@ from .. import contexts
 
 
 class BasePopulator(nn.Module):
-    """
-    Base class for populators.
+    """Base class for populators.
 
     A populator is responsible for computing the part of the EPR transition intensity
     that depends on the populations of energy levels (or the full density matrix in more advanced cases).
@@ -46,8 +45,7 @@ class BasePopulator(nn.Module):
         return res_fields, lvl_down, lvl_up, energies, vector_down, vector_up
 
     def _init_context_meta(self):
-        """
-        Initialize data depending on context.
+        """Initialize data depending on context.
 
         :return: None
         """
@@ -72,8 +70,7 @@ class BasePopulator(nn.Module):
 
     @context.setter
     def context(self, context: contexts.BaseContext) -> None:
-        """
-        Set the new context for populator.
+        """Set the new context for populator.
 
         :param context: Base Context object
         :return:
@@ -125,8 +122,8 @@ class BasePopulator(nn.Module):
         return self.context.get_transformed_init_populations(full_system_vectors, normalize=False)
 
     def _out_population_difference(self, populations: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor):
-        """
-        Calculate the population difference between transitioning energy levels.
+        """Calculate the population difference between transitioning energy
+        levels.
 
         Parameters
         ----------
@@ -154,25 +151,25 @@ class BasePopulator(nn.Module):
 
 
 class BaseTimeDepPopulator(BasePopulator):
-    """
-      Base class for time-dependent populators that model relaxation dynamics in time-resolved EPR.
+    """Base class for time-dependent populators that model relaxation dynamics
+    in time-resolved EPR.
 
-      This class implements the common infrastructure for solving the kinetic or Liouville-von Neumann
-      equations that govern the evolution of populations or the density matrix:
-        dn/dt = K(t, n) · n        (population-based)
-        dρ/dt = -i[H, ρ] + R[ρ]    (density matrix-based)
+    This class implements the common infrastructure for solving the kinetic or Liouville-von Neumann
+    equations that govern the evolution of populations or the density matrix:
+      dn/dt = K(t, n) · n        (population-based)
+      dρ/dt = -i[H, ρ] + R[ρ]    (density matrix-based)
 
-      Key components:
-        1. **Populator**: Defines initial state and numerical strategy (this class and subclasses).
-        2. **Context**: Encodes physical relaxation mechanisms (losses, spontaneous/induced transitions,
-           dephasing) and their basis of definition.
-        3. **Transition matrix generator**: Constructs the relaxation operator (K or R) from Context.
-        4. **Solver**: Integrates the evolution equation (stationary, quasi-stationary, or adaptive ODE).
+    Key components:
+      1. **Populator**: Defines initial state and numerical strategy (this class and subclasses).
+      2. **Context**: Encodes physical relaxation mechanisms (losses, spontaneous/induced transitions,
+         dephasing) and their basis of definition.
+      3. **Transition matrix generator**: Constructs the relaxation operator (K or R) from Context.
+      4. **Solver**: Integrates the evolution equation (stationary, quasi-stationary, or adaptive ODE).
 
-      Subclasses must implement:
-        - `init_solver`: selects appropriate integrator based on time-dependence,
-        - `_init_tr_matrix_generator`: builds generator for relaxation superoperator,
-        - `forward`: orchestrates the full computation pipeline.
+    Subclasses must implement:
+      - `init_solver`: selects appropriate integrator based on time-dependence,
+      - `_init_tr_matrix_generator`: builds generator for relaxation superoperator,
+      - `forward`: orchestrates the full computation pipeline.
     """
     def __init__(self,
                  context: tp.Optional[contexts.BaseContext],

@@ -40,7 +40,7 @@ and per-triangle averages of width and intensity are used during integration (se
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Uses a BallTree (scikit-learn) with haversine distance on the sphere. For each extended vertex,
-the *k*=4 nearest base vertices are found. Weights are computed as:
+the *k=4* nearest base vertices are found. Weights are computed as:
 
 .. math::
 

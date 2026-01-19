@@ -21,8 +21,7 @@ def transform_to_complex(vector):
 
 
 class RWADensityPopulator(core.BaseTimeDepPopulator):
-    """
-    RWADensityPopulator.
+    """RWADensityPopulator.
 
     Computes time-dependent signal intensity using the density matrix formalism
     under the Rotating Wave Approximation (RWA).
@@ -100,15 +99,15 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             return tr_utils.EvolutionRWASolver.stationary_rate_solver
 
     def _init_context_meta(self):
-        """
-        Itializes metadata flags based on the presence and configuration of the relaxation Context.
+        """Itializes metadata flags based on the presence and configuration of
+        the relaxation Context.
 
-      Determines:
-        - Whether initial populations/density matrices are provided by the Context (`contexted = True`),
-          or should be computed from temperature (`contexted = False`);
-        - Whether the relaxation parameters are time-dependent (`time_dependant` flag).
+        Determines:
+          - Whether initial populations/density matrices are provided by the Context (`contexted = True`),
+            or should be computed from temperature (`contexted = False`);
+          - Whether the relaxation parameters are time-dependent (`time_dependant` flag).
 
-      These flags control which internal methods are used for initialization and solver selection.
+        These flags control which internal methods are used for initialization and solver selection.
         """
         if self.context is not None:
             if self.context.contexted_init_population:
@@ -125,8 +124,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             self.time_dependant = False
 
     def _get_initial_Hamiltonian(self, energies: torch.Tensor):
-        """
-        Constructs the static (time-independent) part of the spin Hamiltonian in the eigenbasis.
+        """Constructs the static (time-independent) part of the spin
+        Hamiltonian in the eigenbasis.
 
         :param energies:
             Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
@@ -142,8 +141,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             full_system_vectors: tp.Optional[torch.Tensor],
             *args, **kwargs
     ):
-        """
-        Computes the initial density matrix either from thermal equilibrium or from a context-defined state.
+        """Computes the initial density matrix either from thermal equilibrium
+        or from a context-defined state.
 
         Dispatches to one of two internal methods based on whether the Context provides an initial state.
 
@@ -174,14 +173,14 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                 lvl_up: torch.Tensor,
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
-        """
-        Nitializes the density matrix from thermal equilibrium at `self.init_temperature`.
+        """Nitializes the density matrix from thermal equilibrium at
+        `self.init_temperature`.
 
-       Populations follow the Boltzmann distribution: p_i ∝ exp(−E_i / k_B T),
-       where energies are converted from Hz to Kelvin using physical constants.
-       The resulting density matrix is diagonal in the Hamiltonian eigenbasis.
-       :return:
-           Diagonal complex-valued density matrix, shape [..., N, N].
+        Populations follow the Boltzmann distribution: p_i ∝ exp(−E_i / k_B T),
+        where energies are converted from Hz to Kelvin using physical constants.
+        The resulting density matrix is diagonal in the Hamiltonian eigenbasis.
+        :return:
+            Diagonal complex-valued density matrix, shape [..., N, N].
         """
         populations = torch.nn.functional.softmax(
             -constants.unit_converter(energies, "Hz_to_K") / self.init_temperature, dim=-1
@@ -195,8 +194,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
 
-        """
-        Initializes the density matrix from the Context, which may define it in an arbitrary basis.
+        """Initializes the density matrix from the Context, which may define it
+        in an arbitrary basis.
 
         The Context returns a density matrix or population vector in its native basis
         (e.g., zero-field splitting basis for triplet states).
@@ -208,8 +207,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         return self.context.get_transformed_init_density(full_system_vectors)
 
     def _transform_to_eigenbasis(self, full_basis: torch.Tensor, args_matrix: tp.Iterable[torch.Tensor]):
-        """
-        Transforms an Iterable of operators (matrices) from the computational basis to the Hamiltonian eigenbasis.
+        """Transforms an Iterable of operators (matrices) from the
+        computational basis to the Hamiltonian eigenbasis.
 
         Applies the unitary transformation: A_eigen = U⁺ A U,
         where U = `full_basis` contains the eigenvectors as columns.
@@ -415,8 +414,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
 
 
 class PropagatorDensityPopulator(RWADensityPopulator):
-    """
-    PropagatorDensityPopulator computes time-resolved EPR signals by explicitly evaluating the full.
+    """PropagatorDensityPopulator computes time-resolved EPR signals by
+    explicitly evaluating the full.
 
     time-evolution propagator U(t, 0).
 
@@ -572,36 +571,36 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 resonance_frequency: torch.Tensor,
                 *args, **kwargs) -> torch.Tensor:
 
-        """
-        Computes the time-resolved EPR signal for a disordered (powder) sample.
+        """Computes the time-resolved EPR signal for a disordered (powder)
+        sample.
 
-        by averaging over the microwave field polarization.
+         by averaging over the microwave field polarization.
 
-        In powder samples, the orientation of the microwave magnetic field relative to the molecular structure is random.
-        The orientation of the molecule is described by three Euler angles.
-        The first two angles determine the energy and eigenvectors.
-        The last angle does not change the energy or eigenvectors, but it does alter the signal intensity.
-        This can be described as a rotation between Gx and Gy. Thus, the final signal is the average of this rotation.
+         In powder samples, the orientation of the microwave magnetic field relative to the molecular structure is random.
+         The orientation of the molecule is described by three Euler angles.
+         The first two angles determine the energy and eigenvectors.
+         The last angle does not change the energy or eigenvectors, but it does alter the signal intensity.
+         This can be described as a rotation between Gx and Gy. Thus, the final signal is the average of this rotation.
 
-       The method uses a Floquet-inspired stationary solver that integrates the evolution over one microwave period,
-       optionally extended to a finite detector integration time (`self.measurement_time`).
+        The method uses a Floquet-inspired stationary solver that integrates the evolution over one microwave period,
+        optionally extended to a finite detector integration time (`self.measurement_time`).
 
-       :param evo:
-           Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
-       :param tr_matrix_generator:
-           Generator that provides the static part of the relaxation superoperator based on the spin system and context.
-       :param time:
-           Time points at which the signal is evaluated, shape [T].
-       :param res_fields:
-           Resonance fields corresponding to each orientation or transition.
-       :param initial_density:
-           Initial density matrix in the eigenbasis of the full Hamiltonian, shape [..., N, N].
-       :param Gx, Gy:
-           Transformed Zeeman operators (x- and y-components) in the eigenbasis, each of shape [..., 1, N, N].
-       :param resonance_frequency:
-           Microwave frequency in Hz (scalar).
-       :return:
-           Averaged time-dependent signal intensity for powder sample, shape [T, ..., Tr].
+        :param evo:
+            Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
+        :param tr_matrix_generator:
+            Generator that provides the static part of the relaxation superoperator based on the spin system and context.
+        :param time:
+            Time points at which the signal is evaluated, shape [T].
+        :param res_fields:
+            Resonance fields corresponding to each orientation or transition.
+        :param initial_density:
+            Initial density matrix in the eigenbasis of the full Hamiltonian, shape [..., N, N].
+        :param Gx, Gy:
+            Transformed Zeeman operators (x- and y-components) in the eigenbasis, each of shape [..., 1, N, N].
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
+        :return:
+            Averaged time-dependent signal intensity for powder sample, shape [T, ..., Tr].
         """
 
         tau = 1 / resonance_frequency
@@ -625,35 +624,35 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                          resonance_frequency: torch.Tensor,
                          *args, **kwargs) -> torch.Tensor:
 
-        """
-        Omputes the time-resolved EPR signal for a single-crystal or many-crystal sample.
+        """Omputes the time-resolved EPR signal for a single-crystal or many-
+        crystal sample.
 
-       with fixed microwave polarization.
+        with fixed microwave polarization.
 
-       In crystal simulations, the microwave field direction is fixed relative to the molecular frame.
-       By convention, the excitation is applied along the x-axis of the laboratory frame, so only the Gx operator
-       contributes to the transition intensity. No averaging over γ is performed.
+        In crystal simulations, the microwave field direction is fixed relative to the molecular frame.
+        By convention, the excitation is applied along the x-axis of the laboratory frame, so only the Gx operator
+        contributes to the transition intensity. No averaging over γ is performed.
 
-       The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
-       over one microwave period (or a user-defined `measurement_time`).
+        The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
+        over one microwave period (or a user-defined `measurement_time`).
 
-       :param evo:
-           Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
-       :param tr_matrix_generator:
-           Generator that provides the static relaxation superoperator.
-       :param time:
-           Time points for signal evaluation, shape [T].
-       :param res_fields:
-           Resonance fields (used for shape alignment; not directly used in computation).
-       :param initial_density:
-           Initial density matrix in the eigenbasis, shape [..., N, N].
-       :param Gx, Gy:
-           Zeeman operators in the eigenbasis; only Gx is used in this method.
-       :param resonance_frequency:
-           Microwave frequency in Hz (scalar).
+        :param evo:
+            Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
+        :param tr_matrix_generator:
+            Generator that provides the static relaxation superoperator.
+        :param time:
+            Time points for signal evaluation, shape [T].
+        :param res_fields:
+            Resonance fields (used for shape alignment; not directly used in computation).
+        :param initial_density:
+            Initial density matrix in the eigenbasis, shape [..., N, N].
+        :param Gx, Gy:
+            Zeeman operators in the eigenbasis; only Gx is used in this method.
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
 
-       :return:
-           Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
+        :return:
+            Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
         """
 
         tau = 1 / resonance_frequency
@@ -676,28 +675,27 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 Gx: torch.Tensor, Gy: torch.Tensor,
                 resonance_frequency: torch.Tensor,
                 *args, **kwargs) -> torch.Tensor:
-        """
-        Omputes the time-resolved EPR signal.
+        """Omputes the time-resolved EPR signal.
 
-       The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
-       over one microwave period (or a user-defined `measurement_time`).
+        The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
+        over one microwave period (or a user-defined `measurement_time`).
 
-       :param evo:
-           Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
-       :param tr_matrix_generator:
-           Generator that provides the static relaxation superoperator.
-       :param time:
-           Time points for signal evaluation, shape [T].
-       :param res_fields:
-           Resonance fields (used for shape alignment; not directly used in computation).
-       :param initial_density:
-           Initial density matrix in the eigenbasis, shape [..., N, N].
-       :param Gx, Gy:
-           Zeeman operators in the eigenbasis; only Gx is used in this method.
-       :param resonance_frequency:
-           Microwave frequency in Hz (scalar).
-       :return:
-           Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
+        :param evo:
+            Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
+        :param tr_matrix_generator:
+            Generator that provides the static relaxation superoperator.
+        :param time:
+            Time points for signal evaluation, shape [T].
+        :param res_fields:
+            Resonance fields (used for shape alignment; not directly used in computation).
+        :param initial_density:
+            Initial density matrix in the eigenbasis, shape [..., N, N].
+        :param Gx, Gy:
+            Zeeman operators in the eigenbasis; only Gx is used in this method.
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
+        :return:
+            Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
         """
 
         if self.disordered:

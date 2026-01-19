@@ -58,14 +58,18 @@ class RBFInterpolator:
                  extended_vertices: list[tuple[float, float]],
                  kernel: str = "gaussian",
                  epsilon: float = 1.0):
-        """
-        Radial Basis Function (RBF) interpolator on the sphere.
+        """Radial Basis Function (RBF) interpolator on the sphere.
 
-        :param interpolating_indexes: Mapping of base mesh indices to actual data indices.
-        :param base_vertices: List of (lat, lon) base mesh vertices in radians.
-        :param extended_vertices: List of (lat, lon) extended mesh vertices in radians.
-        :param kernel: Choice of kernel: "gaussian", "multiquadric", "inverse_multiquadric", "linear", "cubic", "thin_plate".
-        :param epsilon: Shape parameter for kernels like Gaussian/MQ/IMQ.
+        :param interpolating_indexes: Mapping of base mesh indices to
+            actual data indices.
+        :param base_vertices: List of (lat, lon) base mesh vertices in
+            radians.
+        :param extended_vertices: List of (lat, lon) extended mesh
+            vertices in radians.
+        :param kernel: Choice of kernel: "gaussian", "multiquadric",
+            "inverse_multiquadric", "linear", "cubic", "thin_plate".
+        :param epsilon: Shape parameter for kernels like
+            Gaussian/MQ/IMQ.
         """
         self.kernel = kernel
         self.epsilon = epsilon
@@ -123,8 +127,7 @@ class RBFInterpolator:
             raise ValueError(f"Unknown kernel: {self.kernel}")
 
     def __call__(self, f_values: torch.Tensor) -> torch.Tensor:
-        """
-        Interpolate values at extended points using RBF interpolation.
+        """Interpolate values at extended points using RBF interpolation.
 
         :param f_values: Tensor of shape (..., N), where N = number of base vertices.
         :return: Interpolated values of shape (..., M), where M = number of extended vertices.
@@ -162,8 +165,8 @@ class NearestNeighborsInterpolator(nn.Module):
                  init_vertices: list[tuple[float, float]],
                  extended_vertices: list[tuple[float, float]],
                  k: int = 4, device: torch.device = torch.device("cpu")):
-        """
-        Initialize the interpolator with the base mesh vertices and extended mesh vertices.
+        """Initialize the interpolator with the base mesh vertices and extended
+        mesh vertices.
 
         Uses a BallTree for efficient nearest neighbor search.
         """
@@ -190,8 +193,8 @@ class NearestNeighborsInterpolator(nn.Module):
         return array
 
     def forward(self, f_values: torch.Tensor) -> torch.Tensor:
-        """
-        Interpolate values at extended points using inverse distance weighting.
+        """Interpolate values at extended points using inverse distance
+        weighting.
 
         :param f_values: Tensor of shape (..., N), where N is the number of base vertices.
         :return: Interpolated values of shape (..., M), where M is the number of extended vertices.
@@ -399,8 +402,7 @@ class DelaunayMeshNeighbour(BaseMeshPowder):
                  boundaries_cond=None,
                  interpolate=False,
                  dtype=torch.float32, device: torch.device = torch.device("cpu")):
-        """
-        Initialize Delaunay mesh parameters.
+        """Initialize Delaunay mesh parameters.
 
         Args:
             eps: Small epsilon value for numerical stability
@@ -455,8 +457,7 @@ class DelaunayMeshNeighbour(BaseMeshPowder):
     def to_delaunay(self,
                     f_post: torch.Tensor,
                     simplices: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_post: Interpolated function values
@@ -469,8 +470,7 @@ class DelaunayMeshNeighbour(BaseMeshPowder):
 
     def forward(self,
                     f_init: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_init: Interpolated function values

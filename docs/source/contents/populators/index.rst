@@ -1,7 +1,7 @@
 .. _population_description:
 
-Population Computation Module
-==============================
+Population Computation
+======================
 
 Overview
 --------

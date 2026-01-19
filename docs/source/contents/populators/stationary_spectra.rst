@@ -46,7 +46,7 @@ If initial populations are defined in a non-eigenbasis, they are transformed usi
 
    n'_i = \sum_k |U_{ik}|^2 n_k
 
-where U is the transformation matrix from the initial basis to the field-dependent eigenbasis, and |U_{ik}|² represents the squared overlap between basis states.
+where U is the transformation matrix from the initial basis to the field-dependent eigenbasis, and :math:|U_{ik}|^{2} represents the squared overlap between basis states.
 
 Implementation
 --------------

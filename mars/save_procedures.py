@@ -407,8 +407,7 @@ def save(
         field: tp.Optional[tp.Union[torch.Tensor, np.ndarray]] = None,
         format_type="torch"
 ):
-    """
-    Save experimental and sample parameters.
+    """Save experimental and sample parameters.
 
     :param filepath: The file path where data should be saved. Should include the desired
         file extension or directory path depending on format_type.
@@ -684,7 +683,8 @@ class SampleLoader:
 
     def _add_easyspin_electron_electron(self, sys_dict: dict[str, tp.Any],
                                         spin_system: SpinSystem, electron_electron: list[tuple[int, int, Interaction]]):
-        """Helper to add electron-electron interactions from EasySpin format."""
+        """Helper to add electron-electron interactions from EasySpin
+        format."""
         MHz_to_hz = 1e6
         num_electrons = len(spin_system.electrons)
 
@@ -749,7 +749,8 @@ class SampleLoader:
 
 
 class CreatorLoader:
-    """Reconstructs BaseSpectraCreator objects from dictionary representations."""
+    """Reconstructs BaseSpectraCreator objects from dictionary
+    representations."""
 
     def load_creator_from_dict(self, sample: MultiOrientedSample, creator_dict: dict, format_type: str = 'pytorch') ->\
             BaseSpectra:

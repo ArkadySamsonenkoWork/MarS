@@ -20,19 +20,18 @@ Each mechanism serves a specific physical purpose and transforms differently und
 Out Probabilities (out_probs)
 ------------------------------
 
-.. list-table::
-   :widths: 60 40
-   
-   * - .. image:: _static/context/out_probs.png
-          :width: 1000%
-          :alt: Out probabilities diagram
-     - **Physical Meaning**
-       
-       Out probabilities describe irreversible population loss from energy levels.
+.. image:: _static/context/out_probs.png
+   :width: 100%
+   :alt: Out probabilities diagram
+   :align: center
 
-       **Mathematical Form**
+**Physical Meaning**
 
-       A diagonal vector where element :math:`o_i` represents the loss rate from level :math:`|i\rangle`.
+Out probabilities describe irreversible population loss from energy levels.
+
+**Mathematical Form**
+
+A diagonal vector where element :math:`o_i` represents the loss rate from level :math:`|i\rangle`.
 
 **Example: Triplet State Phosphorescence**
 
@@ -70,21 +69,20 @@ where :math:`|U|^2` denotes element-wise squaring of the transformation matrix.
 Free Probabilities (free_probs)
 --------------------------------
 
-.. list-table::
-   :widths: 60 40
-   
-   * - .. image:: _static/context/free_probs.png
-          :width: 1000%
-          :alt: Free probabilities diagram
-     - **Physical Meaning**
-       
-       Free probabilities represent spontaneous transitions between energy levels that obey detailed balance
+.. image:: _static/context/free_probs.png
+   :width: 100%
+   :alt: Free probabilities diagram
+   :align: center
 
-       **Mathematical Form**
-       
-       A matrix :math:`W` where element :math:`w_{ij}` is the transition rate from :math:`|j\rangle` to :math:`|i\rangle`.
-       
-       Diagonal elements are zero (no self-transitions).
+**Physical Meaning**
+
+Free probabilities represent spontaneous transitions between energy levels that obey detailed balance.
+
+**Mathematical Form**
+
+A matrix :math:`W` where element :math:`w_{ij}` is the transition rate from :math:`|j\rangle` to :math:`|i\rangle`.
+
+Diagonal elements are zero (no self-transitions).
 
 **Example: Triplet Spin-Lattice Relaxation**
 
@@ -138,22 +136,20 @@ Under basis transformation:
 Driven Probabilities (driven_probs)
 ------------------------------------
 
-.. list-table::
-   :widths: 60 40
-   
-   * - .. image:: _static/context/driven_probs.png
-          :width: 1000%
-          :alt: Driven probabilities diagram
-     - **Physical Meaning**
-       
-       Driven probabilities describe stimulated transitions that do NOT obey detailed balance
+.. image:: _static/context/driven_probs.png
+   :width: 100%
+   :alt: Driven probabilities diagram
+   :align: center
 
-       
-       **Mathematical Form**
-       
-       A matrix :math:`D` where :math:`d_{ij}` is the stimulated rate from :math:`|j\rangle` to :math:`|i\rangle`.
-       
-       *Not modified* by detailed balance.
+**Physical Meaning**
+
+Driven probabilities describe stimulated transitions that do NOT obey detailed balance.
+
+**Mathematical Form**
+
+A matrix :math:`D` where :math:`d_{ij}` is the stimulated rate from :math:`|j\rangle` to :math:`|i\rangle`.
+
+*Not modified* by detailed balance.
 
 **Example: Selective Microwave Excitation**
 
@@ -192,21 +188,20 @@ Same as free probabilities:
 Dephasing (dephasing)
 ---------------------
 
-.. list-table::
-   :widths: 60 40
-   
-   * - .. image:: _static/context/dephasing.png
-          :width: 1000%
-          :alt: Dephasing diagram
-     - **Physical Meaning**
-       
-       Dephasing causes loss of coherence without changing populations. This term is used only in the relaxation of density matrix formalism (see :ref:`population_description`)
-       
-       **Mathematical Form**
-       
-       A vector :math:`\boldsymbol{\gamma}` where :math:`\gamma_i` is the dephasing rate for level :math:`|i\rangle`.
-       
-       *Only relevant* for density matrix calculations.
+.. image:: _static/context/dephasing.png
+   :width: 100%
+   :alt: Dephasing diagram
+   :align: center
+
+**Physical Meaning**
+
+Dephasing causes loss of coherence without changing populations. This term is used only in the relaxation of density matrix formalism (see :ref:`population_description`).
+
+**Mathematical Form**
+
+A vector :math:`\boldsymbol{\gamma}` where :math:`\gamma_i` is the dephasing rate for level :math:`|i\rangle`.
+
+*Only relevant* for density matrix calculations.
 
 **Example: T₂ Relaxation in Density Matrix Dynamics**
 
@@ -239,13 +234,6 @@ For off-diagonal density matrix elements :math:`\rho_{ij}` (where :math:`i \neq 
 
    \frac{d\rho_{ij}}{dt} = \cdots - \frac{\gamma_i + \gamma_j}{2} \rho_{ij}
 
-**Transformation Rule**
-
-Same as out probabilities:
-
-.. math::
-
-   \boldsymbol{\gamma}' = |U|^2 \cdot \boldsymbol{\gamma}
 
 Combined Example
 -----------------

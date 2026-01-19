@@ -22,16 +22,18 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
 
         For a 2×2 case, the output can be visualized as:
 
-        ```
+    .. code-block:: text
+        :class: no-copybutton
+
         ┌───────────────────────────────────────────┐
         │                                           │
         │     basis_1 states →                      │
         │    ┌─────────────┬─────────────┐          │
         │    │             │             │          │
-        │    │  ⟨b2₀|b1₀⟩  | <b2₀|b1₁⟩   │          │
+        │    │ |⟨b2₀|b1₀⟩|² │ |⟨b2₀|b1₁⟩|² │        │
         │ b  │             │             │          │
         │ a  │             │             │          │
-        │ s  │  ⟨b2₁|b1₀⟩  | <b2₁|b1₁⟩   │          │
+        │ s  │ |⟨b2₁|b1₀⟩|² │ |⟨b2₁|b1₁⟩|² │        │
         │ i  │             │             │          │
         │ s  │             │             │          │
         │ _  └─────────────┴─────────────┘          │
@@ -45,14 +47,15 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
         │ s                                         │
         │ ↓                                         │
         └───────────────────────────────────────────┘
-        ```
+
+    ...
     """
     return torch.matmul(basis_2.conj().transpose(-1, -2), basis_1)
 
 
 def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
-    """
-    Calculate the squared absolute values of transformation coefficients between two bases.
+    """Calculate the squared absolute values of transformation coefficients
+    between two bases.
 
     This function computes the overlap probabilities between states in two different bases.
     The output values represent |⟨basis_2_i|basis_1_j⟩|², which are the squared magnitudes
@@ -72,30 +75,33 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
 
         For a 2×2 case, the output can be visualized as:
 
-        ```
+    .. code-block:: text
+        :class: no-copybutton
+
         ┌───────────────────────────────────────────┐
         │                                           │
         │     basis_1 states →                      │
         │    ┌─────────────┬─────────────┐          │
         │    │             │             │          │
-        │    │ |⟨b2₀|b1₀⟩|²| ⟨b2₀|b1₁⟩|² │          │
+        │    │ |⟨b2₀|b1₀⟩|² │ |⟨b2₀|b1₁⟩|² │          │
         │ b  │             │             │          │
         │ a  │             │             │          │
-        │ s  │ |⟨b2₁|b1₀⟩|²| ⟨b2₁|b1₁⟩|² │          │
+        │ s  │ |⟨b2₁|b1₀⟩|² │ |⟨b2₁|b1₁⟩|² │          │
         │ i  │             │             │          │
         │ s  │             │             │          │
         │ _  └─────────────┴─────────────┘          │
         │ 2                                         │
         │                                           │
-        │ s  Element [i,j] represents the probability│
-        │ t  of measuring state j in basis_1 if the │
-        │ a  system was in state i in basis_2       │
-        │ t                                         │
+        │ s  Element [i, j] represents the          │
+        │ t  probability of finding the system      │
+        │ a  in state i of basis_2 when it was      │
+        │ t  prepared in state j of basis_1.        │
         │ e                                         │
         │ s                                         │
         │ ↓                                         │
         └───────────────────────────────────────────┘
-        ```
+
+    ...
     """
 
     transforms = basis_transformation(basis_old, basis_new)
@@ -103,8 +109,7 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
 
 
 def transform_matrix_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """
-    Transform transition rates from matrix form to new basis set.
+    """Transform transition rates from matrix form to new basis set.
 
     K(b_new_1 -> b_new_2) = |⟨b_new_1|b_old_1⟩|² * |⟨b_new_2|b_old_2⟩|² * K(b_old_1 -> b_old_2)
 
@@ -122,8 +127,8 @@ def transform_matrix_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Ten
 
 
 def transform_vector_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """
-    Transform a vector from old basis to new basis using transformation coefficients.
+    """Transform a vector from old basis to new basis using transformation
+    coefficients.
 
     Applies the transformation: v_new[i] = Σ_j |⟨new_i|old_j⟩|² * v_old[j]
 
@@ -140,8 +145,7 @@ def transform_vector_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Ten
 
 
 def transform_diagonal_rates(kinetic_diag_matrix: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """
-    Transform diagonal kinetic rates to new basis.
+    """Transform diagonal kinetic rates to new basis.
 
     This is equivalent to transform_vector_to_new_basis but named specifically
     for kinetic rate transformations for clarity.
@@ -157,8 +161,8 @@ def compute_clebsch_gordan_coeffs(
         target_basis: torch.Tensor,
         basis_list: list[torch.Tensor]
 ) -> torch.Tensor:
-    """
-    Compute Clebsch-Gordan-like coefficients for expressing a coupled basis as.
+    """Compute Clebsch-Gordan-like coefficients for expressing a coupled basis
+    as.
 
     a Kronecker product of uncoupled bases.
 
@@ -196,8 +200,7 @@ def compute_clebsch_gordan_probabilities(
         target_basis: torch.Tensor,
         basis_list: list[torch.Tensor]
 ) -> torch.Tensor:
-    """
-    Compute squared absolute values of Clebsch-Gordan coefficients.
+    """Compute squared absolute values of Clebsch-Gordan coefficients.
 
     These represent the probabilities |C[i1, i2, ..., in, m]|² that a coupled
     state m is composed of the tensor product of uncoupled states (i1, i2, ..., in).
@@ -214,23 +217,23 @@ def transform_kronecker_populations(
         populations_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """
-        Transform populations from uncoupled (product) basis to coupled basis using.
+    """Transform populations from uncoupled (product) basis to coupled basis
+    using.
 
-        Clebsch-Gordan coefficients.
+    Clebsch-Gordan coefficients.
 
-        Computes the population of each coupled state as:
-        n_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * n_uncoupled_1[i1] * ... * n_uncoupled_n[in]
+    Computes the population of each coupled state as:
+    n_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * n_uncoupled_1[i1] * ... * n_uncoupled_n[in]
 
-        This implements the quantum mechanical rule that populations of uncoupled subsystems
-        multiply, weighted by the squared Clebsch-Gordan coefficients.
+    This implements the quantum mechanical rule that populations of uncoupled subsystems
+    multiply, weighted by the squared Clebsch-Gordan coefficients.
 
-        Example:
-        :param populations_list: List of population vectors for each uncoupled system.
-                                Each has shape [..., k_i]
-        :param coeffs: Squared Clebsch-Gordan coefficients |C|².
-                          Shape: [..., k1, k2, ..., kn, K]
-        :return: Populations in coupled basis. Shape: [..., K]
+    Example:
+    :param populations_list: List of population vectors for each uncoupled system.
+                            Each has shape [..., k_i]
+    :param coeffs: Squared Clebsch-Gordan coefficients |C|².
+                      Shape: [..., k1, k2, ..., kn, K]
+    :return: Populations in coupled basis. Shape: [..., K]
     """
     n_bases = len(populations_list)
     batch_shape_popul = populations_list[0].shape[:- 1]
@@ -252,23 +255,23 @@ def transform_kronecker_vectors(
         vector_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """
-        Transform populations from uncoupled (product) basis to coupled basis using.
+    """Transform populations from uncoupled (product) basis to coupled basis
+    using.
 
-        Clebsch-Gordan coefficients.
+    Clebsch-Gordan coefficients.
 
-        Computes the population of each coupled state as:
-        R_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * (K1[i1] + K2[i2] + ... + Kn[in])
+    Computes the population of each coupled state as:
+    R_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * (K1[i1] + K2[i2] + ... + Kn[in])
 
-        This implements the quantum mechanical rule that populations of uncoupled subsystems
-        multiply, weighted by the squared Clebsch-Gordan coefficients.
+    This implements the quantum mechanical rule that populations of uncoupled subsystems
+    multiply, weighted by the squared Clebsch-Gordan coefficients.
 
-        Example:
-        :param coeffs: Squared Clebsch-Gordan coefficients |C|².
-                          Shape: [..., k1, k2, ..., kn, K]
-        :param vector_list: List of population vectors for each uncoupled system.
-                                Each has shape [..., k_i]
-        :return: Populations in coupled basis. Shape: [..., K]
+    Example:
+    :param coeffs: Squared Clebsch-Gordan coefficients |C|².
+                      Shape: [..., k1, k2, ..., kn, K]
+    :param vector_list: List of population vectors for each uncoupled system.
+                            Each has shape [..., k_i]
+    :return: Populations in coupled basis. Shape: [..., K]
     """
     n_bases = len(vector_list)
     batch_shape = vector_list[0].shape[:- 1]
@@ -292,8 +295,8 @@ def transform_kronecker_matrix(
         matrices: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    Transform rate matrices from uncoupled (product) basis to coupled basis using.
+    """Transform rate matrices from uncoupled (product) basis to coupled basis
+    using.
 
     Clebsch-Gordan coefficients.
 
@@ -345,8 +348,7 @@ def transform_kronecker_matrix(
 
 
 def batched_kron(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    """
-    Batched Kronecker product.
+    """Batched Kronecker product.
 
     Computes the Kronecker product for batched matrices.
 
@@ -365,26 +367,28 @@ def batched_kron(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
 
 def compute_liouville_basis_transformation(basis_old: torch.Tensor, basis_new: torch.Tensor):
-    """
-    Compute the transformation matrix for superoperators between two quantum bases.
+    """Compute the transformation matrix for superoperators between two quantum
+    bases.
 
     This function calculates the unitary transformation matrix that converts Liouville-space
     superoperators (e.g., relaxation matrices) from an old basis to a new basis. The transformation
     preserves the structure of quantum operations under basis change.
 
     :param basis_old : torch.Tensor
-        Original basis vectors. Shape: [..., K, K] where K is the Hilbert space dimension.
+        Original basis vectors. Shape: ``[..., K, K]`` where K is the Hilbert space dimension.
         Columns represent eigenvectors of the old basis.
 
     :param basis_new : torch.Tensor
-        Target basis vectors. Shape: [..., K, K] where K is the Hilbert space dimension.
+        Target basis vectors. Shape: ``[..., K, K]`` where K is the Hilbert space dimension.
         Columns represent eigenvectors of the new basis.
 
     :return: torch.Tensor
-        Transformation matrix for Liouville space operators. Shape: [..., K², K²]
+        Transformation matrix for Liouville space operators. Shape: ``[..., K², K²]``
 
         For a 2×2 system (K=2), the output structure can be visualized as:
-        ```
+    .. code-block:: text
+        :class: no-copybutton
+
         ┌───────────────────────────────────────────────────────┐
         │                                                       │
         │  Old Liouville basis states →                         │
@@ -402,11 +406,10 @@ def compute_liouville_basis_transformation(basis_old: torch.Tensor, basis_new: t
         │e                                                         │
         │  New Liouville basis states ↓                           │
         └─────────────────────────────────────────────────────────┘
-        ```
 
     The transformation follows:
-        R_new = T_switch @ R_old @ T_switch.conj().transpose(-1, -2)
-    where T_switch = kron(basis_new.conj(), basis_new) @ kron(basis_old.conj(), basis_old).H
+        ``R_new = T_switch @ R_old @ T_switch.conj().transpose(-1, -2)``
+    where ``T_switch = kron(basis_new.conj(), basis_new) @ kron(basis_old.conj(), basis_old).H``
     """
     U = basis_new.conj().transpose(-1, -2) @ basis_old
     T_switch = batched_kron(U, U.conj())
@@ -414,8 +417,8 @@ def compute_liouville_basis_transformation(basis_old: torch.Tensor, basis_new: t
 
 
 def compute_density_basis_transformation(basis_old: torch.Tensor, basis_new: torch.Tensor):
-    """
-    Compute the transformation matrix for density matrices between two quantum bases.
+    """Compute the transformation matrix for density matrices between two
+    quantum bases.
 
     This function calculates the unitary matrix that converts density matrices from an old basis
     to a new basis. The transformation preserves quantum state properties under basis change.
@@ -445,8 +448,7 @@ def compute_density_basis_transformation(basis_old: torch.Tensor, basis_new: tor
 
 
 def transform_density(density_old: torch.Tensor, coeffs: torch.Tensor):
-    """
-    Transform a density matrix to a new  basis.
+    """Transform a density matrix to a new  basis.
 
     Applies a unitary transformation to a density matrix using precomputed transformation coefficients.
 
@@ -479,8 +481,7 @@ def transform_liouville_superop(
     superoperator_old: torch.Tensor,
     liouville_transformation: torch.Tensor
 ) -> torch.Tensor:
-    """
-    Transform a superoperator to a new quantum basis in Liouville space.
+    """Transform a superoperator to a new quantum basis in Liouville space.
 
     Applies a basis transformation to Liouville-space operators (e.g., relaxation matrices,
     quantum maps) using precomputed Liouville transformation coefficients.
@@ -506,8 +507,8 @@ def transform_liouville_superop_diag(
     superoperator_diag: torch.Tensor,
     liouville_transformation: torch.Tensor
 ) -> torch.Tensor:
-    """
-    Transform a diagonal superoperator to a new quantum basis in Liouville space.
+    """Transform a diagonal superoperator to a new quantum basis in Liouville
+    space.
 
     :param superoperator_diag : torch.Tensor
         Diagonal of the superoperator in the original Liouville basis.
@@ -529,8 +530,7 @@ def get_coupled_unitary(
         coeffs: torch.Tensor,
         n: int,
 ) -> torch.Tensor:
-    """
-    Compute unitary transformation matrix from uncoupled to coupled basis.
+    """Compute unitary transformation matrix from uncoupled to coupled basis.
 
     This is equivalent to reshaping the output of compute_clebsch_gordan_coeffs
     into a matrix form [..., K, K] where K = k1*k2*...*kn.
@@ -550,8 +550,7 @@ def transform_kronecker_density(
         density_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    Transform density matrices from uncoupled to coupled basis.
+    """Transform density matrices from uncoupled to coupled basis.
 
     ρ_coupled = U @ (ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ) @ Uᴴ
 
@@ -576,8 +575,7 @@ def transform_kronecker_superoperator(
         superoperator_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    Transform superoperators from uncoupled to coupled Liouville basis.
+    """Transform superoperators from uncoupled to coupled Liouville basis.
 
     R_coupled = T ⊗ (R1 ⊗ I2 ⊗ ... ⊗ In + I1 ⊗ R2 ⊗ ... ⊗ In + ... + I1 ⊗ ... ⊗ Rn) ⊗ Tᴴ
     where T = U ⊗ U* (Liouville transformation)
@@ -619,8 +617,8 @@ def transform_kronecker_superoperator(
 class Liouvilleator:
     @staticmethod
     def commutator_superop(operator: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the superoperator form of the commutator with a given operator.
+        """Compute the superoperator form of the commutator with a given
+        operator.
 
         For an operator A, this superoperator L satisfies:
             L[ρ] = [A, ρ] = Aρ - ρA
@@ -634,7 +632,7 @@ class Liouvilleator:
 
         Mathematical Formulation:
         -------------------------
-        L = A ⊗ I - I ⊗ Aᵀ
+        ``L = A ⊗ I - I ⊗ A^T``
         where ⊗ denotes the Kronecker product, and I is the identity matrix.
 
         Notes:
@@ -652,8 +650,7 @@ class Liouvilleator:
 
     @staticmethod
     def vec(rho: torch.Tensor) -> torch.Tensor:
-        """
-        Transform density matrix to Liouvillian space from Hilbert Space.
+        """Transform density matrix to Liouvillian space from Hilbert Space.
 
         Example:
             rho = torch.tensor([[0.5, 0.1],
@@ -667,8 +664,7 @@ class Liouvilleator:
 
     @staticmethod
     def unvec(rho: torch.Tensor) -> torch.Tensor:
-        """
-        Transform density matrix to Hilbert space from Liouvillian Space.
+        """Transform density matrix to Hilbert space from Liouvillian Space.
 
         Example:
             vec_rho = torch.tensor([0.6, 0.0, 0.0, 0.4])
@@ -683,11 +679,11 @@ class Liouvilleator:
 
     @staticmethod
     def hamiltonian_superop(hamiltonian: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the Liouvillian superoperator for unitary evolution under a Hamiltonian.
+        """Compute the Liouvillian superoperator for unitary evolution under a
+        Hamiltonian.
 
         For a Hamiltonian H, this superoperator generates:
-            dρ/dt = -i[H, ρ]
+            ``dρ/dt = -i[H, ρ]``
 
         :param hamiltonian : torch.Tensor
             Hamiltonian operator. Shape: [..., d, d]
@@ -708,11 +704,11 @@ class Liouvilleator:
 
     @staticmethod
     def anticommutator_superop(operator: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the superoperator form of the anticommutator with a given operator.
+        """Compute the superoperator form of the anticommutator with a given
+        operator.
 
         For an operator A, this superoperator L satisfies:
-            L[ρ] = {A, ρ} = Aρ + ρA
+            ``L[ρ] = {A, ρ} = Aρ + ρA``
         when applied to a vectorized density matrix.
 
         :param operator: torch.Tensor
@@ -739,21 +735,21 @@ class Liouvilleator:
 
     @staticmethod
     def anticommutator_superop_diagonal(operator: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the superoperator form of the anticommutator with a given DIAGONAL of a operator.
+        """Compute the superoperator form of the anticommutator with a given
+        DIAGONAL of a operator.
 
         It is similar anticommutator_superop but for the special case when the operator is diagonal.
         It takes only it's diagonal and returns also diagonal
 
         For an operator A, this superoperator L satisfies:
-            L[ρ] = {A, ρ} = Aρ + ρA
+            ``L[ρ] = {A, ρ} = Aρ + ρA``
         when applied to a vectorized density matrix.
 
         :param operator: torch.Tensor
-            Operator for the anticommutator. Shape: [..., d,]
+            Operator for the anticommutator. Shape: ``[..., d,]``
 
         :return: torch.Tensor
-            Anticommutator superoperator. Shape: [..., d²]
+            Anticommutator superoperator. Shape: ``[..., d²]``
 
         Mathematical Formulation:
         -------------------------
@@ -769,8 +765,7 @@ class Liouvilleator:
 
     @staticmethod
     def decay_superop(jump_operator: torch.Tensor, rate: float) -> torch.Tensor:
-        """
-        Compute the dissipative superoperator for quantum decay processes.
+        """Compute the dissipative superoperator for quantum decay processes.
 
         :param  jump_operator : torch.Tensor
             Quantum jump operator. Shape: [..., d, d]
@@ -782,7 +777,7 @@ class Liouvilleator:
 
         Mathematical Formulation:
         -------------------------
-        L_decay = -(Γ/2) (L†L ⊗ I + I ⊗ (L†L)ᵀ)
+        ``L_decay = -(Γ/2) (L†L ⊗ I + I ⊗ (L†L)ᵀ)``
         where L = jump_operator
 
         Notes:
@@ -795,15 +790,14 @@ class Liouvilleator:
 
     @staticmethod
     def lindblad_dissipator_superop(w: torch.Tensor) -> torch.Tensor:
-        """
-        Construct Lindblad dissipator superoperator from off-diagonal rates.
+        """Construct Lindblad dissipator superoperator from off-diagonal rates.
 
         Models the dissipator term in the Lindblad equation:
-            D(ρ) = Σ_{i≠j} w_{ij} [L_{ij} ρ L_{ij}^† - (1/2){L_{ij}^† L_{ij}, ρ}]
-        where L_{ij} = √w_{ij} |j⟩⟨i|
+            ``D(ρ) = Σ_{i≠j} w_{ij} [L_{ij} ρ L_{ij}^† - (1/2){L_{ij}^† L_{ij}, ρ}]``
+        where ``L_{ij} = √w_{ij} |j⟩⟨i|``
 
         This simplifies to:
-            D(ρ) = Σ_{i≠j} w_{ij} [|j⟩⟨i| ρ |i⟩⟨j| - (1/2){|i⟩⟨i|, ρ}]
+            ``D(ρ) = Σ_{i≠j} w_{ij} [|j⟩⟨i| ρ |i⟩⟨j| - (1/2){|i⟩⟨i|, ρ}]``
 
         :param w : torch.Tensor
             Off-diagonal rate matrix. Shape: [..., n, n]
@@ -815,8 +809,8 @@ class Liouvilleator:
         Mathematical Formulation:
         -------------------------
         The dissipator consists of two parts:
-        1. Jump term: Σ_{i≠j} w_{ij} |j⟩⟨i| ρ |i⟩⟨j|
-        2. Decay term: -(1/2) Σ_{i≠j} w_{ij} {|i⟩⟨i|, ρ}
+        1. Jump term: ``Σ_{i≠j} w_{ij} |j⟩⟨i| ρ |i⟩⟨j|``
+        2. Decay term: ``-(1/2) Σ_{i≠j} w_{ij} {|i⟩⟨i|, ρ}``
 
         Notes:
         ------
@@ -852,28 +846,27 @@ class Liouvilleator:
 
     @staticmethod
     def lindblad_dephasing_superop(gamma: torch.Tensor) -> torch.Tensor:
-        """
-        Construct Lindblad relaxation superoperator from 'dephasing' vector.
+        """Construct Lindblad relaxation superoperator from 'dephasing' vector.
 
         It models dephasing
 
         Models the dephasing term in the Lindblad equation:
-            D(ρ) = Σ_i γ_{i} [L_{i} ρ L_{i}^† - (1/2){L_{i}^† L_{i}, ρ}]
-        where L_{i} = √γ_{i} |i⟩⟨i|
+            ``D(ρ) = Σ_i γ_{i} [L_{i} ρ L_{i}^† - (1/2){L_{i}^† L_{i}, ρ}]``
+        where ``L_{i} = √γ_{i} |i⟩⟨i|``
 
         This simplifies to:
-            D(ρ) = Σ_i γ_{i} [|i⟩⟨i| ρ |i⟩⟨i| - (1/2){|i⟩⟨i|, ρ}]
+            ``D(ρ) = Σ_i γ_{i} [|i⟩⟨i| ρ |i⟩⟨i| - (1/2){|i⟩⟨i|, ρ}]``
 
         :param gamma : torch.Tensor
             dephasing rate matrix. Shape: [..., n]
             Element [i] represents dephasing rate.
-            For example, if γ is not zero only for i state, then the result will be - γ / 2 * rho_ij for all j != i
+            For example, if γ is not zero only for i state, then the result will be ``- γ / 2 * rho_ij for all j != i``
             In the general case:
 
-            drho_ij / dt = - (gamma_i + gamma_j) / 2 * rho_ij for i != j
+            ``drho_ij / dt = - (gamma_i + gamma_j) / 2 * rho_ij for i != j``
 
         :return: torch.Tensor
-            Lindblad dephasing superoperator. Shape: [..., n², n²]
+            Lindblad dephasing superoperator. Shape: ``[..., n², n²]``
         """
         dephsing = -(gamma[..., :, None] + gamma[..., None, :]) / 2
         dephsing.diagonal(dim1=-2, dim2=-1).zero_()

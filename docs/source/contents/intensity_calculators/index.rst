@@ -74,4 +74,11 @@ Computational Workflow
    
    Multiply magnetization and population terms to obtain final intensity.
 
-See also: :ref:`magnetization_computation`, :ref:`population_calculation`.
+Contents
+--------
+
+.. toctree::
+   :maxdepth: 2
+
+   general_epr_transitions
+   population_calculation

@@ -564,8 +564,7 @@ class SampleVary:
              ham_strain: tp.Optional[tp.Union[tuple[float, float, float], float]] = None,
              lorentz: tp.Optional[float] = None, gauss: tp.Optional[float] = None
     ) -> tuple[ParameterSpace, SampleUpdator]:
-        """
-        Build ParameterSpace for the provided sample and vary descriptors.
+        """Build ParameterSpace for the provided sample and vary descriptors.
 
         Returns:
             ParameterSpace instance describing the varying parameters. Also saves

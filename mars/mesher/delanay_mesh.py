@@ -37,7 +37,8 @@ class MeshProcessor:
 
 
     def _preprocess(self):
-        """Prepares base and extended vertices along with interpolation masks."""
+        """Prepares base and extended vertices along with interpolation
+        masks."""
         base_vertices, extended_vertices = self._create_base_vertices(
             self.init_grid_frequency, self.phi_limit
         )
@@ -63,7 +64,8 @@ class MeshProcessor:
         return (vertices[:, 0] == 0.0) & (vertices[:, 1] != 0.0)
 
     def _create_base_vertices(self, grid_frequency, phi_limit):
-        """Generates base grid vertices and extended vertices up to phi_limit."""
+        """Generates base grid vertices and extended vertices up to
+        phi_limit."""
         initial_points = np.array([[0.0, 0.0], [phi_limit, self.theta_eps]])
 
         k_values = np.arange(1, grid_frequency)
@@ -128,7 +130,8 @@ class MeshProcessor:
 
     def _compute_masks(self, base_vertices, extended_vertices, phi_plus,
                       phi_minus, theta_extended, interpolating_vertices):
-        """Computes masks for function value extension using spatial queries."""
+        """Computes masks for function value extension using spatial
+        queries."""
         zero_mask = self._get_zero_phi_mask(base_vertices)
         tree = scipy.spatial.cKDTree(interpolating_vertices)
 
@@ -192,8 +195,7 @@ class DelaunayMeshClough(BaseMesh):
                  initial_grid_frequency: int = 20,
                      interpolation_grid_frequency: int = 40,
                  interpolate=True):
-        """
-        Initialize Delaunay mesh parameters.
+        """Initialize Delaunay mesh parameters.
 
         Args:
             eps: Small epsilon value for numerical stability
@@ -242,8 +244,7 @@ class DelaunayMeshClough(BaseMesh):
     def to_delaunay(self,
                     f_post: torch.Tensor,
                     simplices: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_interpolated: Interpolated function values
@@ -256,8 +257,7 @@ class DelaunayMeshClough(BaseMesh):
 
     def post_process(self,
                     f_init: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_init: Interpolated function values

@@ -50,7 +50,8 @@ class ConstantProfile(Profile):
 
 
 class LinearProfile(Profile):
-    """Linear profile (temperature / power) change over time in the specific region:
+    """Linear profile (temperature / power) change over time in the specific
+    region:
 
     T(t) = slope* t / delta t + intercept for t in [start_time, end_time]
     T(t) = intercept for t < start_time
@@ -126,8 +127,7 @@ class StepProfile(Profile):
 
 
 class LinearExpDecayProfile(Profile):
-    """
-    Linear ramp combined with exponential decay.
+    """Linear ramp combined with exponential decay.
 
     T(t) = base + ramp(t) + (initial_offset - base - end_ramp) * exp(-(t - start_time)/tau) for t >= start_time
     Before start: returns intercept

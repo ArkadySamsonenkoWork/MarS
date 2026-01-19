@@ -10,15 +10,17 @@ from .. import constants
 
 
 def wigner_term_square(helicity: int, num: int, theta: torch.Tensor):
-    """
-    Compute squared Wigner d-matrix element for EPR transition probability.
+    """Compute squared Wigner d-matrix element for EPR transition probability.
 
-    This function calculates orientation-dependent terms for different helicity projections
-    in electron paramagnetic resonance simulations.
+    This function calculates orientation-dependent terms for different
+    helicity projections in electron paramagnetic resonance simulations.
 
-    :param helicity: Photon helicity (+1 or -1 for circular polarization)
-    :param num: Spin quantum number projection onto z-axis (-1, 0, or +1)
-    :param theta: Polar angle between radiation direction and quantization axis (radians)
+    :param helicity: Photon helicity (+1 or -1 for circular
+        polarization)
+    :param num: Spin quantum number projection onto z-axis (-1, 0, or
+        +1)
+    :param theta: Polar angle between radiation direction and
+        quantization axis (radians)
     :return: Squared Wigner term as torch.Tensor
     """
     if helicity == num:
@@ -32,7 +34,8 @@ def wigner_term_square(helicity: int, num: int, theta: torch.Tensor):
 
 
 class PlaneWaveTerms(nn.Module):
-    """Base module for polarization-dependent term computation for plane waves."""
+    """Base module for polarization-dependent term computation for plane
+    waves."""
     def __init__(self, polarization: str, theta: float,
                  phi: tp.Optional[float], device: torch.device, dtype: torch.dtype):
         """
@@ -78,7 +81,8 @@ class PlaneWaveTerms(nn.Module):
 
 
 class PowderPlaneWaveTerms(PlaneWaveTerms):
-    """Polarization terms calculator for disordered (powder) samples for plane wave radiation."""
+    """Polarization terms calculator for disordered (powder) samples for plane
+    wave radiation."""
     def _circle(self, wave_len: tp.Optional[float]):
         def _xy_term(
                 helicity: int, theta: torch.Tensor, phi: torch.Tensor,
@@ -153,7 +157,8 @@ class PowderPlaneWaveTerms(PlaneWaveTerms):
 
 
 class CrystalPlaneWaveTerms(PlaneWaveTerms):
-    """Polarization terms calculator for single-crystal or many-crystal samples for plane wave radiation."""
+    """Polarization terms calculator for single-crystal or many-crystal samples
+    for plane wave radiation."""
     def _circle(self, wave_len: tp.Optional[float]):
         def _xy_term(
                 helicity: int, theta: torch.Tensor, phi: torch.Tensor):
@@ -207,8 +212,8 @@ class CrystalPlaneWaveTerms(PlaneWaveTerms):
 
 
 class WaveIntensityCalculator(StationaryIntensityCalculator):
-    """
-    Computes the intensity of transitions for general type of radiation, when the radiation has different orientation.
+    """Computes the intensity of transitions for general type of radiation,
+    when the radiation has different orientation.
 
     with respect to static magnetic field.
 
@@ -336,8 +341,7 @@ class WaveIntensityCalculator(StationaryIntensityCalculator):
             lvl_down: torch.Tensor, lvl_up: torch.Tensor, resonance_energies: torch.Tensor,
             resonance_manifold: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs
     ) -> torch.Tensor:
-        """
-        Compute  EPR intensities under polarized radiation.
+        """Compute  EPR intensities under polarized radiation.
 
         :param Gx, Gy, Gz: Zeeman operator components
         :param vector_down, vector_up: Eigenvectors of lower/upper states

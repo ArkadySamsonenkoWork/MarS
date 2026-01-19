@@ -111,9 +111,11 @@ class SpinSystemPlotter:
         return t
 
     def _short_tensor_str(self, t, maxchars=200):
-        """Return a short printable representation of a tensor (numpy or torch).
+        """Return a short printable representation of a tensor (numpy or
+        torch).
 
-        If the full representation is longer than maxchars we truncate with an ellipsis.
+        If the full representation is longer than maxchars we truncate
+        with an ellipsis.
         """
         t_np = self._to_numpy(t)
         if t_np is None:
@@ -281,7 +283,8 @@ class SpinSystemPlotter:
     def _edge_hover_text(self, a: str, b: str, d: Dict[str, Any]):
         """Construct hover text for an edge.
 
-        Includes interaction type and a short representation of the tensor(s).
+        Includes interaction type and a short representation of the
+        tensor(s).
         """
         itype = d.get('itype', '')
         lines = [f"{a} - {b} ({itype})"]
@@ -299,7 +302,10 @@ class SpinSystemPlotter:
     # Convenience: save static image
     # -----------------------------
     def save_matplotlib(self, filename: str, **kwargs):
-        """Save a matplotlib static rendering to file. Accepts same kwargs as plot_matplotlib."""
+        """Save a matplotlib static rendering to file.
+
+        Accepts same kwargs as plot_matplotlib.
+        """
         if plt is None:
             raise ImportError("matplotlib is required for save_matplotlib. Install it with `pip install matplotlib`.")
         # draw to the current figure and save

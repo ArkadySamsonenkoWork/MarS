@@ -21,8 +21,7 @@ def transform_to_complex(vector):
 
 
 class BaseContext(nn.Module, ABC):
-    """
-    Abstract base class defining the interface for a spin-system "Context".
+    """Abstract base class defining the interface for a spin-system "Context".
 
     A Context encapsulates the physical model of relaxation and initial state in time-resolved EPR.
     It specifies:
@@ -51,22 +50,24 @@ class BaseContext(nn.Module, ABC):
     @property
     @abstractmethod
     def time_dependant(self) -> bool:
-        """Indicates whether any relaxation parameter depends explicitly on time."""
+        """Indicates whether any relaxation parameter depends explicitly on
+        time."""
         pass
 
     @property
     @abstractmethod
     def contexted_init_population(self) -> bool:
-        """True if the Context provides explicit initial populations (not thermal equilibrium)."""
+        """True if the Context provides explicit initial populations (not
+        thermal equilibrium)."""
         pass
 
     @abstractmethod
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
-        """
-        Evaluate time-dependent profile at specified time points.
+        """Evaluate time-dependent profile at specified time points.
 
         :param time: Time points tensor for evaluation
-        :return: Profile values shaped for broadcasting along the specified time dimension.
+        :return: Profile values shaped for broadcasting along the
+            specified time dimension.
         """
         pass
 
@@ -87,8 +88,8 @@ class BaseContext(nn.Module, ABC):
     @abstractmethod
     def get_transformed_init_density(
             self, full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
-        """
-        Return initial density matrix transformed into the Hamiltonian eigenbasis.
+        """Return initial density matrix transformed into the Hamiltonian
+        eigenbasis.
 
         :param full_system_vectors:
         Eigenvectors of the full set of energy levels. The shape os `[...., M, N, N]`,
@@ -108,8 +109,8 @@ class BaseContext(nn.Module, ABC):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        Return spontaneous (thermal) transition probabilities in the eigenbasis.
+        """Return spontaneous (thermal) transition probabilities in the
+        eigenbasis.
 
         These transitions are constrained by detailed balance at the specified temperature.
         Examples include spin-lattice relaxation (T1 processes) that drive the system toward
@@ -140,8 +141,8 @@ class BaseContext(nn.Module, ABC):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        Return induced (non-thermal) transition probabilities in the eigenbasis.
+        """Return induced (non-thermal) transition probabilities in the
+        eigenbasis.
 
         These transitions are **not** subject to detailed balance.
 
@@ -158,8 +159,7 @@ class BaseContext(nn.Module, ABC):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return loss (out-of-system) probabilities in the eigenbasis.
+        """Return loss (out-of-system) probabilities in the eigenbasis.
 
         These represent irreversible decay processes that remove population from the spin
         system entirely. Examples include:
@@ -184,8 +184,7 @@ class BaseContext(nn.Module, ABC):
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None) -> tp.Optional[torch.Tensor]:
-        """
-        Return the spontaneous relaxation superoperator in Liouville space.
+        """Return the spontaneous relaxation superoperator in Liouville space.
 
         This superoperator includes all spontaneous processes (thermal transitions, losses,
         dephsing) and is transformed to the eigenbasis. It is subsequently modified to
@@ -223,8 +222,7 @@ class BaseContext(nn.Module, ABC):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return the induced relaxation superoperator in Liouville space.
+        """Return the induced relaxation superoperator in Liouville space.
 
         This superoperator contains only non-thermal (driven) processes that are NOT
         constrained by detailed balance. It is transformed to the eigenbasis without
@@ -253,8 +251,8 @@ class BaseContext(nn.Module, ABC):
 
 
 class TransformedContext(BaseContext):
-    """
-    Concrete base class implementing basis transformation logic for Context subclasses.
+    """Concrete base class implementing basis transformation logic for Context
+    subclasses.
 
     This class provides the machinery to transform physical quantities between different
     basis representations. The core assumption is that relaxation parameters (transition
@@ -278,8 +276,7 @@ class TransformedContext(BaseContext):
     and caches transformation coefficients to avoid redundant computations.
     """
     def _setup_transformers(self):
-        """
-        Configure transformation methods based on the specified basis.
+        """Configure transformation methods based on the specified basis.
 
         This method sets up the appropriate transformation functions for vectors, matrices,
         density matrices, and superoperators based on whether a basis transformation is
@@ -345,8 +342,8 @@ class TransformedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return spontaneous (thermal) transition probabilities in the eigenbasis.
+        """Return spontaneous (thermal) transition probabilities in the
+        eigenbasis.
 
         These transitions are constrained by detailed balance at the specified temperature.
         Examples include spin-lattice relaxation (T1 processes) that drive the system toward
@@ -377,8 +374,8 @@ class TransformedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return induced (non-thermal) transition probabilities in the eigenbasis.
+        """Return induced (non-thermal) transition probabilities in the
+        eigenbasis.
 
         These transitions are NOT constrained by detailed balance and represent external
         driving forces or non-equilibrium processes.
@@ -404,8 +401,7 @@ class TransformedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return loss (out-of-system) probabilities in the eigenbasis.
+        """Return loss (out-of-system) probabilities in the eigenbasis.
 
         These represent irreversible decay processes that remove population from the spin
         system entirely. Examples include:
@@ -455,8 +451,7 @@ class TransformedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return the spontaneous relaxation superoperator in Liouville space.
+        """Return the spontaneous relaxation superoperator in Liouville space.
 
         This superoperator includes all spontaneous processes (thermal transitions, losses,
         dephasing) and is transformed to the eigenbasis. It is subsequently modified to
@@ -494,8 +489,7 @@ class TransformedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        Return the induced relaxation superoperator in Liouville space.
+        """Return the induced relaxation superoperator in Liouville space.
 
         This superoperator contains only non-thermal (driven) processes that are NOT
         constrained by detailed balance. It is transformed to the eigenbasis without
@@ -560,10 +554,10 @@ class TransformedContext(BaseContext):
             self,
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        For the dephasing, free_probs, out_probs create free-superoperator.
+        """For the dephasing, free_probs, out_probs create free-superoperator.
 
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :param time_dep_values: Optional time_dep_values for evaluation
+            if loss rates are time-dependent.
         :return: free superoperator tensor or None
         """
         if (self.free_probs is None) and (self.dephasing is None) and (self.out_probs is None):
@@ -587,8 +581,7 @@ class TransformedContext(BaseContext):
 
 
 class Context(TransformedContext):
-    """
-    Primary implementation of a spin relaxation context for a sample.
+    """Primary implementation of a spin relaxation context for a sample.
 
     This class provides a flexible interface for specifying relaxation models through:
     - Basis specification (explicit matrix or string identifier)
@@ -753,7 +746,8 @@ class Context(TransformedContext):
 
     @property
     def time_dependant(self) -> bool:
-        """Indicates whether the system parameters are time-dependent profile."""
+        """Indicates whether the system parameters are time-dependent
+        profile."""
         return self.profile is not None
 
     @property
@@ -763,8 +757,8 @@ class Context(TransformedContext):
 
     @property
     def contexted_init_density(self) -> bool:
-        """
-        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        """Indicates whether the initial density matrix is taken from context
+        rather than thermal equilibrium.
 
         Returns True if either `init_populations` or a user-defined initial density matrix is provided;
         otherwise False.
@@ -773,8 +767,7 @@ class Context(TransformedContext):
 
     @property
     def init_density(self) -> tp.Optional[torch.Tensor]:
-        """
-        Returns the initial density matrix.
+        """Returns the initial density matrix.
 
         The matrix is constructed in the following order of precedence:
         1. If a user-provided complex density matrix is available, it is returned density matrix.
@@ -819,10 +812,8 @@ class Context(TransformedContext):
             return None
 
     def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """
-        Compute and cache basis transformation coefficients for the initial population
-        and all other real values tranformations
-        """
+        """Compute and cache basis transformation coefficients for the initial
+        population and all other real values tranformations."""
         if self.transformation_basis_coeff is not None:
             return self.transformation_basis_coeff
         else:
@@ -832,7 +823,8 @@ class Context(TransformedContext):
             return self.transformation_basis_coeff
 
     def _compute_transformation_density_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """Compute and cache basis transformation coefficients for the density matrix transformation"""
+        """Compute and cache basis transformation coefficients for the density
+        matrix transformation."""
         if self.transformation_basis is not None:
             return self.transformation_basis
         else:
@@ -842,7 +834,8 @@ class Context(TransformedContext):
             return self.transformation_basis
 
     def _compute_transformation_superop_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """Compute and cache basis transformation coefficients for the superoperator transformation"""
+        """Compute and cache basis transformation coefficients for the
+        superoperator transformation."""
         if self.transformation_superop_coeff is not None:
             return self.transformation_superop_coeff
         else:
@@ -934,7 +927,8 @@ class Context(TransformedContext):
             return lambda t: getter
 
     def _setup_prob_getters(self):
-        """Setup getter methods for probabilities based on callable status at initialization."""
+        """Setup getter methods for probabilities based on callable status at
+        initialization."""
         current_free_probs = self.free_probs
         self._get_free_probs_tensor = self._setup_single_getter(current_free_probs)
 
@@ -954,20 +948,20 @@ class Context(TransformedContext):
         self._get_driven_superop_tensor = self._setup_single_getter(current_driven_superop)
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
-        """
-        Evaluate time-dependent profile at specified time points.
+        """Evaluate time-dependent profile at specified time points.
 
         Evaluate time-dependent values at specified time points.
         :param time: Time points tensor for evaluation
-        :return: Profile values shaped for broadcasting along the specified time dimension.
+        :return: Profile values shaped for broadcasting along the
+            specified time dimension.
         """
         return self.profile(time)[(...,) + (None,) * (-(self.time_dimension+1))]
 
     def get_transformed_init_populations(
             self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True
     ) -> tp.Optional[torch.Tensor]:
-        """
-        Return initial populations transformed into the field-dependent Hamiltonian eigenbasis.
+        """Return initial populations transformed into the field-dependent
+        Hamiltonian eigenbasis.
 
         This method handles the critical transformation from the working basis (where initial
         populations are defined) to the eigenbasis of the field-dependent Hamiltonian (where
@@ -999,8 +993,8 @@ class Context(TransformedContext):
 
     def get_transformed_init_density(
             self, full_system_vectors: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
-        """
-        Return initial density matrix transformed into the field-dependent eigenbasis.
+        """Return initial density matrix transformed into the field-dependent
+        eigenbasis.
 
         This method is used in the density-matrix paradigm where full quantum state evolution
         is computed, including coherences between energy levels.
@@ -1044,8 +1038,8 @@ class Context(TransformedContext):
 
 
 class CompositeContext(TransformedContext):
-    """
-    Context representing a composite quantum system formed by tensor product of subsystems.
+    """Context representing a composite quantum system formed by tensor product
+    of subsystems.
 
     This class models a quantum system consisting of multiple interacting or non-interacting
     subsystems (e.g., electron-nuclear spin systems, multiple chromophores). Each subsystem
@@ -1075,8 +1069,7 @@ class CompositeContext(TransformedContext):
                  contexts: list[TransformedContext],
                  time_dimension: int = -3,
                  ):
-        """
-        Initialize a composite context from multiple subsystem contexts.
+        """Initialize a composite context from multiple subsystem contexts.
 
         :param contexts: List of contexts representing subsystems. The order matters as it
             defines the tensor product structure (first context is leftmost in tensor products).
@@ -1095,7 +1088,8 @@ class CompositeContext(TransformedContext):
 
     @property
     def time_dependant(self):
-        """Indicates whether the system parameters are time-dependent profile."""
+        """Indicates whether the system parameters are time-dependent
+        profile."""
         for context in self.component_contexts:
             if context.profile is not None:
                 return True
@@ -1111,8 +1105,8 @@ class CompositeContext(TransformedContext):
 
     @property
     def contexted_init_density(self):
-        """
-        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        """Indicates whether the initial density matrix is taken from context
+        rather than thermal equilibrium.
 
         Returns True if either `init_populations` or a user-defined initial density matrix is provided;
         otherwise False.
@@ -1123,8 +1117,8 @@ class CompositeContext(TransformedContext):
             return False
 
     def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """
-        Compute Clebsch-Gordan transformation coefficients for composite system.
+        """Compute Clebsch-Gordan transformation coefficients for composite
+        system.
 
         :param full_system_vectors: Eigenvectors of the full composite Hamiltonian.
         :return: Transformation coefficients that can be used to transform vectors, matrices,
@@ -1195,7 +1189,8 @@ class CompositeContext(TransformedContext):
         self.transformed_superop = self._transformed_superop_basis
 
     def _setup_prob_getters(self):
-        """Setup getter methods for probabilities based on callable status at initialization."""
+        """Setup getter methods for probabilities based on callable status at
+        initialization."""
         current_free_probs_lst = [
             context.free_probs for context in self.component_contexts if context.free_probs is not None
         ]
@@ -1283,8 +1278,8 @@ class CompositeContext(TransformedContext):
             return transform.transform_kronecker_superoperator(relaxation_superop_lst, coeffs)
 
     def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False):
-        """
-        Return initial populations transformed into the field-dependent Hamiltonian eigenbasis.
+        """Return initial populations transformed into the field-dependent
+        Hamiltonian eigenbasis.
 
         This method handles the critical transformation from the working basis (where initial
         populations are defined) to the eigenbasis of the field-dependent Hamiltonian (where
@@ -1322,8 +1317,8 @@ class CompositeContext(TransformedContext):
             return None
 
     def get_transformed_init_density(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """
-        Return initial density matrix transformed into the field-dependent eigenbasis.
+        """Return initial density matrix transformed into the field-dependent
+        eigenbasis.
 
         This method is used in the density-matrix paradigm where full quantum state evolution
         is computed, including coherences between energy levels.
@@ -1372,8 +1367,8 @@ class CompositeContext(TransformedContext):
 
 
 class SummedContext(BaseContext):
-    """
-    Context representing the sum of multiple relaxation mechanisms acting on the same system.
+    """Context representing the sum of multiple relaxation mechanisms acting on
+    the same system.
 
     This class models scenarios where multiple independent physical processes contribute to
     relaxation of a single quantum system. Examples include:
@@ -1395,8 +1390,7 @@ class SummedContext(BaseContext):
         summed_context = context1 + context2 + context3
     """
     def __init__(self, contexts: list[BaseContext]):
-        """
-        Initialize a summed context from multiple component contexts.
+        """Initialize a summed context from multiple component contexts.
 
         :param contexts: List of contexts representing different relaxation mechanisms acting
             on the same quantum system.
@@ -1415,7 +1409,8 @@ class SummedContext(BaseContext):
 
     @property
     def time_dependant(self):
-        """Indicates whether the system parameters are time-dependent profile."""
+        """Indicates whether the system parameters are time-dependent
+        profile."""
         for context in self.component_contexts:
             if context.profile is not None:
                 return True
@@ -1431,8 +1426,8 @@ class SummedContext(BaseContext):
 
     @property
     def contexted_init_density(self):
-        """
-        Indicates whether the initial density matrix is taken from context rather than thermal equilibrium.
+        """Indicates whether the initial density matrix is taken from context
+        rather than thermal equilibrium.
 
         Returns True if either `init_populations` or a user-defined initial density matrix is provided;
         otherwise False.
@@ -1568,8 +1563,7 @@ class SummedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        Return the spontaneous relaxation superoperator in Liouville spac.
+        """Return the spontaneous relaxation superoperator in Liouville spac.
 
         This method provides the complete Liouville-space superoperator for spontaneous
         relaxation processes, including thermal transitions, population losses, and dephasing.
@@ -1604,8 +1598,7 @@ class SummedContext(BaseContext):
             full_system_vectors: tp.Optional[torch.Tensor],
             time_dep_values: tp.Optional[torch.Tensor] = None
     ):
-        """
-        Return the spontaneous relaxation superoperator in Liouville spac.
+        """Return the spontaneous relaxation superoperator in Liouville spac.
 
         This method provides the complete Liouville-space superoperator for spontaneous
         relaxation processes, including thermal transitions, population losses, and dephasing.

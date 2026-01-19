@@ -87,8 +87,7 @@ class BaseMeshPowder(BaseMesh):
         return self.initial_grid.size()[:-1]
 
     def _create_rotation_matrices(self):
-        """
-        Given tensors phi and theta (of the same shape), returns a tensor.
+        """Given tensors phi and theta (of the same shape), returns a tensor.
 
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (phi, theta).
@@ -214,8 +213,7 @@ class BaseMeshAxial(BaseMeshPowder):
         return self.initial_grid.size()[:-1]
 
     def _create_rotation_matrices(self):
-        """
-        Given tensors phi and theta (of the same shape), returns a tensor.
+        """Given tensors phi and theta (of the same shape), returns a tensor.
 
         of shape (..., 3, 3) where each 3x3 matrix rotates the z-axis to the direction
         defined by the spherical angles (theta).

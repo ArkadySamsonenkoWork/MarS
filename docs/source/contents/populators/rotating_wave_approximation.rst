@@ -5,7 +5,7 @@ Overview
 --------
 
 The :class:`mars.population.stationary.StationaryPopulator` computes time-dependent EPR signals using the full density matrix formalism under the Rotating Wave Approximation (RWA).
-This approach efficiently models coherent evolution and relaxation when specific physical constraints are satisfied. This is default method for :class:`mars.spectra_manager.spectra_manager.DensityTimeSpectra'
+This approach efficiently models coherent evolution and relaxation when specific physical constraints are satisfied. This is default method for :class:`mars.spectra_manager.spectra_manager.DensityTimeSpectra`
 
 Theory
 ------

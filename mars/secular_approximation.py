@@ -8,8 +8,8 @@ from . import spin_system
 
 
 class SecSolver(nn.Module):
-    """
-    Computes resonance fields and associated transition data under the secular approximation,.
+    """Computes resonance fields and associated transition data under the
+    secular approximation,.
 
     where only diagonal elements of the Zeeman interaction in the eigenbasis of the field-free Hamiltonian F
     contribute to the resonance condition.
@@ -52,8 +52,8 @@ class SecSolver(nn.Module):
         self.output_full_eigenvector = output_full_eigenvector
 
     def _merge_edges(self, lvl_down: torch.Tensor, lvl_up: torch.Tensor, mask_out: torch.Tensor):
-        """
-        Aggregates identical (lower, upper) level-pair transitions across batch elements into.
+        """Aggregates identical (lower, upper) level-pair transitions across
+        batch elements into.
 
         a unified set of unique transitions.
 
@@ -130,8 +130,8 @@ class SecSolver(nn.Module):
             gz_eigen: torch.Tensor, B_low: torch.Tensor,
             B_high: torch.Tensor, resonance_frequency: torch.Tensor
     ):
-        """
-        Analytically computes candidate resonance fields for all pairs of spin levels under the secular approximation.
+        """Analytically computes candidate resonance fields for all pairs of
+        spin levels under the secular approximation.
 
         For each pair (i, j), solves B_res = (ν - (E_i^F - E_j^F)) / (g_i - g_j),
         then filters results to retain only those where:
@@ -299,8 +299,8 @@ class SecSolver(nn.Module):
 
 
 class ResSecular(nn.Module):
-    """
-    Class that enforces the secular approximation to compute EPR resonance parameters.
+    """Class that enforces the secular approximation to compute EPR resonance
+    parameters.
 
     over a batched grid of spin systems.
 

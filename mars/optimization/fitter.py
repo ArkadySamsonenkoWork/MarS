@@ -26,11 +26,11 @@ class TrialResult(tp.TypedDict):
 
 
 def print_trial_results(results: tp.Union[TrialResult, list[TrialResult]], max_params=None, precision=6) -> None:
-    """
-    Print trial results.
+    """Print trial results.
 
     :param results: Single trial dict or list of trial dicts
-    :param max_params: Maximum number of parameters to display (None for all)
+    :param max_params: Maximum number of parameters to display (None for
+        all)
     :param precision: Number of decimal places for numeric values
     :return: None
     """
@@ -364,11 +364,10 @@ class ParameterSpace:
         return copy.deepcopy(self)
 
     def freeze(self, name: str, value: tp.Optional[float] = None):
-        """
-        Freeze a parameter by name.
+        """Freeze a parameter by name.
 
-        If value is provided, use it; otherwise
-        use its default (or current) value.
+        If value is provided, use it; otherwise use its default (or
+        current) value.
         """
         if name not in self.varying_names:
             raise KeyError(name)
@@ -387,7 +386,8 @@ class ParameterSpace:
         self.varying_params = {s.name: s.default for s in self._varying_specs}
 
     def unfreeze(self, name: str):
-        """Unfreeze a parameter previously frozen with `freeze` or fixed_params."""
+        """Unfreeze a parameter previously frozen with `freeze` or
+        fixed_params."""
         if name in self.fixed_params:
             del self.fixed_params[name]
 
@@ -473,8 +473,7 @@ class ParameterSpace:
                 raise KeyError(f"Key '{key}' not found in fixed_params or _varying_specs")
 
     def reduce_bounds(self, names: tp.Optional[str] = None, alpha: float = 0.2):
-        """
-        Reduces bounds of varying parameters.
+        """Reduces bounds of varying parameters.
 
         If bounds was (a, b) and default value c than the new bounds are:
         delta = (b-a)*alpha
@@ -592,13 +591,13 @@ class BaseSpectrumFitter(ABC):
 
     @abstractmethod
     def _set_experimental(self, *args, **kwargs):
-        """Process experimental data and set  them self.x_exp, self.y_exp, self.multisample."""
+        """Process experimental data and set  them self.x_exp, self.y_exp,
+        self.multisample."""
         pass
 
     @abstractmethod
     def _simulate_single_spectrum(self, params: dict[str, float], **kwargs) -> torch.Tensor:
-        """
-        Simulate spectrum from set of parameters.
+        """Simulate spectrum from set of parameters.
 
         :param params: Full parameter dictionary
         :return: Normalized single simulated spectrum
@@ -607,8 +606,7 @@ class BaseSpectrumFitter(ABC):
 
     @abstractmethod
     def _simulate_spectral_set(self, params: dict[str, float], **kwargs) -> list[torch.Tensor]:
-        """
-        Simulate set of spectra from set of parameters.
+        """Simulate set of spectra from set of parameters.
 
         :param params: Full parameter dictionary
         :return: List of normalized simulated spectra
@@ -776,11 +774,10 @@ class BaseSpectrumFitter(ABC):
             seed: tp.Optional[int] = None,
             show_progress: bool = True,
             return_best_spectrum: bool = True,
-
             **backend_kwargs,
     ) -> FitResult:
-        """
-        All fitting methods can be viewed in SpectrumFitter.__available_optimizer__.
+        """All fitting methods can be viewed in
+        ''SpectrumFitter.__available_optimizer__.''
 
         :param backend: optuna / nevergrad. Sets which library should be used to fit data.
             Optuna supports not as many methods as nevergrad but they are quite powerful. Default fitting method is TPE.
@@ -816,8 +813,7 @@ class BaseSpectrumFitter(ABC):
 
 
 class SpectrumFitter(BaseSpectrumFitter):
-    """
-    General fitter for spectra.
+    """General fitter for spectra.
 
     The user must provide either a `simulate_spectrum_callable` that maps a
     parameter dict -> torch.Tensor (spectrum on the same B-grid), or override
@@ -899,12 +895,13 @@ class SpectrumFitter(BaseSpectrumFitter):
             self, x_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
                   y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, bool]:
-        """
-        Set expereimental given parameter.
+        """Set expereimental given parameter.
 
-        :param x_exp: Experimental x-axis data. It can be magnetic field (T), time (s)
+        :param x_exp: Experimental x-axis data. It can be magnetic field
+            (T), time (s)
         :param y_exp: Experimental y-axis data.
-        :return: x_exp, y_exp in appropriate format and flag that is multisample fitting data
+        :return: x_exp, y_exp in appropriate format and flag that is
+            multisample fitting data
         """
         if isinstance(x_exp, list):
             if len(x_exp) != len(y_exp):
@@ -934,8 +931,7 @@ class SpectrumFitter(BaseSpectrumFitter):
 
 
 class Spectrum2DFitter(BaseSpectrumFitter):
-    """
-    Spectrum Fitter for 2D data.
+    """Spectrum Fitter for 2D data.
 
     y_exp should be 2d array, x1_exp and x2_exp are axis
     """
@@ -1006,13 +1002,15 @@ class Spectrum2DFitter(BaseSpectrumFitter):
                   x2_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
                   y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, bool]:
-        """
-        Set experimental given parameter.
+        """Set experimental given parameter.
 
-        :param x1_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
-        :param x2_exp: Experimental x1-axis data. It can be magnetic field (T), time (s)
+        :param x1_exp: Experimental x1-axis data. It can be magnetic
+            field (T), time (s)
+        :param x2_exp: Experimental x1-axis data. It can be magnetic
+            field (T), time (s)
         :param y_exp: Experimental y-axis data.
-        :return: x1_exp, x2_exp, y_exp in appropriate format and flag that is multisample fitting data
+        :return: x1_exp, x2_exp, y_exp in appropriate format and flag
+            that is multisample fitting data
         """
         if isinstance(x1_exp, list) and isinstance(x2_exp, list):
             if (len(x1_exp) != len(y_exp)) or (len(x2_exp) != len(y_exp)):
@@ -1045,10 +1043,11 @@ class Spectrum2DFitter(BaseSpectrumFitter):
 
 
 class SpaceSearcher:
-    """
-    For some cases not only the best fitting parameters are useful but all 'good' parameters.
+    """For some cases not only the best fitting parameters are useful but all
+    'good' parameters.
 
-    Space searcher try to catch 'good' parameters that are far from the best fit parameters.
+    Space searcher try to catch 'good' parameters that are far from the
+    best fit parameters.
     """
     def __init__(
         self,

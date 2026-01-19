@@ -38,7 +38,7 @@ Construction
 Note: All values must be provided in SI-compatible units (Hz for couplings, dimensionless for g-tensors).
 
 Addition and Interaction Summation
------------------------------
+----------------------------------
 
 Two :class:`mars.spin_system.Interaction` and :class:`mars.spin_system.DEInteraction`  instances can be added using the ``+`` operator. The result is a new interaction that represents the sum of their second-rank tensors in the laboratory frame.
 

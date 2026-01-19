@@ -8,8 +8,8 @@ from . import spin_system
 ### The energy computation is not effective due to the usage of common interface for population computation
 ### It should be rebuild without expand operation
 class Locator(nn.Module):
-    """
-    Initialize a resonance locator that identifies EPR-allowed transitions within a frequency window.
+    """Initialize a resonance locator that identifies EPR-allowed transitions
+    within a frequency window.
 
     at a fixed magnetic field.
     This class evaluates the Hamiltonian H = F + B * Gz at a given field `B`,
@@ -37,9 +37,8 @@ class Locator(nn.Module):
                 F: torch.Tensor, Gz: torch.Tensor, freq_low: torch.Tensor,
                 freq_high: torch.Tensor, resonance_field: torch.Tensor
                 ):
-        """
-        Compute all spin transitions whose frequencies lie within
-        [freq_low, freq_high] at a fixed magnetic field `resonance_field`.
+        """Compute all spin transitions whose frequencies lie within [freq_low,
+        freq_high] at a fixed magnetic field `resonance_field`.
 
         The Hamiltonian is constructed as H = F + resonance_field * Gz,
         diagonalized to obtain eigenvalues {E_k} and eigenvectors {|ψ_k⟩}.
@@ -108,13 +107,15 @@ class Locator(nn.Module):
 
 
 class ResFreq(nn.Module):
-    """
-    Clss to compute EPR transitions within a user-defined frequency interval.
+    """Clss to compute EPR transitions within a user-defined frequency
+    interval.
 
-    at a fixed magnetic field, over a structured batch/mesh of spin systems.
+    at a fixed magnetic field, over a structured batch/mesh of spin
+    systems.
 
-    Designed for use in frequency-swept simulations (e.g., fixed-field EPR or THz spectroscopy),
-    where one scans over frequency rather than magnetic field.
+    Designed for use in frequency-swept simulations (e.g., fixed-field
+    EPR or THz spectroscopy), where one scans over frequency rather than
+    magnetic field.
     """
     def __init__(self,
                  spin_system_dim: int,
@@ -123,8 +124,7 @@ class ResFreq(nn.Module):
                  output_full_eigenvector: bool = False,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
-        """
-        Initialize the ResFreq resonance solver for spin systems.
+        """Initialize the ResFreq resonance solver for spin systems.
 
         :param spin_system_dim: Dimension of the Hilbert space of the spin system
         (i.e., size N of the Hamiltonian matrices).

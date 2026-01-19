@@ -1,5 +1,5 @@
 Internal Architecture of Spectra Creators
-========================================
+=========================================
 
 All spectra creators derive from :class:`BaseSpectra`, which orchestrates five modular stages:
 

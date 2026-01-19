@@ -50,8 +50,7 @@ _CONVERTERS = {
 
 
 def unit_converter(values: tp.Union[torch.Tensor, np.ndarray, float], conversion: str):
-    """
-    Convert `values` (scalar or torch.Tensor on CPU or GPU).
+    """Convert `values` (scalar or torch.Tensor on CPU or GPU).
 
     according to the given conversion key.
 

@@ -88,10 +88,11 @@ def _get_out_rates(transition_matrix: np.ndarray):
 
 
 def _point_out_transitions(transition_matrix: np.ndarray, E_scaled: np.ndarray) -> None:
-    """
-    Plot arrows representing net population flow (in/out) at each energy level.
+    """Plot arrows representing net population flow (in/out) at each energy
+    level.
 
-    :param transition_matrix: Matrix of transition rates between energy levels
+    :param transition_matrix: Matrix of transition rates between energy
+        levels
     :param E_scaled: Array of scaled energy positions for visualization
     :return:
     """

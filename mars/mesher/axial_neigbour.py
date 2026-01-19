@@ -54,8 +54,7 @@ class AxialMeshNeighbour(BaseMeshAxial):
                  interpolation_grid_frequency: int = 40,
                  interpolate=False, device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
-        """
-        Initialize Delaunay mesh parameters.
+        """Initialize Delaunay mesh parameters.
 
         Args:
             eps: Small epsilon value for numerical stability
@@ -105,8 +104,7 @@ class AxialMeshNeighbour(BaseMeshAxial):
     def to_delaunay(self,
                     f_post: torch.Tensor,
                     simplices: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_post: Interpolated function values
@@ -119,8 +117,7 @@ class AxialMeshNeighbour(BaseMeshAxial):
 
     def forward(self,
                     f_init: torch.Tensor) -> torch.Tensor:
-        """
-        Format interpolated values for Delaunay representation.
+        """Format interpolated values for Delaunay representation.
 
         Args:
             f_init: Interpolated function values

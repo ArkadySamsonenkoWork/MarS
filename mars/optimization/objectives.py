@@ -2,7 +2,8 @@ import torch
 
 
 class BaseObjectiveFunction:
-    """Base class for objective functions used in fitting simulated EPR spectra to experimental data.
+    """Base class for objective functions used in fitting simulated EPR spectra
+    to experimental data.
 
     Subclasses should implement the ``__call__`` method to compute a scalar loss that quantifies
     the mismatch between predicted and target spectra. Lower values indicate better agreement.
@@ -18,7 +19,8 @@ class BaseObjectiveFunction:
 class MSEObjective(BaseObjectiveFunction):
     """Mean Squared Error (MSE) objective for EPR spectral fitting.
 
-    Computes the average squared difference between simulated and experimental spectra.
+    Computes the average squared difference between simulated and
+    experimental spectra.
     """
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
@@ -28,9 +30,10 @@ class MSEObjective(BaseObjectiveFunction):
 class MAEObjective(BaseObjectiveFunction):
     """Mean Absolute Error (MAE) objective for EPR spectral fitting.
 
-    Computes the average absolute difference between simulated and experimental spectra.
-    Less sensitive to outliers than MSE, making it suitable when minor spectral distortions
-    or noise should not dominate the optimization.
+    Computes the average absolute difference between simulated and
+    experimental spectra. Less sensitive to outliers than MSE, making it
+    suitable when minor spectral distortions or noise should not
+    dominate the optimization.
     """
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):

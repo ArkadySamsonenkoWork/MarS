@@ -93,7 +93,8 @@ class Electron(Particle):
 
 
 class Nucleus(Particle):
-    """Represents a nucleus with spin and g-factor loaded from a pre-parsed database."""
+    """Represents a nucleus with spin and g-factor loaded from a pre-parsed
+    database."""
     _isotope_data = None
     _data_loaded = False  # To load data only one time
 
@@ -118,12 +119,14 @@ class Nucleus(Particle):
                 f"Isotope data file '{data_path}' not found.")
 
     def _get_data_path(self, filename: str) -> str:
-        """Get the absolute path to the data file, relative to the location of this class."""
+        """Get the absolute path to the data file, relative to the location of
+        this class."""
         class_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(class_dir, filename)
 
     def _parse_nucleus_str(self, nucleus_str: str) -> tuple[float, float]:
-        """Extract nucleons and symbol from the nucleus string (e.g., '14N' -> (14, 'N'))."""
+        """Extract nucleons and symbol from the nucleus string (e.g., '14N' ->
+        (14, 'N'))."""
         data = Nucleus._isotope_data.get(nucleus_str)
         if not data:
             raise KeyError(f"No data found for nucleus: {self.nucleus_str}")
