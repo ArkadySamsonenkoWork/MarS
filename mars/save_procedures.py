@@ -150,7 +150,7 @@ class SampleDict:
 class EasySpinSaverSampleDict:
     hz_to_MHz = 1e-6
     T_to_mT = 1e3
-    g_easy_spin_strain_converter = 2 * math.log(2)
+    g_easy_spin_strain_converter = 1.0
     def get_dict(self, sample: BaseSample):
         out = self._serialize_sample(sample)
         return out
@@ -306,10 +306,10 @@ class EasySpinSaverSampleDict:
                     frame = self._convert_tensor(interaction.frame)
 
                     strain = interaction.strain
-                    strain = self._convert_tensor(strain) if strain is not None else [0, 0, 0]
+                    strain = self._convert_tensor(strain) if strain is not None else [0, 0]
 
-                    D = 3 * tensor[-1] / 2
-                    E = abs((tensor[0] - tensor[1]) / 2)
+                    D = tensor[0]
+                    E = tensor[1]
 
                     zfs_array[position_zfs] = np.array([D, E])
                     zfs_frame[position_zfs] = frame
@@ -491,7 +491,7 @@ def parse_field(field: tp.Optional[tp.Union[torch.Tensor, np.ndarray]] = None):
 
 
 class SampleLoader:
-    g_easy_spin_strain_converter = 2 * math.log(2)
+    g_easy_spin_strain_converter = 1.0
 
     def load_sample_from_dict(self, sample_dict: dict, format_type: str = 'pytorch') -> BaseSample:
         format_handlers = {

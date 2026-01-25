@@ -183,7 +183,6 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
         """Check the presence of the resonance at the interval for the general
         case.
 
-        I
         :param eig_values_low: energies in the ascending order at B_low magnetic field.
         The shape is [..., K], where K is spin system dimension.
         :param eig_values_high: energies in the ascending order at B_high magnetic field.
@@ -872,7 +871,9 @@ class BaseResonanceLocator(nn.Module):
         energy = coef_3 * step_B ** 3 + coef_2 * step_B ** 2 + coef_1 * step_B + coef_0
         return energy
 
-    def _interpolate_vectors(self, vec_low, vec_high, weights_low, weights_high, eps=1e-12):
+    def _interpolate_vectors(self, vec_low: torch.Tensor, vec_high: torch.Tensor,
+                             weights_low: torch.Tensor, weights_high: torch.Tensor, eps=1e-12
+                             ):
         """Differences / improvements:
 
         - Avoids computing a division for entries where the inner product is (near) zero by using a boolean mask
@@ -947,12 +948,12 @@ class BaseResonanceLocator(nn.Module):
             lvl_down: torch.Tensor, lvl_up: torch.Tensor,
             weights_low: torch.Tensor, weights_high: torch.Tensor) -> torch.Tensor:
         """
-        :param eig_vectors_low:
+        :param eig_vectors_low: eigen vectors in the low spin state. The shape is [..., N_tr, N]
 
-        :param eig_vectors_high:
-        :param lvl_down:
-        :param lvl_up:
-        :param step_B:
+        :param eig_vectors_high: eigen vectors in the high spin state. The shape is [..., N_tr, N]
+        :param lvl_down: indexes of low energy level
+        :param lvl_up: indexes of up energy level
+        :param step_B: The step form the interval [0, 1]
         :return: eigen vectors of all states for all transitions.
         The shape is [..., num_transitions, K, K], where K is spin system dimension.
         The last dimension is stated. This is common agreement as in torch or numpy
@@ -1007,7 +1008,7 @@ class BaseResonanceLocator(nn.Module):
         :param lvl_up:
         :param step_B:
         :return: Eigen vectors only states that includes in transitions.
-        The shape is [..., num_transitions, K, ], where K is spin system dimension
+        The shape is [..., num_transitions, N, ], where N is spin system dimension
         The first tensor is low states,
         the second vector is high states
         """

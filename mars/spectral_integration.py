@@ -67,8 +67,9 @@ class BaseSpectraIntegrator(nn.Module):
         self.register_buffer("pi_sqrt", torch.tensor(math.sqrt(math.pi), device=device, dtype=dtype))
         self.register_buffer("two_sqrt", torch.tensor(math.sqrt(2.0), device=device, dtype=dtype))
         self.register_buffer("three", torch.tensor(3.0, device=device, dtype=dtype))
-        self.register_buffer("width_conversion", torch.tensor(1/9, device=device, dtype=dtype))
+        self.register_buffer("field_to_width", torch.tensor(1/9, device=device, dtype=dtype))
         self.register_buffer("additional_factor", torch.tensor(1.0, device=device, dtype=dtype))
+        self.register_buffer("_width_conversion", torch.tensor(1 / math.sqrt(2 * math.log(2)), device=device))
 
     @abstractmethod
     def forward(self, res_fields: torch.Tensor,
@@ -77,7 +78,7 @@ class BaseSpectraIntegrator(nn.Module):
         """
         :param res_fields: The resonance fields with the shape [..., M, 3].
 
-        :param width: The width of transitions. The shape is [..., M]
+        :param width: The width of transitions. The shape is [..., M]. This value is given as FWHM
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
@@ -96,10 +97,13 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
         """
         super().__init__(harmonic, natural_width, chunk_size, device=device, dtype=dtype)
 
+    # Let's imagine width is given in FWHM. Then sigma = FWHM  / (2 * sqrt(2 * log(2)))
+    # delta_sigma(field)**2 = ((B1 - B2)**2 + (B2 - B3)**2 + (B1 - B3)**2) / 36
     def forward(self, res_fields: torch.Tensor,
                   width: torch.Tensor, A_mean: torch.Tensor,
                   area: torch.Tensor, spectral_field: torch.Tensor):
-        r"""Computes the integral I(B) = 1/2 sqrt(2/pi) * (1/width) * A_mean *
+        r"""Convert width from FWHM to distance between infection points
+        Computes the integral I(B) = 1/2 sqrt(2/pi) * (1/width) * A_mean *
         I_triangle(B) * area,
 
             at large B because of the instability of analytical solution we use easyspin-like solution with
@@ -108,13 +112,13 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
             w_effective = (w**2 + w_additional**2).sqrt()
         where
         :param res_fields: The resonance fields with the shape [..., M, 3]
-        :param width: The width of transitions. The shape is [..., M]
+        :param width: The width of transitions. The shape is [..., M]. This value is given as FWHM
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
         :return: result: Tensor of shape (..., N) with the value of the integral for each B
         """
-
+        width.mul_(self._width_conversion)
         spectral_width = (spectral_field[..., 1] - spectral_field[..., 0]) / 2
         A_mean = A_mean * area
 
@@ -125,7 +129,7 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
         d13 = (B1 - B3) / width
         d23 = (B2 - B3) / width
         d12 = (B1 - B2) / width
-        additional_width_square = ((d13.square() + d23.square() + d12.square()) * self.width_conversion)
+        additional_width_square = ((d13.square() + d23.square() + d12.square()) * self.field_to_width)
 
         width = torch.where(width > 2 * self.natural_width, width, width + 2 * self.natural_width)
         if width.shape[:-1]:
@@ -178,12 +182,13 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
             w_effective = (w**2 + w_additional**2).sqrt()
         where
         :param res_fields: The resonance fields with the shape [..., M, 3]
-        :param width: The width of transitions. The shape is [..., M]
+        :param width: The width of transitions. The shape is [..., M]. This value is given as FWHM
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
         :return: result: Tensor of shape [..., N] with the value of the integral for each B
         """
+        width.mul_(self._width_conversion)
         A_mean = A_mean * area
         width = self.natural_width + width
         res_fields, _ = torch.sort(res_fields, dim=-1, descending=True)
@@ -225,15 +230,20 @@ class MeanIntegrator(BaseSpectraIntegrator):
     def forward(self, res_fields: torch.Tensor,
                   width: torch.Tensor, A_mean: torch.Tensor,
                   area: torch.Tensor, spectral_field: torch.Tensor):
-        r"""Computes the mean intensity :param res_fields: The resonance fields
-        with the shape [..., M] :param width: The width of transitions.
+        r"""Computes the mean intensity
+        :param res_fields: The resonance fields
+        with the shape [..., M, 1]
 
+        :param width: The width of transitions. This value is given as FWHM
         The shape is [..., M]
+
         :param A_mean: The intensities of transitions. The shape is [..., M]
         :param area: The area of transitions. The shape is [M]. It is the same for all batch dimensions
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
         :return: result: Tensor of shape (..., N) with the value of the integral for each B
         """
+        res_fields = res_fields.squeeze(-1)
+        width.mul_(self._width_conversion)
         A_mean = A_mean * area
         width = width
         width = self.natural_width + width

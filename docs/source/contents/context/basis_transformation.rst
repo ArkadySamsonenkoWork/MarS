@@ -24,7 +24,7 @@ MarS provides four predefined bases:
    The eigenbasis of the zero-field splitting operator :math:`\hat{F}` (the field-independent part of the Hamiltonian).
    
    - States are sorted by increasing zero-field energy
-   - Useful for triplet states: :math:`|T_X\rangle, |T_Y\rangle, |T_Z\rangle`
+   - For the triplet system this is the same as  "xyz" basis but usually in another order (depending on D and E values): :math:`|T_Z\rangle, |T_X\rangle, |T_Y\rangle`
 
 3. **"multiplet"**
    
@@ -43,11 +43,24 @@ MarS provides four predefined bases:
 
 
 4. **"xyz"**
-   
-   This is a common basis for the triplet molecules, where basis is given in the frame of molecule.
-   
-   - :math:`m_k` is the projection of the :math:`k`-th electron spin
-   - States sorted by **decreasing** spin projections
+
+   A molecular-frame basis commonly used for triplet (:math:`S = 1`) systems,
+   constructed from symmetric combinations of the two-electron product states
+   :math:`|\alpha\alpha\rangle`, :math:`|\alpha\beta\rangle`,
+   :math:`|\beta\alpha\rangle`, and :math:`|\beta\beta\rangle`.
+   After projection onto the total-spin :math:`S = 1` subspace, the orthonormal
+   triplet states are:
+
+   .. math::
+
+      |T_X\rangle &= \frac{1}{\sqrt{2}}\bigl(-|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\
+      |T_Y\rangle &= \frac{i}{\sqrt{2}}\bigl(|\beta\beta\rangle + |\alpha\alpha\rangle\bigr) \\
+      |T_Z\rangle &= \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle + |\beta\alpha\rangle\bigr)
+
+5. **"zeeman"**
+
+   The eigenbasis of the Z-projections of the Zeeman operator. It is the basis of the system in an infinite magnetic field :math:`\hat{Gz}`.
+   - States are sorted by increasing energy
 
 
 Custom Transformation Basis

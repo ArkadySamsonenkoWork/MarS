@@ -1,3 +1,3 @@
 from .levels_plot import plot_energy_system
-from .spin_system_plot import SpinSystemPlotter
 from .transitions_plot import plot_transitions_diagram, plot_transitions_colormap
+from .time_resolved import plot_2d_timeresolved, plot_kinetic, plot_field_dependence

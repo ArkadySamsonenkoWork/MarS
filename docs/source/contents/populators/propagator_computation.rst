@@ -38,7 +38,7 @@ where H is the spin Hamiltonian in Hilbert space and I is the identity matrix.
 Floquet Theory for Periodic Hamiltonians
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The time-dependent Hamiltonian H(t) is periodic with period T = 2π/ω, where ω is the microwave frequency (typically 9-10 GHz in X-band, giving T ~ 0.1 ns). This periodicity enables efficient long-time propagation using Floquet theory.
+The time-dependent Hamiltonian H(t) is periodic with period T = 2π/ω, where ω is the microwave frequency (9-10 GHz in X-band, giving T ~ 0.1 ns). This periodicity enables efficient long-time propagation using Floquet theory.
 
 For any time t = kT + τ where k is an integer and 0 ≤ τ < T:
 
@@ -47,6 +47,11 @@ For any time t = kT + τ where k is an integer and 0 ≤ τ < T:
    \hat{G}(t, 0) = [\hat{G}(T, 0)]^k \hat{G}(\tau, 0)
 
 Thus the propagator need only be computed over one microwave period [0, T], then raised to the k-th power for longer times.
+
+Notification
+~~~~~~~~~~~~
+Populator uses Runge–Kutta method to fine :math:\hat{G}(T, 0). It requires the parameter of populator n_steps (see :meth:`mars.population.stationary.PropagatorDensityPopulator.__init__`)
+This parameter is crucial and for some applications it should be increased to avoid numerical instability.
 
 Signal Detection
 ~~~~~~~~~~~~~~~~
@@ -145,7 +150,7 @@ Computational Cost
 
 This method is more demanding than RWA because:
 
-* Propagator dimension is N² × N² (versus N² for density vector evolution)
+* Propagator dimension is N^2 × N^2 (versus N^2 for density vector evolution)
 * Integration must be performed over one microwave period
 
 

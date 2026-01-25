@@ -1,7 +1,8 @@
+import typing as tp
+
 import torch
 
 from . import constants
-
 
 def apply_expanded_rotations(R: torch.Tensor, T: torch.Tensor):
     """Rotate tensor T with respect to rotation matrices R according formula T'

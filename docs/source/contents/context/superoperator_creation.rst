@@ -11,7 +11,6 @@ This approach guarantees that the density matrix remains positive semi-definite 
    :alt: Lindblad formalism overview
    :align: center
 
-|
 
 The Lindblad Master Equation
 -----------------------------

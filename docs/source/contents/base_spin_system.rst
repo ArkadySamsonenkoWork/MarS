@@ -60,90 +60,127 @@ The resulting system has dimension :math:`(2S+1)(2I+1) = 6`
 Useful Features
 ---------------
 
-:class:`mars.spin_system.SpinSystem` provides several utility methods for advanced quantum-mechanical analysis, including access to key spin operators and basis transformations. These are especially useful when working with total spin manifolds, symmetry-adapted bases, or custom spectral models.
+:class:`mars.spin_system.SpinSystem` provides several utility methods for advanced quantum-mechanical analysis, including access to key spin operators.
+These are especially useful when working with total spin manifolds or custom spectral models.
 
 Basis and Operator Methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following methods allow you to construct and switch between common representations of the spin Hilbert space:
+The following methods allow you to construct and switch between common representations of the spin Hilbert space.  
+In MarS, all operators and vectors are initially defined in the product basis of individual spin projections, denoted as :math:`|\alpha\rangle` and :math:`|\beta\rangle`.
 
 .. code-block:: python
 
    Mz = system.get_electron_z_operator()        # Total electron S_z operator
    S2 = system.get_electron_squared_operator()  # Total electron S² operator
-   Mul = system.get_spin_multiplet_basis()      # |S, M⟩ basis (eigenbasis of S² and S_z)
-   PR = system.get_product_state_basis()        # Computational |m₁, m₂, …⟩ basis
    Me = system.get_electron_projections()       # Electron-only Mₑ per product state
    Mt = system.get_total_projections()          # Total M = Σmₑ + Σmₙ per product state
 
-Below is a detailed description of each method.
+- :meth:`mars.spin_system.SpinSystem.get_electron_z_operator`  
+  Returns the total electron spin projection operator along the *z*-axis:
 
-`:meth:`mars.spin_system.SpinSystem.get_electron_z_operator()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  .. math::
 
-Returns the total electron spin projection operator along the *z*-axis:
+     \hat{S}_z = \sum_{i \in \text{electrons}} \hat{S}_{i}^{(z)}
+
+  - **Shape**: ``(spin_dim, spin_dim)``
+  - **Example**: For two spin-½ electrons, returns a 4×4 diagonal matrix with entries ``[1, 0, 0, -1]``.
+
+- :meth:`mars.spin_system.SpinSystem.get_electron_squared_operator`  
+  Returns the total electron spin-squared operator:
+
+  .. math::
+
+     \hat{S}^2 = \left( \sum_i \hat{\mathbf{S}}_i \right) \cdot \left( \sum_j \hat{\mathbf{S}}_j \right)
+               = \hat{S}_x^2 + \hat{S}_y^2 + \hat{S}_z^2
+
+  - **Shape**: ``(spin_dim, spin_dim)``
+  - **Eigenvalues**: :math:`S(S+1)`, where :math:`S` is the total electron spin quantum number.
+  - **Example**: For two spin-½ electrons, eigenvalues are ``0`` (singlet) and ``2`` (triplet).
+
+- :meth:`mars.spin_system.SpinSystem.get_electron_projections`  
+  Returns a 1D tensor containing the total electron magnetic quantum number :math:`M_e = \sum_i m_{e_i}` for each product state.
+
+  - **Ignores nuclear spins** (sets their projections to zero).
+  - **Shape**: ``(spin_dim,)``
+  - **Example**: For one electron (:math:`S = \tfrac{1}{2}`) and one nucleus (:math:`I = \tfrac{1}{2}`), returns ``[0.5, 0.5, -0.5, -0.5]``.
+
+- :meth:`mars.spin_system.SpinSystem.get_total_projections`  
+  Returns the total magnetic quantum number :math:`M = \sum_i m_{e_i} + \sum_j m_{n_j}` for every product state.
+
+  - **Includes both electrons and nuclei**.
+  - **Shape**: ``(spin_dim,)``
+  - **Example**: Same system as above → ``[1.0, 0.0, 0.0, -1.0]``.
+
+Concatenating Spin Systems
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MarS provides functionality to combine multiple independent spin systems into a single composite system using the direct sum construction.
+This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation suitable for specific effective models.
+
+Use concatenation only in scenarios such as:
+
+-Modeling an electron that may occupy distinct spin environments (e.g., two triplet states with slightly different zero-field splitting or dipolar couplings).
+
+-Simulating polarized or time-resolved spectra where coherence or population transfer between otherwise isolated manifolds must be tracked.
+
+Mathematical Formulation
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+For :math:`n` independent spin systems with Hilbert spaces :math:`\mathcal{H}^{(1)}`, :math:`\mathcal{H}^{(2)}`, ..., :math:`\mathcal{H}^{(n)}` of dimensions :math:`d_1, d_2, ..., d_n`, the concatenated system has Hilbert space:
 
 .. math::
 
-   \hat{S}_z = \sum_{i \in \text{electrons}} \hat{S}_{i}^{(z)}
+   \mathcal{H}_{\text{total}} = \mathcal{H}^{(1)} \oplus \mathcal{H}^{(2)} \oplus \cdots \oplus \mathcal{H}^{(n)}
 
-- **Shape**: ``(spin_dim, spin_dim)``
-- **Basis**: Product-state basis
-- **Example**: For two spin-½ electrons, returns a 4×4 diagonal matrix with entries `[1, 0, 0, -1]`.
+with total dimension :math:`D = \sum_{i=1}^{n} d_i`.
 
-`:meth:`mars.spin_system.SpinSystem.get_electron_squared_operator()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Returns the total electron spin-squared operator:
+All spin operators become block-diagonal:
 
 .. math::
 
-   \hat{S}^2 = \left( \sum_i \hat{\mathbf{S}}_i \right) \cdot \left( \sum_j \hat{\mathbf{S}}_j \right)
-             = \hat{S}_x^2 + \hat{S}_y^2 + \hat{S}_z^2
+   \hat{O}_{\text{total}} = \begin{pmatrix}
+   \hat{O}^{(1)} & 0 & \cdots & 0 \\
+   0 & \hat{O}^{(2)} & \cdots & 0 \\
+   \vdots & \vdots & \ddots & \vdots \\
+   0 & 0 & \cdots & \hat{O}^{(n)}
+   \end{pmatrix}
 
-- **Shape**: ``(spin_dim, spin_dim)``
-- **Eigenvalues**: :math:`S(S+1)`, where :math:`S` is the total electron spin quantum number.
-- **Example**: For two spin-½ electrons, eigenvalues are `0` (singlet) and `2` (triplet).
-
-`:meth:`mars.spin_system.SpinSystem.get_spin_multiplet_basis()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Constructs a unitary transformation matrix that converts from the product-state basis to the total-spin multiplet basis :math:`|S, M\rangle`.
-
-- **Output**: A matrix whose columns are eigenvectors of :math:`\hat{S}^2` and :math:`\hat{S}_z`, sorted first by :math:`S`, then by :math:`M`.
-- **Ordering**: States are arranged in ascending order of total spin :math:`S`, and within each :math:`S` manifold, by increasing :math:`M`.
-- **Example**: For two spin-½ electrons, the basis order is  
-  :math:`|S=0, M=0\rangle,\ |S=1, M=-1\rangle,\ |S=1, M=0\rangle,\ |S=1, M=+1\rangle`.
-
-`:meth:`mars.spin_system.SpinSystem.get_product_state_basis()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Returns the identity matrix, confirming that internal operators are represented in the standard product-state basis:
+The Hamiltonian decomposes as:
 
 .. math::
 
-   |\psi\rangle = |m_{e_1}, m_{e_2}, \dots, m_{n_1}, m_{n_2}, \dots\rangle
+   \hat{H}_{\text{total}} = \hat{H}^{(1)} \oplus \hat{H}^{(2)} \oplus \cdots \oplus \hat{H}^{(n)}
 
-- **Shape**: ``(spin_dim, spin_dim)``
-- **Purpose**: Useful as a reference or for explicit basis-change operations.
 
-`:meth:`mars.spin_system.SpinSystem.get_electron_projections()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Usage
+^^^^^
 
-Returns a 1D tensor containing the total electron magnetic quantum number :math:`M_e = \sum_i m_{e_i}` for each product state.
+The concatenation can be performed using :func:`mars.concat` or directly via :func:`mars.spin_system.concat_spin_systems`:
 
-- **Ignores nuclear spins** (sets their projections to zero).
-- **Shape**: ``(spin_dim,)``
-- **Example**: For one electron (S=½) and one nucleus (I=½), returns `[0.5, 0.5, -0.5, -0.5]`.
+.. code-block:: python
 
-`:meth:`mars.spin_system.SpinSystem.get_total_projections()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   from mars import concat, spin_system
+   
+   # Define two independent triplet systems
+   g1 = spin_system.Interaction(2.002)
+   D1 = spin_system.DEInteraction([350e6, 50e6])
+   triplet_1 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g1],
+       electron_electron=[(0, 0, D1)]
+   )
+   
+   g2 = spin_system.Interaction(2.008)
+   D2 = spin_system.DEInteraction([280e6, 35e6])
+   triplet_2 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g2],
+       electron_electron=[(0, 0, D2)]
+   )
+   
+   # Concatenate into single 6-dimensional system
+   composite_system = concat([triplet_1, triplet_2])
+   # Equivalent to: spin_system.concat_spin_systems([triplet_1, triplet_2])
 
-Returns the total magnetic quantum number :math:`M = \sum_i m_{e_i} + \sum_j m_{n_j}` for every product state.
-
-- **Includes both electrons and nuclei**.
-- **Shape**: ``(spin_dim,)``
-- **Example**: Same system as above → `[1.0, 0.0, 0.0, -1.0]`.
-
-These methods enable flexible manipulation of spin states-whether you need to analyze symmetries, project onto total-spin subspaces, or compute expectation values in specific bases.
-
+**See also**: :func:`mars.spin_system.concat_spin_systems` for implementation details.

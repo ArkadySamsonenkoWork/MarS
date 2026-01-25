@@ -72,15 +72,10 @@ This doesn't change the final spectrum of the sample, but it does change the eig
    )
 
 
-Useful Features
----------------
-
-The sample provides access to the underlying Hamiltonian terms, which are essential for advanced simulations, custom line shape models, or secular approximations.
-
 Hamiltonian Terms
-~~~~~~~~~~~~~~~~~
+-----------------
 
-The total spin Hamiltonian in the presence of a magnetic field **B** = (Bₓ, Bᵧ, B_z) is expressed as:
+The total spin Hamiltonian in the presence of a magnetic field **B** = (B_x, B_y, B_z) is expressed as:
 
 .. math::
 
@@ -89,7 +84,7 @@ The total spin Hamiltonian in the presence of a magnetic field **B** = (Bₓ, B�
 where:
 
 - **F** is the field-independent (zero-field) part of the Hamiltonian,
-- **Gₓ**, **Gᵧ**, **G_z** are the Zeeman coupling operators that encode the system’s response to the external magnetic field via electron and nuclear g‑tensors.
+- **G_z**, **G_y**, **G_z** are the Zeeman coupling operators that encode the system’s response to the external magnetic field via electron and nuclear g‑tensors.
 
 Explicitly, these operators are defined as:
 
@@ -124,18 +119,158 @@ You can retrieve them directly:
    F, Gx, Gy, Gz = sample.get_hamiltonian_terms()
 
    # Secular approximation: only retain elements of F that commute with Gz.
-   # This function is valid in MarS when Gz is giagonal in the basis of individual spin projections
+   #   1. Zero non-commuting elements in Zeeman terms (Gx/Gy/Gz) with respect to spin projections, making Gx,y,z[Sx,y,z == 0] = 0
+   #   2. Zero non-commuting elements in F with respect to Gz, making F[Gz == 0] = 0
    F_sec, Gx, Gy, Gz = sample.get_hamiltonian_terms_secular()
 
-In the secular form, non-commuting matrix elements of **F** with respect to **G_z** are zeroed out, enforcing the high-field selection rule:
+The secular approximation modifies the Hamiltonian terms in two steps:
 
-.. math::
+1. Zeeman term modification  
+   For each component :math:`\alpha \in \{x, y, z\}`, matrix elements of :math:`G_\alpha` are zeroed where the corresponding spin projection operator :math:`S_\alpha` has negligible magnitude:
+   
+   .. math::
+   
+      (G_\alpha)_{ij} \leftarrow 
+      \begin{cases} 
+      (G_\alpha)_{ij} & \text{if } |(S_\alpha)_{ij}| > \varepsilon \\
+      0 & \text{otherwise}
+      \end{cases}
+   
+   This enforces approximate commutation :math:`[G_\alpha, S_\alpha] \approx 0`. For single spins with isotropic g-tensors this is exact. For anisotropic cases it retains only the diagonal part of the g-tensor.
 
-   F_{ij}^{\text{sec}} = 
-   \begin{cases}
-     F_{ij}, & \text{if } |(G_z)_{ii} - (G_z)_{jj}| < \varepsilon \\
-     0,      & \text{otherwise}
-   \end{cases}
+2. Zero-field term modification 
+   Matrix elements of :math:`F` are zeroed where diagonal elements of :math:`G_z` differ:
+   
+   .. math::
+   
+      F_{ij}^{\text{sec}} = 
+      \begin{cases}
+        F_{ij}, & \text{if } |(G_z)_{ii} - (G_z)_{jj}| < \varepsilon \\
+        0,      & \text{otherwise}
+      \end{cases}
+   
+   This enforces :math:`[F^{\text{sec}}, G_z] \approx 0` with threshold :math:`\varepsilon` (default: :math:`10^{-9}`).
 
-with a small threshold :math:`\varepsilon` (default: :math:`10^{-9}`).
 
+Useful Features
+---------------
+
+:class:`mars.spin_system.BaseSample` and :class:`mars.spin_system.MultiOrientedSample` provide several utility methods for advanced quantum-mechanical analysis, including access to key spin operators and basis transformations.  
+These are especially useful when working with total spin manifolds or custom spectral models.
+
+Basis Methods
+~~~~~~~~~~~~~
+
+The following methods allow you to construct and switch between common representations of the spin Hilbert space:
+
+.. code-block:: python
+
+   Mul = sample.get_spin_multiplet_basis()      # |S, M> basis (eigenbasis of S^2 and S_z)
+   PR  = sample.get_product_state_basis()       # Computational |m1, m2, ...> basis
+
+- :meth:`mars.spin_system.MultiOrientedSample.get_spin_multiplet_basis`  
+  Constructs a unitary transformation matrix that converts from the product-state basis to the total-spin multiplet basis :math:`|S, M\rangle`.
+
+  - **Output**: A matrix whose columns are eigenvectors of :math:`\hat{S}^2` and :math:`\hat{S}_z`, sorted first by :math:`S`, then by :math:`M`.
+  - **Ordering**: States are arranged in ascending order of total spin :math:`S`, and within each :math:`S` manifold, by increasing :math:`M`.
+  - **Example**: For two spin-½ electrons, the basis order is  
+    :math:`|S=0, M=0\rangle,\ |S=1, M=-1\rangle,\ |S=1, M=0\rangle,\ |S=1, M=+1\rangle`.
+
+- :meth:`mars.spin_system.MultiOrientedSample.get_product_state_basis`  
+  Returns the identity matrix, confirming that internal operators are represented in the standard product-state basis:
+
+  .. math::
+
+     |\psi\rangle = |m_{e_1}, m_{e_2}, \dots, m_{n_1}, m_{n_2}, \dots\rangle
+
+  - **Shape**: ``(spin_dim, spin_dim)``
+
+- :meth:`mars.spin_system.MultiOrientedSample.get_xyz_basis`  
+  Returns the transition moment basis vectors :math:`T_x`, :math:`T_y`, :math:`T_z` for a spin-1 system expressed in the molecular frame.
+
+  The basis is defined in the :math:`|M_z = +1\rangle`, :math:`|M_z = 0\rangle`, :math:`|M_z = -1\rangle` eigenbasis of :math:`\hat{S}_z`.
+
+  - **Return**: A tensor of shape ``[..., orientations, 3, 3]``, where the last two dimensions correspond to the three Cartesian components (:math:`x, y, z`) and the three :math:`M_z` states.
+  - **Example**:
+
+    .. code-block:: python
+
+       T = system.get_xyz_basis()   # shape: [..., orientations, 3, 3]
+       Tx = T[..., 0]               # x-component, shape: [..., orientations, 3]
+       Ty = T[..., 1]               # y-component, shape: [..., orientations, 3]
+       Tz = T[..., 2]               # z-component, shape: [..., orientations, 3]
+
+- :meth:`mars.spin_system.MultiOrientedSample.get_zero_field_splitting_basis`  
+  Returns the eigenbasis of the zero-field splitting (ZFS) Hamiltonian, denoted as :math:`\mathbf{F}`.
+
+  The eigenvectors are ordered from the lowest to the highest eigenvalue of :math:`\mathbf{F}`.
+
+  - **Return**: A tensor of shape ``[..., N, N]``, where :math:`N` is the spin Hilbert space dimension.
+
+.. code-block:: rst
+
+- :meth:`mars.spin_system.MultiOrientedSample.get_zeeman_basis`  
+  Returns the eigenbasis of the Zeeman operator :math:`\mathbf{G}_z`, corresponding to the infinite magnetic field limit along the laboratory z-axis.
+ 
+  The eigenvectors are ordered from the lowest to the highest eigenvalue of  :math:`\mathbf{G}_z`.
+  - **Return**: A tensor of shape [..., N, N], where :math:N is the spin Hilbert space dimension.
+
+Concatenating Samples
+~~~~~~~~~~~~~~~~~~~~~
+
+MarS allows concatenation of multiple :class:`MultiOrientedSample` objects into a single composite samples using the direct sum construction of their spin systems
+
+This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation suitable for specific effective models.
+
+Use concatenation only in scenarios such as:
+
+-Modeling an electron that may occupy distinct spin environments (e.g., two triplet states with slightly different zero-field splitting or dipolar couplings).
+
+-Simulating polarized or time-resolved spectra where coherence or population transfer between otherwise isolated manifolds must be tracked.
+
+Usage
+^^^^^
+
+Concatenation requires all samples to have compatible parameters:
+
+.. code-block:: python
+
+   from mars import concat, spin_system
+   
+   # Define two independent triplet samples with same broadening
+   g1 = spin_system.Interaction(2.002)
+   D1 = spin_system.DEInteraction([350e6, 50e6])
+   triplet_1 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g1],
+       electron_electron=[(0, 0, D1)]
+   )
+   
+   sample_1 = spin_system.MultiOrientedSample(
+       spin_system=triplet_1,
+       gauss=0.0015,
+       lorentz=0.0008,
+       ham_strain=[3e6, 3e6, 8e6]
+   )
+   
+   g2 = spin_system.Interaction([2.006, 2.006, 2.002])
+   D2 = spin_system.DEInteraction([280e6, 35e6])
+   triplet_2 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g2],
+       electron_electron=[(0, 0, D2)]
+   )
+   
+   sample_2 = spin_system.MultiOrientedSample(
+       spin_system=triplet_2,
+       gauss=0.0015,  # Must match sample_1
+       lorentz=0.0008,  # Must match sample_1
+       ham_strain=[3e6, 3e6, 8e6],  # Must match sample_1
+   )
+   
+   # Concatenate samples
+   mixture = concat([sample_1, sample_2])
+   # Equivalent to: spin_system.concat_multioriented_samples([sample_1, sample_2])
+
+
+**See also**: :func:`mars.spin_system.concat_multioriented_samples` for implementation details and validation logic.

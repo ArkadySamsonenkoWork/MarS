@@ -57,17 +57,17 @@ then summed as full 3×3 matrices:
 
    \mathbf{T}_{\text{sum}}^{\text{lab}} = \mathbf{T}^{(1)}_{\text{lab}} + \mathbf{T}^{(2)}_{\text{lab}}.
 
-The resulting tensor is diagonalized to extract new principal values and a new orientation frame. The output is always stored as a valid :class:`Interaction` with its own intrinsic frame and rotation to the lab frame.
+The resulting tensor is diagonalized to extract new principal values and a new orientation frame. The output is always stored as a valid :class:`mars.spin_system.Interaction` with its own intrinsic frame and rotation to the lab frame.
 
 Strain handling
 ~~~~~~~~~~~~~~~
 
 Strain parameters describe distributions of the principal values in the intrinsic frame. During addition:
 
-- Strain vectors from each operand are **concatenated**.
-- A combined ``strain_correlation`` matrix is built to map this concatenated strain vector onto perturbations of the final principal components. (see also :ref:`strain-managment-mars`)
+- Strain vectors from each operand are concatenated.
+- A combined ``strain_correlation`` matrix is built to map this concatenated strain vector onto perturbations of the final derivatives of principal components :math:\partial Dx,\partial Dx,\partial Dx, . (see also :ref:`strain-management-mars`)
 
-This mechanism works consistently even when combining a generic :class:`Interaction` with a :class:`DEInteraction`.
+This mechanism works consistently even when combining a generic :class:`mars.spin_system.Interaction` with a :class:`mars.spin_system.DEInteraction`.
 
 For example::
 
@@ -83,7 +83,7 @@ For example::
     print("Principal values (Hz):", total.components)
     print("Strain correlation matrix:\n", total.strain_correlation)
 
-The resulting ``strain_correlation`` matrix has shape ``(3, 5)``: three rows for the output principal components (Dx, Dy, Dz) and five columns—three from the isotropic interaction (treated as independent perturbations along x, y, z) and two from the D/E parameters via the standard transformation:
+The resulting ``strain_correlation`` matrix has shape ``(3, 5)``: three rows for the output principal components (Dx, Dy, Dz) and five columns—three from the isotropic interaction (treated as independent perturbations along x, y, z) and two from the D/E parameters via the transformation:
 
 .. math::
 

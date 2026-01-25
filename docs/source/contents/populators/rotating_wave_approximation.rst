@@ -45,7 +45,7 @@ For time-dependent Hamiltonians oscillating at the spectrometer frequency ω, th
 
    \tilde{\rho} = e^{i\omega S_z t} \rho e^{-i\omega S_z t}
 
-In the rotating frame, the effective Hamiltonian becomes time-independent:
+In the rotating frame, the effective Hamiltonian becomes time-independent and for isotropic g-tensor can be written as:
 
 .. math::
 
@@ -54,33 +54,40 @@ In the rotating frame, the effective Hamiltonian becomes time-independent:
 where:
 
 * **F**: Zero-field Hamiltonian (exchange, dipolar, zero-field splitting)
-* **B₀**: Static magnetic field
-* **B₁**: Microwave field amplitude
-* **ω**: Spectrometer frequency
+* **B_0**: Static magnetic field
+* **B_1**: Microwave field amplitude
+* **w**: Spectrometer frequency
 
 Constraints and Limitations
 ----------------------------
 
 In MarS, the RWA imposes strict requirements on the spin system:
 
-Isotropic g-Tensor
-~~~~~~~~~~~~~~~~~~
+Close to Isotropic g-Tensor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Zeeman operators must be proportional to spin operators:
-
-.. math::
-
-   G_x = g\mu_B S_x, \quad G_y = g\mu_B S_y, \quad G_z = g\mu_B S_z
-
-This requires an isotropic g-factor. Systems with anisotropic g-tensors violate the commutation relations:
+The Zeeman operators must be proportional to the spin operators:
 
 .. math::
 
-   [G_x, G_y] = ig\mu_B G_z
+   G_x = g_x\mu_B S_x, \quad G_y = g_y\mu_B S_y, \quad G_z = g_z\mu_B S_z.
 
-that are essential for the rotating frame transformation.
+To compute RWA, by default, MarS modifies G_x, G_y, G_z the Zeeman operators :math:`G_x`, :math:`G_y`, and :math:`G_z` so that they approximately commute with the total spin projection operators :math:`S_x`, :math:`S_y`, and :math:`S_z`, respectively:
 
-**Why this occurs**: With anisotropic g-tensors, the Zeeman interaction becomes direction-dependent, and the angular momentum algebra that underlies the RWA breaks down.
+.. math::
+
+   [G_\alpha, S_\alpha] \approx 0 \quad \text{for} \quad \alpha \in \{x, y, z\}.
+
+Systems with singificantly anisotropic :math:`g`-tensors violate the angular momentum 
+commutation relations:
+
+.. math::
+
+   [G_x, G_y] = i g \mu_B G_z,
+
+which are essential for the validity of the rotating-frame transformation.
+
+In general, we recomend use RWA only for isotropic case. For the anisotropic case it is better to use propagator computation.
 
 Circular Polarization
 ~~~~~~~~~~~~~~~~~~~~~
@@ -98,19 +105,18 @@ Linear polarization introduces counter-rotating components that are not eliminat
 Commutation with Zero-Field Hamiltonian
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The zero-field part of the Hamiltonian must commute with S_z:
+The zero-field part of the Hamiltonian must commute with S_z (or G_z):
 
 .. math::
 
    [F, S_z] = 0
 
-**Why this occurs**: The rotating frame transformation exp(iωS_z t) must leave F invariant. If F does not commute with S_z, additional time-dependent terms appear that cannot be eliminated.
+The rotating frame transformation exp(iωS_z t) must leave F invariant. If F does not commute with S_z, additional time-dependent terms appear that cannot be eliminated.
 
 This is automatically satisfied for:
 
 * Isotropic exchange interactions
 * Axial zero-field splitting with quantization axis along z
-* Small spin-spin interactions in the secular approximation
 
 This is violated for:
 

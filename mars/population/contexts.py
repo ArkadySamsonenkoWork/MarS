@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import math
+import warnings
 
 import torch
 from torch import nn
@@ -52,6 +54,10 @@ class BaseContext(nn.Module, ABC):
     def time_dependant(self) -> bool:
         """Indicates whether any relaxation parameter depends explicitly on
         time."""
+        pass
+
+    @abstractmethod
+    def __len__(self):
         pass
 
     @property
@@ -269,6 +275,7 @@ class TransformedContext(BaseContext):
     - Can be provided as explicit transformation matrices or as string identifiers:
         * "eigen": Hamiltonian eigenbasis at the resonance field (no transformation needed)
         * "zfs": Zero-field splitting basis (eigenvectors of the field-independent part)
+        * "xyz": The common molecular triplet basis: Tx, Ty, Tz.
         * "multiplet": Total spin multiplet basis |S, M⟩
         * "product": Product basis of individual spin projections |m_s1, m_s2, ...⟩
 
@@ -415,7 +422,7 @@ class TransformedContext(BaseContext):
             population is lost from state i.
 
         Transformation rule:
-            O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k
+            ``O^new_i = Σ_k |<ψ_i^new|ψ_k^old>|² · O^old_k``
 
         Physical constraint: Loss rates must be non-negative (O_i ≥ 0).
         """
@@ -466,17 +473,17 @@ class TransformedContext(BaseContext):
         Construction method:
         The superoperator is built using Lindblad formalism from the constituent processes:
         1. Loss terms: ``L_k = √O_k |k⟩⟨k|``
-        2. Thermal transitions: L_{kl} = √W_{kl} |k⟩⟨l|
-        3. Dephasing terms: L_{kl} = √γ_{kl} |k⟩⟨l| for k≠l
+        2. Thermal transitions: L_{kl} = ``√W_{kl} |k⟩⟨l|``
+        3. Dephasing terms: L_{kl} = ``√γ_{kl} |k⟩⟨l|`` for ``k≠l``
 
         Transformation rule:
-            R_new = (U ⊗ U*) · R_old · (U ⊗ U*)
+            ``R_new = (U ⊗ U*) · R_old · (U ⊗ U*)``
             where U is the basis transformation matrix and ⊗ denotes Kronecker product
 
         Thermal correction:
         After transformation, diagonal elements corresponding to population transfer are
         modified to satisfy detailed balance:
-            R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
+                R_{iijj}^new = R_{iijj}^old · exp(-(E_i-E_j)/k_B·T) / (1 + exp(-(E_i-E_j)/k_B·T))
             R_{jjii}^new = R_{jjii}^old · 1 / (1 + exp(-(E_i-E_j)/k_B·T))
 
         where E_i are eigenenergies and T is temperature.
@@ -603,7 +610,7 @@ class Context(TransformedContext):
 
     Algebraic operations:
     - Addition (+): Combines multiple relaxation mechanisms acting on the SAME system
-    - Tensor product (@): Combines independent subsystems into a composite quantum system
+    - Tensor product (@): Combines independent subsystems into a kronecker quantum system
 
     These operations follow the physical rules described in the MarS documentation and
     enable construction of sophisticated relaxation models from simpler components.
@@ -636,8 +643,10 @@ class Context(TransformedContext):
           -`str`: one of {"zfs", "multiplet", "product", "eigen"}. If a string is
             given, `sample` **must** be provided so the basis can be constructed.
             * "zfs"       : eigenvectors of the zero-field Hamiltonian (unsqueezed)
+            * "xyz": The common molecular triplet basis: Tx, Ty, Tz. It is defined only for triplet states
             * "multiplet" : total spin multiplet basis |S, M⟩
             * "product"   : computational product basis |ms1, ms2, ..., is1, ...⟩
+             * "zeeman"   : the basis of the Hamiltonian in infinite magnetic field - Eigen vectors of Gz
             * "eigen"     : use the eigen basis at the resonance fields (represented as `None`)
             In all cases except the product case, the basis is sorted in ascending order of eigenvalues.
             In the product basis, sorting occurs in descending order of projections.
@@ -704,7 +713,7 @@ class Context(TransformedContext):
 
         :param time_dimension: int, optional
             Axis index where time should be broadcasted in returned tensors.
-            Default -5 to match the code's broadcasting conventions.
+            Default -3 to match the code broadcasting conventions.
         """
         super().__init__(time_dimension=time_dimension, dtype=dtype, device=device)
         self.transformation_basis_coeff = None
@@ -725,7 +734,6 @@ class Context(TransformedContext):
         self._default_driven_superop = relaxation_superop
 
         self.profile = profile
-        self.sample = sample
 
         self.eigen_basis_flag = False
         if isinstance(basis, str):
@@ -743,6 +751,122 @@ class Context(TransformedContext):
             raise ValueError("Basis must be either None, string or tensor")
         self._setup_prob_getters()
         self._setup_transformers()
+        self._spin_system_dim = None
+
+    @property
+    def spin_system_dim(self) -> tp.Optional[int]:
+        """Returns the dimension N of the spin system Hilbert space.
+
+        Determined from available attributes in the following order:
+        1. From `init_populations` if provided (shape [..., N])
+        2. From `init_density` if provided (shape [..., N, N])
+        3. From `basis` tensor if provided (shape [..., N, N])
+        4. From rate matrices (`free_probs`, `driven_probs`) if they are tensors (shape [..., N, N])
+        5. From vector parameters (`out_probs`, `dephasing`) if they are tensors (shape [..., N])
+        6. From supeoperator of relaxatin (shape [..., N^2, N^2])
+
+        Returns 0 if no dimension can be inferred.
+        """
+        if self._spin_system_dim is not None:
+            return self._spin_system_dim
+
+        if self.init_populations is not None:
+            self._spin_system_dim = self.init_populations.shape[-1]
+            return self._spin_system_dim
+
+        if self._init_density_real is not None:
+            self._spin_system_dim = self._init_density_real.shape[-1]
+            return self._spin_system_dim
+
+        if self.basis is not None:
+            self._spin_system_dim = self.basis.shape[-1]
+            return self._spin_system_dim
+
+        for param in [self.free_probs, self.driven_probs]:
+            if isinstance(param, torch.Tensor):
+                self._spin_system_dim = param.shape[-1]
+                return self._spin_system_dim
+
+        if self._default_driven_superop is not None:
+            self._spin_system_dim = int(math.sqrt(self._default_driven_superop.shape[-1]))
+            return self._spin_system_dim
+
+        return None
+
+    @spin_system_dim.setter
+    def spin_system_dim(self, dim: int) -> None:
+        """
+        Set the spin system dimension for creation of Zero Contexts.
+        Use it if you need padding Context
+
+        :param dim: the dimension of zero Context
+        :return: None
+        """
+        self._spin_system_dim = dim
+
+    @property
+    def device(self) -> tp.Optional[torch.device]:
+        """Returns the device context.
+
+        Determined from available attributes in the following order:
+        1. From `init_populations` if provided (shape [..., N])
+        2. From `init_density` if provided (shape [..., N, N])
+        3. From `basis` tensor if provided (shape [..., N, N])
+        4. From rate matrices (`free_probs`, `driven_probs`) if they are tensors (shape [..., N, N])
+        5. From vector parameters (`out_probs`, `dephasing`) if they are tensors (shape [..., N])
+        6. From supeoperator of relaxatin (shape [..., N^2, N^2])
+        """
+        if self.init_populations is not None:
+            return self.init_populations.device
+
+        if self._init_density_real is not None:
+            return self._init_density_real.device
+
+        if self.basis is not None:
+            return self.basis.device
+
+        for param in [self.free_probs, self.driven_probs]:
+            if isinstance(param, torch.Tensor):
+                return param.device
+
+        if self._default_driven_superop is not None:
+            return self._default_driven_superop.device
+
+        return None
+
+    @property
+    def dtype(self) -> tp.Optional[torch.dtype]:
+        """Returns the dtype of a context.
+
+        Determined from available attributes in the following order:
+        1. From `init_populations` if provided (shape [..., N])
+        2. From `init_density` if provided (shape [..., N, N])
+        3. From `basis` tensor if provided (shape [..., N, N])
+        4. From rate matrices (`free_probs`, `driven_probs`) if they are tensors (shape [..., N, N])
+        5. From vector parameters (`out_probs`, `dephasing`) if they are tensors (shape [..., N])
+        6. From supeoperator of relaxatin (shape [..., N^2, N^2])
+
+        """
+        if self.init_populations is not None:
+            return self.init_populations.dtype
+
+        if self._init_density_real is not None:
+            return self._init_density_real.dtype
+
+        if self.basis is not None:
+            return self.basis.real.dtype
+
+        for param in [self.free_probs, self.driven_probs]:
+            if isinstance(param, torch.Tensor):
+                return param.dtype
+        if self._default_driven_superop is not None:
+            return self._default_driven_superop.real.dtype
+
+        return None
+
+    def __len__(self):
+        """This is just entire context. Let's set its len as 1"""
+        return 1
 
     @property
     def time_dependant(self) -> bool:
@@ -898,15 +1022,17 @@ class Context(TransformedContext):
     def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_system.MultiOrientedSample]):
         """Factory method to create basis from string identifier."""
         if basis_type == "zfs":
-            zero_field_term = sample.build_zero_field_term()
-            _, zfs_eigenvectors = torch.linalg.eigh(zero_field_term)
-            return zfs_eigenvectors.unsqueeze(-3)
+            return sample.get_zero_field_splitting_basis().unsqueeze(-3)
+        if basis_type == "xyz":
+            return sample.get_xyz_basis().unsqueeze(-3)
         elif basis_type == "multiplet":
-            return sample.base_spin_system.get_spin_multiplet_basis()\
+            return sample.get_spin_multiplet_basis()\
                 .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
         elif basis_type == "product":
-            return sample.base_spin_system.get_product_state_basis()\
+            return sample.get_product_state_basis()\
                 .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
+        elif basis_type == "zeeman":
+            return sample.get_zeeman_basis().unsqueeze(-3)
         elif basis_type == "eigen":
             self.eigen_basis_flag = True
             return None
@@ -1027,17 +1153,17 @@ class Context(TransformedContext):
         else:
             return SummedContext([self, other])
 
-    def __matmul__(self, other: BaseContext) -> CompositeContext:
+    def __matmul__(self, other: BaseContext) -> KroneckerContext:
         """"""
         if isinstance(other, SummedContext):
             raise NotImplementedError("multiplication with SummedContext is not implemented.")
-        elif isinstance(other, CompositeContext):
-            CompositeContext([self, *other.component_contexts], time_dimension=self.time_dimension)
+        elif isinstance(other, KroneckerContext):
+            KroneckerContext([self, *other.component_contexts], time_dimension=self.time_dimension)
         else:
-            return CompositeContext([self, other], time_dimension=self.time_dimension)
+            return KroneckerContext([self, other], time_dimension=self.time_dimension)
 
 
-class CompositeContext(TransformedContext):
+class KroneckerContext(TransformedContext):
     """Context representing a composite quantum system formed by tensor product
     of subsystems.
 
@@ -1064,6 +1190,10 @@ class CompositeContext(TransformedContext):
 
     Composite contexts can be created using the @ operator:
         composite_context = context1 @ context2 @ context3
+
+    Warning!
+    Composite context only determined for not-None basis (eigen).
+    If it is not Eigen, please considet other types of basis
     """
     def __init__(self,
                  contexts: list[TransformedContext],
@@ -1085,6 +1215,49 @@ class CompositeContext(TransformedContext):
         self.transformation_basis_coeff = None
         self._setup_prob_getters()
         self._setup_transformers()
+
+    @property
+    def basis(self) -> tp.Optional[torch.Tensor]:
+        """Returns the composite basis matrix representing the tensor product of all subsystem bases.
+
+        The composite basis is computed as the Kronecker product of individual subsystem bases:
+            U_composite = U₁ ⊗ U₂ ⊗ ... ⊗ Uₙ
+
+        Handling of None bases:
+        - If ALL subsystems have None basis (eigenbasis): returns None
+        - If ANY subsystem has a defined basis: None bases are replaced with identity matrices
+          of appropriate dimension before computing the Kronecker product
+
+        Batch dimensions:
+        - All batch dimensions from subsystem bases are preserved and broadcasted
+        - The resulting tensor has shape [B, N_total, N_total] where:
+            * B represents the broadcasted batch dimensions
+            * N_total = N₁ × N₂ × ... × Nₙ is the total Hilbert space dimension
+
+        Physical interpretation:
+        This basis defines the transformation from the product basis (tensor product of subsystem
+        computational bases) to the working basis of the composite system. It enables consistent
+        treatment of initial states, relaxation operators, and Hamiltonians across the composite space.
+        """
+        basis_values = [context.basis for context in self.component_contexts]
+        batch_shapes = [ctx.basis.shape[:-2] for ctx in self.component_contexts]
+        if all(b is None for b in basis_values):
+            return None
+        common_batch_shape = torch.Size(torch.broadcast_shapes(*batch_shapes))
+
+        expanded_bases = []
+        for basis in basis_values:
+            if basis.dim() <= 2:
+                expanded = basis.expand(common_batch_shape + basis.shape[-2:])
+            else:
+                expanded = basis.expand(common_batch_shape + basis.shape[-2:])
+            expanded_bases.append(expanded)
+
+        composite_basis = expanded_bases[0].clone()
+        for basis in expanded_bases[1:]:
+            composite_basis = torch.kron(composite_basis, basis)
+
+        return composite_basis
 
     @property
     def time_dependant(self):
@@ -1115,6 +1288,10 @@ class CompositeContext(TransformedContext):
             return True
         else:
             return False
+
+    def __len__(self):
+        """This is just entire context. Let's set its len as 1"""
+        return 1
 
     def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute Clebsch-Gordan transformation coefficients for composite
@@ -1270,7 +1447,7 @@ class CompositeContext(TransformedContext):
             self, relaxation_superop_lst: tp.Optional[list[torch.Tensor]],
             full_system_vectors: tp.Optional[torch.Tensor]
     ):
-        """Transform relaxation superoperator from one basis to another."""
+        """Transform relaxation relaxation_superop_lst from one basis to another."""
         if relaxation_superop_lst is None:
             return None
         else:
@@ -1356,14 +1533,14 @@ class CompositeContext(TransformedContext):
         _transformation_basis_coeff = self._compute_transformation_superop_coeff(full_system_vectors)
         return transform.transform_kronecker_density(component_densities, _transformation_basis_coeff)
 
-    def __matmul__(self, other: BaseContext) -> CompositeContext:
+    def __matmul__(self, other: BaseContext) -> KroneckerContext:
         """"""
         if isinstance(other, SummedContext):
             raise NotImplementedError("multiplication with SummedContext is not implemented.")
-        elif isinstance(other, CompositeContext):
-            CompositeContext([*self.component_contexts, *other.component_contexts], time_dimension=self.time_dimension)
+        elif isinstance(other, KroneckerContext):
+            KroneckerContext([*self.component_contexts, *other.component_contexts], time_dimension=self.time_dimension)
         else:
-            return CompositeContext([*self.component_contexts, other], time_dimension=self.time_dimension)
+            return KroneckerContext([*self.component_contexts, other], time_dimension=self.time_dimension)
 
 
 class SummedContext(BaseContext):
@@ -1389,7 +1566,7 @@ class SummedContext(BaseContext):
     Summed contexts can be created using the + operator:
         summed_context = context1 + context2 + context3
     """
-    def __init__(self, contexts: list[BaseContext]):
+    def __init__(self, contexts: list[tp.Union[Context, KroneckerContext]]):
         """Initialize a summed context from multiple component contexts.
 
         :param contexts: List of contexts representing different relaxation mechanisms acting
@@ -1398,14 +1575,53 @@ class SummedContext(BaseContext):
         Note: All component contexts should be compatible in terms of:
         - Describing the same physical system (same number of energy levels)
         - Having compatible time dependence properties
+
+        inner component_contexts is sorted in the order: KroneckerContext,
+        contexts with not None basis and contexts with None basis
+
         """
         super().__init__()
-        self.component_contexts = nn.ModuleList(contexts)
+        sorted_context_list = []
+        _num_contexts_with_basis = 0
+        for context in contexts:
+            if isinstance(context, KroneckerContext):
+                sorted_context_list.append(context)
+                _num_contexts_with_basis += 1
+                continue
+            if context.basis is not None:
+                sorted_context_list.append(context)
+                _num_contexts_with_basis += 1
+                continue
+            else:
+                sorted_context_list.append(context)
+
+        self.component_contexts = nn.ModuleList(sorted_context_list)
+        self._num_contexts_with_basis = _num_contexts_with_basis
+
+    @property
+    def num_contexts_with_basis(self) -> int:
+        """
+        Return the number of contexts with defined (not None) initial basis.
+        For KroneckerContext it is assumed that basis is defined
+
+        :return: The number of contexts with defined initial basis
+        """
+        return self._num_contexts_with_basis
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """Evaluate time-dependent profile at specified time points.
+
+        :param time: Time points tensor for evaluation
+        :return: Profile values shaped for broadcasting along the
+            specified time dimension.
+        """
         for context in self.component_contexts:
             if context.profile is not None:
                 return context.profile(time)[(...,) + (None,) * -(context.time_dimension+1)]
+
+    def __len__(self):
+        """This is just entire context. Let's set its len as 1"""
+        return len(self.component_contexts)
 
     @property
     def time_dependant(self):
@@ -1415,6 +1631,24 @@ class SummedContext(BaseContext):
             if context.profile is not None:
                 return True
         return False
+
+    @property
+    def device(self):
+        """Context computation device"""
+        return self.component_contexts[0].device
+
+    @property
+    def spin_system_dim(self):
+        """Context spin system dimension"""
+        for ctx in self.component_contexts:
+            if isinstance(ctx.spin_system_dim, int):
+                return ctx.spin_system_dim
+        raise NotImplementedError("spin_system_dim is equel to None")
+
+    @property
+    def dtype(self):
+        """Context float dtype"""
+        return self.component_contexts[0].dtype
 
     @property
     def contexted_init_population(self):

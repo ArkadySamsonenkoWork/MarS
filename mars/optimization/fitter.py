@@ -226,10 +226,19 @@ class ParamSpec:
     vary: bool = True
 
     def clip(self, x: float) -> float:
+        """
+        :param x: the value that should be clipped with respect to bounds
+        :return: clipped values
+        """
         lo, hi = self.bounds
         return float(min(max(x, lo), hi))
 
     def apply(self, x: float) -> float:
+        """
+        Gives the real value if transformed is skipped or return trasformed value
+        :param x:
+        :return:
+        """
         x = self.clip(x)
         return self.transform(x) if self.transform is not None else x
 

@@ -3,6 +3,7 @@ import typing as tp
 from functools import wraps
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import torch
 import torch.fft as fft
@@ -76,8 +77,15 @@ class PostSpectraProcessing(nn.Module):
                 magnetic_field: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """
         :param gauss: Tensor of shape [] or [*batch_dims].
+        Values are provided as the full width at half maximum (FWHM) and are expressed in:
+            - tesla (T) for field-dependent spectra,
+            - hertz (Hz) for frequency-dependent spectra.
 
         :param lorentz: Tensor of shape [] or [*batch_dims]
+        Values are provided as the full width at half maximum (FWHM) and are expressed in:
+            - tesla (T) for field-dependent spectra,
+            - hertz (Hz) for frequency-dependent spectra.
+
         :param magnetic_field: Tensor of shape [N] or [*batch_dims, N]
         :param spec: Spectrum tensor of shape [N] or [*batch_dims, N]
         :return: Broadened spectrum, same shape as spec
@@ -221,6 +229,11 @@ class PostSpectraProcessing(nn.Module):
         return self._apply_convolution(spec, kernel)
 
 
+class OutputSpectraMode(str, Enum):
+    TOTAL = "total"
+    TRANSITIONS = "transitions"
+
+
 class BaseProcessing(nn.Module, ABC):
     """Base class for spectral integration and spectral post-processing over
     orientation meshes.
@@ -242,6 +255,7 @@ class BaseProcessing(nn.Module, ABC):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  chunk_size: int = 128,
                  device: torch.device = torch.device("cpu"),
+                 output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
                  dtype: torch.dtype = torch.float32):
         """
         :param mesh: Mesh object defining orientation sampling grid.
@@ -250,26 +264,78 @@ class BaseProcessing(nn.Module, ABC):
         Default is None and initialized with respect to class
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
-        :param chunk_size: Number of field points during integration. Default is 128
+        :param chunk_size: Number of field points during integration. Default is 128.
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
+
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
-
         super().__init__()
         self.register_buffer("threshold", torch.tensor(1e-4, device=device))
         self.mesh = mesh
         self.post_spectra_processor = post_spectra_processor
         self.spectra_integrator = self._init_spectra_integrator(spectra_integrator, harmonic,
                                                                 chunk_size=chunk_size, device=device, dtype=dtype)
+        self._output_factory_setter(output_mode)
         self.to(device)
+
+    def _output_factory_setter(self, output_mode: OutputSpectraMode) -> None:
+        """
+        Set the methods for managment with respect to output mode
+
+        :param output_mode: Controls the organization of the computed spectrum.
+        :return:
+        """
+        if output_mode == OutputSpectraMode.TOTAL:
+            self._modify_data_dimensions = self._modify_data_dimensions_total
+            self._get_output = self._get_output_total
+        elif output_mode == OutputSpectraMode.TRANSITIONS:
+            self._modify_data_dimensions = self._modify_data_dimensions_preserve
+            self._get_output = self._get_output_preserve
+        else:
+            raise ValueError(
+                f"There are no such output method as {output_mode.value}."
+                f"Use one of the {[value for value in OutputSpectraMode]}"
+            )
+
 
     @abstractmethod
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator], harmonic: int,
                                  chunk_size: int, device: torch.device, dtype: torch.dtype):
+        """
+        Initialize or validate the spectra integrator used for line integration over the field axis.
+
+        If a pre-configured integrator is provided, it may be reused or adapted;
+        otherwise, a default integrator appropriate for the subclass should be created.
+
+        :param spectra_integrator: Optional pre-defined integrator. If None, a new one is instantiated.
+        :param harmonic: Spectral harmonic to compute (0 = absorption, 1 = first derivative, etc.).
+        :param chunk_size: Maximum number of field points processed in one integration step.
+        :param device: Device on which the integrator should operate (e.g., CPU or CUDA).
+        :param dtype: Floating-point data type for internal computations.
+        :return: An instance f `BaseSpectraIntegrator`.
+        """
         pass
 
     @abstractmethod
     def _compute_areas(self, expanded_size: torch.Tensor, device: torch.device):
+        """
+        Compute orientation weights (e.g., triangle areas on a sphere) for integration over the mesh.
+
+        These weights account for the geometric contribution of each orientation sample
+        and are used to average the spectrum over the powder or crystal ensemble.
+
+        :param expanded_size: Target shape to broadcast the computed areas to.
+        :param device: Device on which the area tensor should be allocated.
+        :return: Tensor of integration weights with shape matching `expanded_size`.
+        """
         pass
 
     @abstractmethod
@@ -313,8 +379,79 @@ class BaseProcessing(nn.Module, ABC):
         areas = areas[..., mask]
         return res_fields, width, intensities, areas
 
-    def _integration_precompute(self, res_fields, width, intensities, areas, fields):
+    def _integration_precompute(self, res_fields: torch.Tensor, width: torch.Tensor,
+                                intensities: torch.Tensor, areas: torch.Tensor, fields: torch.Tensor) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Modify resonance data to pass in into Integrator.
+        """
         return res_fields, width, intensities, areas, fields
+
+    def _modify_data_dimensions_total(
+            self, res_fields: torch.Tensor, width: torch.Tensor, intensities: torch.Tensor, areas: torch.Tensor) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Modify data dimension to make it computable with the given type of integrator and computation method
+
+        :param res_fields: resonance field with the shape [..., num_transitions, num_simplices, 3]
+        :param width: width with the shape [..., num_transitions, num_simplices, 3]
+        :param intensities: intensities with the shape [..., num_transitions, num_simplices, 3]
+        :param areas: areas with the shape [..., num_transitions, num_simplices]
+        :return: modified
+         res_fields with the shape [..., num_simplices * num_transitions, 3]
+         width with the shape [..., num_simplices * num_transitions]
+         intensities with the shape [..., num_simplices * num_transitions]
+         areas with the shape [..., num_simplices * num_transitions]
+        """
+        return res_fields.flatten(-3, -2), width.flatten(-2, -1), intensities.flatten(-2, -1), areas.flatten(-2, -1)
+
+    def _modify_data_dimensions_preserve(
+            self, res_fields: torch.Tensor, width: torch.Tensor, intensities: torch.Tensor, areas: torch.Tensor) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Modify data dimension to make it computable with the given type of integrator and computation method.
+        This modifier do not flatten data into num_simplices - num_transitions dimension
+
+        :param res_fields: resonance field with the shape [..., num_transitions, num_simplices, 3]
+        :param width: width with the shape [..., num_transitions, num_simplices, 3]
+        :param intensities: intensities with the shape [..., num_transitions, num_simplices, 3]
+        :param areas: areas with the shape [..., num_transitions, num_simplices]
+        :return: modified
+         res_fields with the shape [..., num_simplices, num_transitions, 3]
+         width with the shape [..., num_simplices, num_transitions]
+         intensities with the shape [..., num_simplices, num_transitions]
+         areas with the shape [..., num_simplices, num_transitions]
+        """
+        return res_fields, width, intensities, areas
+
+    def _get_output_total(self, lvl_down: torch.Tensor, lvl_up: torch.Tensor, spectrum: torch.Tensor) ->\
+            torch.Tensor:
+        """
+        Returns the final integrated spectrum as a single tensor.
+
+        :param lvl_down: Lower energy level indices for each transition. Shape: [num_transitions]
+        :param lvl_up: Upper energy level indices for each transition. Shape: [num_transitions]
+        :param spectrum: Spectral contributions per transition. Shape: [..., num_transitions, N]
+
+        :return: The single spectrum in 1D or 2D with the shpae [...., 1/2 D dimensions]
+        """
+        return spectrum
+
+    def _get_output_preserve(self, lvl_down: torch.Tensor, lvl_up: torch.Tensor, spectrum: torch.Tensor) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Returns per-transition spectral contributions along with level indices.
+
+        :param lvl_down: Lower energy level indices for each transition. Shape: [num_transitions]
+        :param lvl_up: Upper energy level indices for each transition. Shape: [num_transitions]
+        :param spectrum: Spectral contributions per transition. Shape: [..., num_transitions, N]
+
+        :return: The tuple of three parameters:
+        -lvl down: the index of low energy levels involved in the transition. The shape is [num_transitions]
+        -lvl up: the index of high energy levels  involved in the transition. The shape is [num_transitions]
+        -spectrum itself. The shape is [..., num_transitions, 1/2 D dimensions]
+        """
+        return lvl_down, lvl_up, spectrum
 
     def forward(self,
                 res_fields: torch.Tensor,
@@ -322,7 +459,9 @@ class BaseProcessing(nn.Module, ABC):
                 width: torch.Tensor,
                 gauss: torch.Tensor,
                 lorentz: torch.Tensor,
-                fields: torch.Tensor):
+                fields: torch.Tensor,
+                lvl_down: torch.Tensor,
+                lvl_up: torch.Tensor) -> tp.Union[torch.Tensor, tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
         Execute the full spectral processing pipeline:
 
@@ -338,14 +477,16 @@ class BaseProcessing(nn.Module, ABC):
         :param gauss: Gaussian broadening FWHM. Scalar or batched tensor.
         :param lorentz: Lorentzian broadening FWHM. Scalar or batched tensor.
         :param fields: Field axis for output spectrum. Shape [N] or [..., N]
+        :param lvl_down: Energy level indices of low spin state involved in transition. The shape is '[num_transitions]'
+        :param lvl_up: Energy level indices of high spin state involved in transition. The shape is '[num_transitions]'
         :return: Broadened spectrum matching shape of `fields`
         """
-
         res_fields, width, intensities, areas = (
             self._transform_data_to_mesh_format(
                 res_fields, intensities, width
             )
         )
+        res_fields, width, intensities, areas = self._modify_data_dimensions(res_fields, width, intensities, areas)
         res_fields, width, intensities, areas = self._final_mask(res_fields, width, intensities, areas)
         res_fields, width, intensities, areas, fields = self._integration_precompute(
             res_fields, width, intensities, areas, fields
@@ -353,7 +494,8 @@ class BaseProcessing(nn.Module, ABC):
         spec = self.spectra_integrator(
             res_fields, width, intensities, areas, fields
         )
-        return self.post_spectra_processor(gauss, lorentz, fields, spec)
+        spectrum = self.post_spectra_processor(gauss, lorentz, fields, spec)
+        return self._get_output(lvl_down, lvl_up, spectrum)
 
 
 class PowderStationaryProcessing(BaseProcessing):
@@ -375,6 +517,7 @@ class PowderStationaryProcessing(BaseProcessing):
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  chunk_size: int = 128,
+                 output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32
                  ):
@@ -385,11 +528,20 @@ class PowderStationaryProcessing(BaseProcessing):
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
         :param chunk_size: Number of field points during integration. Default is 128
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
+
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__(mesh, spectra_integrator, harmonic, post_spectra_processor,
-                         chunk_size=chunk_size, device=device, dtype=dtype)
+                         chunk_size=chunk_size, output_mode=output_mode, device=device, dtype=dtype)
 
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator],
                                  harmonic: int, chunk_size: int, device: torch.device, dtype: torch.dtype)\
@@ -427,7 +579,7 @@ class PowderStationaryProcessing(BaseProcessing):
         """
         grid, simplices = self.mesh.post_mesh
         areas = self.mesh.spherical_triangle_areas(grid, simplices)
-        areas = areas.reshape(1, -1).expand(expanded_size, -1).flatten()
+        areas = areas.reshape(1, -1).expand(expanded_size, -1)
         return areas
 
     def _process_tensor(self, data_tensor: torch.Tensor) -> torch.Tensor:
@@ -456,25 +608,30 @@ class PowderStationaryProcessing(BaseProcessing):
         return batched_matrix
 
     def _transform_data_to_mesh_format(
-            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) ->\
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+            self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         :param res_fields: the tensor of resonance fields.
+        The shape is [..., num_transitions]
 
-        The shape is [..., num_resonance fields]
-        :param intensities: the tensor of resonance fields. The shape is [time, ..., num_resonance fields]
-        :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param intensities: the tensor of resonance fields. The shape is [time, ..., num_transitions]
+        :param width: the tensor of resonance fields. The shape is [..., num_transitions]
         :return:
-        res_fields tensor with the resonance field at each triangle vertices. The shape is [..., 3]
-        width tensor with the resonance field at each triangle vertices. The shape is [...]
-        intensities tensor with the resonance field at each triangle vertices. The shape is [...]
-        areas tensor with the resonance field at each triangle vertices. The shape is [...]
+        res_fields tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations, 3]
+
+        width tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
+
+        intensities tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
+
+        areas tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
         """
         batched_matrix = self._compute_batched_tensors(res_fields, intensities, width)
         expanded_size = batched_matrix.shape[-3]
-        batched_matrix = batched_matrix.flatten(-3, -2)
-        res_fields, intensities, width = torch.unbind(batched_matrix, dim=-3)
-
+        res_fields, intensities, width = torch.unbind(batched_matrix, dim=-4)
         width = width.mean(dim=-1)
         intensities = intensities.mean(dim=-1)
         areas = self._compute_areas(expanded_size, device=res_fields.device)
@@ -501,6 +658,7 @@ class CrystalStationaryProcessing(BaseProcessing):
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  chunk_size: int = 128,
+                 output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
@@ -510,11 +668,20 @@ class CrystalStationaryProcessing(BaseProcessing):
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
         :param chunk_size: Number of field points during integration. Default is 128
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
+
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__(mesh, spectra_integrator, harmonic, post_spectra_processor,
-                         chunk_size=chunk_size, device=device, dtype=dtype)
+                         chunk_size=chunk_size, output_mode=output_mode, device=device, dtype=dtype)
 
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator], harmonic: int,
                                  chunk_size: int, device: torch.device, dtype: torch.dtype):
@@ -527,48 +694,31 @@ class CrystalStationaryProcessing(BaseProcessing):
         areas = torch.ones(expanded_size, dtype=torch.float32, device=device)
         return areas
 
-    def _final_mask(self, res_fields: torch.Tensor, width: torch.Tensor,
-                    intensities: torch.Tensor, areas: torch.Tensor):
-        """Apply intensity thresholding for crystal (non-powder) samples.
-
-        Unlike powder case, res_fields lacks triangle vertex dimension (no [..., 3]).
-        Masking logic remains consistent: retain transitions above relative intensity threshold.
-
-        :param res_fields: Resonance fields. Shape [..., M]
-        :param width: Linewidths. Shape [..., M]
-        :param intensities: Intensities. Shape [..., M]
-        :param areas: Uniform weights (typically ones). Shape [..., M]
-        :return: Filtered tensors with pruned last dimension
-        """
-        max_intensity = torch.amax(abs(intensities), dim=-1, keepdim=True)
-        mask = ((intensities / max_intensity).abs() > self.threshold).any(dim=tuple(range(intensities.dim() - 1)))
-
-        intensities = intensities[..., mask]
-        width = width[..., mask]
-        res_fields = res_fields[..., mask]
-        areas = areas[..., mask]
-        return res_fields, width, intensities, areas
-
     def _transform_data_to_mesh_format(
             self, res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor) ->\
             tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         :param res_fields: the tensor of resonance fields.
+        The shape is [..., num_transitions]
 
-        The shape is [..., num_resonance fields]
-        :param intensities: the tensor of resonance fields. The shape is [..., num_resonance fields]
-        :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param intensities: the tensor of resonance fields. The shape is [..., num_transitions]
+        :param width: the tensor of resonance fields. The shape is [..., num_transitions]
         :return:
-        res_fields tensor with the resonance field at each triangle vertices. The shape is [...]
-        width tensor with the resonance field at each triangle vertices. The shape is [...]
-        intensities tensor with the resonance field at each triangle vertices. The shape is [...]
-        areas tensor with the resonance field at each triangle vertices. The shape is [...]
-        """
-        res_fields = res_fields.flatten(-2, -1)
-        intensities = intensities.flatten(-2, -1)
-        width = width.flatten(-2, -1)
 
+        res_fields tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations, 1]
+
+        width tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
+
+        intensities tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
+
+        areas tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_simplices or orientations]
+        """
         expanded_size = res_fields.shape
+        res_fields = res_fields.unsqueeze(-1)
         areas = self._compute_areas(expanded_size, res_fields.device)
         return res_fields, width, intensities, areas
 
@@ -587,6 +737,25 @@ class PowderTimeProcessing(PowderStationaryProcessing):
     4. Apply post-processing (line broadening via convolution)
     """
 
+    def _modify_data_dimensions_preserve(
+            self, res_fields: torch.Tensor, width: torch.Tensor, intensities: torch.Tensor, areas: torch.Tensor) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Modify data dimension to make it computable with the given type of integrator and computation method.
+        This modifier do not flatten data into num_simplices - num_transitions dimension
+
+        :param res_fields: resonance field with the shape [..., num_transitions, num_simplices, 3]
+        :param width: width with the shape [..., num_transitions, num_simplices, 3]
+        :param intensities: intensities with the shape [..., time, num_transitions, num_simplices, 3]
+        :param areas: areas with the shape [..., num_transitions, num_simplices]
+        :return: modified
+         res_fields with the shape [..., num_simplices, num_transitions, 3]
+         width with the shape [..., num_simplices, num_transitions]
+         intensities with the shape [..., num_simplices, time, num_transitions]
+         areas with the shape [..., num_simplices, num_transitions]
+        """
+        return res_fields, width, intensities.transpose(-3, -2), areas
+
     def _integration_precompute(self, res_fields: torch.Tensor, width: torch.Tensor,
                                 intensities: torch.Tensor, areas: torch.Tensor, fields: torch.Tensor) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -595,26 +764,32 @@ class PowderTimeProcessing(PowderStationaryProcessing):
 
     def _transform_data_to_mesh_format(self, res_fields: torch.Tensor,
                                        intensities: torch.Tensor,
-                                       width: torch.Tensor):
+                                       width: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         :param res_fields: the tensor of resonance fields.
+        The shape is [..., num_transitions]
 
-        The shape is [..., num_resonance fields]
-        :param intensities: the tensor of resonance fields. The shape is [time_dim, ..., num_resonance fields]
-        :param width: the tensor of resonance fields. The shape is [..., num_resonance fields]
+        :param intensities: the tensor of resonance fields. The shape is [time, ..., num_transitions]
+        :param width: the tensor of resonance fields. The shape is [..., num_transitions]
         :return:
-        res_fields tensor with the resonance field at each triangle vertices. The shape is [..., 3]
-        width tensor with the resonance field at each triangle vertices. The shape is [...]
-        intensities tensor with the resonance field at each triangle vertices. The shape is [time_dim, ...]
-        areas tensor with the resonance field at each triangle vertices. The shape is [...]
+        res_fields tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations, 3]
+
+        width tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
+
+        intensities tensor with the resonance field at each triangle vertices.
+        The shape is [time, ...,time, num_transitions, num_simplices or orientations]
+
+        areas tensor with the resonance field at each triangle vertices.
+        The shape is [..., num_transitions, num_simplices or orientations]
         """
         batched_matrix = self._compute_batched_tensors(res_fields, width)
         expanded_size = batched_matrix.shape[-3]
-        batched_matrix = batched_matrix.flatten(-3, -2)
         intensities = self._process_tensor(intensities)
-        intensities = intensities.flatten(-3, -2)
 
-        res_fields, width = torch.unbind(batched_matrix, dim=-3)
+        res_fields, width = torch.unbind(batched_matrix, dim=-4)
         width = width.mean(dim=-1)
         intensities = intensities.mean(dim=-1)
         areas = self._compute_areas(expanded_size, device=res_fields.device)
@@ -648,12 +823,10 @@ class Broadener(nn.Module):
     transition width using perturbation theory on strained Hamiltonian
     components. Output is FWHM of Gaussian profile.
 
-    Final width = sqrt(Hamiltonian_strain² + Σ(strain_contributions)²) ×
-    (1/√(2 ln 2))
+    Input components of sample are given as FWHM (Full width at half maximum) of corresponding distributions
     """
     def __init__(self, device: torch.device = torch.device("cpu")):
         super().__init__()
-        self.register_buffer("_width_conversion", torch.tensor(1 / math.sqrt(2 * math.log(2)), device=device))
         self.to(device)
 
     def _compute_element_field_free(self, vector: torch.Tensor,
@@ -704,7 +877,7 @@ class Broadener(nn.Module):
 
         :param sample: The MultiOrientedSample object
         :param squared_width: The square of gaussian broadening
-        :return: Total gaussian broadening
+        :return: Total gaussian broadening as
         """
         hamiltonian_width = sample.build_ham_strain().unsqueeze(-1).square()
         return (squared_width + hamiltonian_width).sqrt()
@@ -717,7 +890,7 @@ class Broadener(nn.Module):
         - Field-dependent strain contributions (from g-, D-tensor distributions)
         - Field-independent zero-field strain terms
         - Residual Hamiltonian strain (e.g., unresolved hyperfine)
-        Result is scaled to FWHM using standard Gaussian conversion factor.
+        Result is returned as FWHM
 
         :param sample: The MultiOrientedSample object
         :param vector_down: Lower-state eigenvector. Shape [..., N]
@@ -736,7 +909,7 @@ class Broadener(nn.Module):
         for strained_data in sample.build_zero_field_strain():
             result += self._compute_field_free_strain_square(strained_data, vector_down, vector_up)
 
-        return self.add_hamiltonian_straine(sample, result) * self._width_conversion
+        return self.add_hamiltonian_straine(sample, result)
 
 
 class BaseIntensityCalculator(nn.Module):
@@ -838,7 +1011,7 @@ class BaseIntensityCalculator(nn.Module):
     def forward(self, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
                 vector_down: torch.Tensor, vector_up: torch.Tensor, lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor, resonance_energies: torch.Tensor, resonance_manifold,
-                full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs):
+                full_system_vectors: tp.Optional[torch.Tensor], *args, **kwargs) -> torch.Tensor:
         """:param Gx, Gy, Gz: Zeeman operator components.
 
         :param vector_down, vector_up: Transition eigenvectors :param
@@ -987,7 +1160,7 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
         matrix elements.
 
         Population dynamics are handled separately via `calculate_population`.
-        This method returns the "geometric" part of intensity (|<ψ_up|G|ψ_down>|²).
+        This method returns the "geometric" part of intensity `(|<ψ_up|G|ψ_down>|²)`.
 
         :param Gx, Gy, Gz: Zeeman operator components
         :param vector_down, vector_up: Eigenvectors of lower/upper states
@@ -1061,6 +1234,11 @@ class ParamSpec:
             "scalar", "vector", "matrix"), f"Category must be one of 'scalar', 'vector', 'matrix', got {self.category}"
 
 
+class HamComputationMethod(str, Enum):
+    SECULAR = "secular"
+    DIRECT = "direct"
+
+
 class BaseSpectra(nn.Module, ABC):
     """Base class for EPR spectral simulation.
 
@@ -1069,7 +1247,7 @@ class BaseSpectra(nn.Module, ABC):
     2. Calculate transition intensities from matrix elements and populations
     3. Compute linewidths from strain tensors
     4. Integrate over orientation mesh (for powder samples)
-    5. Apply line broadening (Gaussian/Lorentzian/Voigt)
+    5. Apply line broadening (Gaussian/Lorentzian/PseudoVoigt)
 
     Supports both stationary (CW) and time-resolved experiments, powder and
     single-crystal samples, field-swept and frequency-swept modes.
@@ -1091,7 +1269,8 @@ class BaseSpectra(nn.Module, ABC):
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
-                 secular: bool = False,
+                 hamiltonian_mode: tp.Union[str, HamComputationMethod] = HamComputationMethod.DIRECT,
+                 output_mode: tp.Union[str, OutputSpectraMode] = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1147,10 +1326,21 @@ class BaseSpectra(nn.Module, ABC):
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
-        :param secular: bool
-            If parameter is True, then secular approximation will be used to compute resonance parameters.
-            For time-resolved rotating wave approximation is necessary to use only True
-            In general it is qute quicker than precise computation
+        :param hamiltonian_mode: str, HamComputationMethod
+         {"secular", "direct"} or HamComputationMethod, default="direct"
+            Method for Hamiltonian eigen values, eigen vectors, resonance filed computation:
+            - "secular": uses secular approximation (faster)
+            - "direct": use the general algorithm: res-field or res-freq (slower, the most general)
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
 
         :param device: cpu / cuda. Base device for computations.
 
@@ -1159,6 +1349,12 @@ class BaseSpectra(nn.Module, ABC):
         they will be converted in complex64, complex128
         """
         super().__init__()
+
+        if isinstance(hamiltonian_mode, str):
+            hamiltonian_mode = HamComputationMethod(hamiltonian_mode.lower())
+        elif not isinstance(hamiltonian_mode, HamComputationMethod):
+            raise ValueError(f"Invalid computation_method: {hamiltonian_mode}")
+
         self.register_buffer("resonance_parameter", torch.tensor(resonance_parameter, device=device, dtype=dtype))
         self.register_buffer("threshold", torch.tensor(1e-2, device=device, dtype=dtype))
         self.register_buffer("tolerance", torch.tensor(1e-10, device=device, dtype=dtype))
@@ -1171,21 +1367,27 @@ class BaseSpectra(nn.Module, ABC):
 
         self.output_eigenvector = self._init_output_eigenvector(output_eigenvector, context)
         self.res_algorithm = self._init_res_algorithm(
-            output_eigenvector=self.output_eigenvector, secular=secular, device=device, dtype=dtype)
-        if secular:
+            output_eigenvector=self.output_eigenvector, hamiltonian_mode=hamiltonian_mode, device=device, dtype=dtype)
+
+        if hamiltonian_mode == HamComputationMethod.SECULAR:
             self._hamiltonian_getter = lambda s: s.get_hamiltonian_terms_secular()
         else:
             self._hamiltonian_getter = lambda s: s.get_hamiltonian_terms()
-
 
         self.intensity_calculator = self._get_intensity_calculator(intensity_calculator,
                                                                    temperature, populator, context,
                                                                    device=device, dtype=dtype)
         self._param_specs = self._get_param_specs()
+
+        if isinstance(output_mode, str):
+            output_mode = OutputSpectraMode(output_mode.lower())
+        elif not isinstance(output_mode, OutputSpectraMode):
+            raise ValueError(f"Invalid output method: {output_mode}")
         self.spectra_processor = self._init_spectra_processor(spectra_integrator,
                                                               harmonic,
                                                               post_spectra_processor,
                                                               chunk_size=integration_chunk_size,
+                                                              output_mode=output_mode,
                                                               device=device, dtype=dtype)
         self.recompute_spin_parameters = recompute_spin_parameters
         self._init_cached_parameters()
@@ -1197,6 +1399,12 @@ class BaseSpectra(nn.Module, ABC):
         self.to(dtype)
 
     def _init_cached_parameters(self):
+        """Initialize internal buffers to support optional caching of spin parameters.
+
+        When `recompute_spin_parameters=False`, resonance-related tensors
+        (eigenvectors, levels, fields, etc.) are computed once and stored.
+        This method sets up placeholder attributes used during the first forward pass.
+        """
         if not self.recompute_spin_parameters:
             self._cashed_flag = False
             self.vectors_u = None
@@ -1212,13 +1420,32 @@ class BaseSpectra(nn.Module, ABC):
             self._resfield_method = self._recomputed_resfield
 
     def _wrap_with_inference_mode(self, forward_fn: tp.Callable[[tp.Any], tp.Any]):
+        """Wrap a forward function to execute under `torch.inference_mode`.
+
+        Disables gradient computation and other autograd overhead for faster inference.
+
+        :param forward_fn: The original forward method to wrap.
+        :return: A wrapped version of `forward_fn` that runs in inference mode.
+        """
+
         @wraps(forward_fn)
         def wrapper(*args, **kwargs):
             with torch.inference_mode():
                 return forward_fn(*args, **kwargs)
         return wrapper
 
-    def _init_res_algorithm(self, output_eigenvector: bool, secular: bool, device: torch.device, dtype: torch.dtype):
+    def _init_res_algorithm(self, output_eigenvector: bool, hamiltonian_mode: HamComputationMethod,
+                            device: torch.device, dtype: torch.dtype):
+        """Instantiate the resonance field computation algorithm.
+
+        Selects an appropriate Hamiltonian eigen data backend based on
+        whether full eigenvectors are needed and whether secular approximation is used.
+
+        :param output_eigenvector: Whether full system eigenvectors should be computed.
+        :param hamiltonian_mode: the method to use to compute the Hamiltonian eigen data.
+
+        :return: Configured resonance field solver.
+        """
         return res_field_algorithm.ResField(
             spin_system_dim=self.spin_system_dim,
             mesh_size=self.mesh_size,
@@ -1234,8 +1461,21 @@ class BaseSpectra(nn.Module, ABC):
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
                                 chunk_size: int,
+                                output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
+        """Create a processor for integrating and post-processing spectral data.
+
+        Must be implemented by subclasses to select appropriate powder or crystal
+        processing logic based on sample type.
+
+        :param spectra_integrator: Custom integrator; if None, one is auto-selected.
+        :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
+        :param post_spectra_processor: Line-broadening and convolution handler.
+        :param chunk_size: Number of field points processed per integration batch.
+
+        :return: Initialized spectra processor instance.
+        """
         pass
 
     def _init_sample_parameters(self,
@@ -1243,13 +1483,19 @@ class BaseSpectra(nn.Module, ABC):
                                 spin_system_dim: tp.Optional[int],
                                 batch_dims: tp.Optional[tp.Union[int, tuple]],
                                 mesh: tp.Optional[mesher.BaseMesh]):
-        """
-        Initilize the sample hyperparameters:
+        """Extract or validate core sample metadata.
 
-        -spin_system dimension
-        -batch dimension
-        -mesh size
+        Resolves spin system dimensionality, batch shape, and orientation mesh
+        either from a provided `sample` or explicit arguments.
+
+        :param sample: Reference sample object.
+        :param spin_system_dim: Hilbert space dimension of the spin system.
+        :param batch_dims: Shape of batch dimensions (excluding orientation and state axes).
+        :param mesh: Orientation sampling grid (powder or crystal).
+        :return: `(spin_system_dim, batch_dims, mesh)` as resolved values.
+        :raises TypeError: If insufficient information is provided to infer all three parameters.
         """
+
         if sample is None:
             if (spin_system_dim is not None) and (batch_dims is not None) and (mesh is not None):
                 return spin_system_dim, batch_dims, mesh
@@ -1262,12 +1508,24 @@ class BaseSpectra(nn.Module, ABC):
 
         return spin_system_dim, batch_dims, mesh
 
+    @abstractmethod
     def _get_intensity_calculator(self,
                                   intensity_calculator: tp.Optional[BaseIntensityCalculator],
                                   temperature: float,
                                   populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
                                   device: torch.device, dtype: torch.dtype):
+        """Instantiate or return the intensity calculator for transition strengths.
+
+
+        :param intensity_calculator: Pre-configured calculator; if None, one is created.
+        :param temperature: Sample temperature in Kelvin.
+        :param populator: Population model or identifier.
+        :param context: Relaxation/population dynamics context.
+        :param device: Computation device.
+        :param dtype: Floating-point precision.
+        :return: Ready-to-use intensity calculator.
+        """
         if intensity_calculator is None:
             return StationaryIntensityCalculator(
                 self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
@@ -1275,8 +1533,17 @@ class BaseSpectra(nn.Module, ABC):
         else:
             return intensity_calculator
 
-    def _freq_to_field(self, vector_down: torch.Tensor, vector_up: torch.Tensor, Gz: torch.Tensor):
-        """Compute frequency-to-field contribution."""
+    def _freq_to_field(self, vector_down: torch.Tensor, vector_up: torch.Tensor, Gz: torch.Tensor) -> torch.Tensor:
+        """Convert frequency-domain transitions to effective field units.
+
+        Computes the reciprocal of the Zeeman splitting difference between states,
+        used to transform intensities from frequency to field representation.
+
+        :param vector_down: Lower-state eigenvector [..., N].
+        :param vector_up: Upper-state eigenvector [..., N].
+        :param Gz: z-component of the Zeeman operator [..., N, N].
+        :return: Field conversion factor [...], with safe handling near zero splitting.
+        """
         factor_1 = compute_matrix_element(vector_up, vector_up, Gz)
         factor_2 = compute_matrix_element(vector_down, vector_down, Gz)
 
@@ -1287,23 +1554,46 @@ class BaseSpectra(nn.Module, ABC):
     def _init_output_eigenvector(
             self, output_eigenvector: tp.Optional[bool], context: tp.Optional[contexts.BaseContext]
     ) -> bool:
+        """Determine whether full system eigenvectors should be computed.
+
+        By default, eigenvectors are computed only when a `context` is provided
+        (typically required for time-resolved or density-matrix simulations).
+
+        :param output_eigenvector: Explicit override; if None, inferred from context.
+        :param context: Population/relaxation context object.
+        :return: True if eigenvectors should be computed.
+        """
         if output_eigenvector is not None:
             return output_eigenvector
         else:
             return context is not None
 
     def _get_param_specs(self) -> list[ParamSpec]:
-        """
-        :return: list[ParamSpec].
+        """Define additional parameters to extract alongside resonance data.
 
-        The number of parameters and
-        their order must coincide with output of method _add_to_mask_additional
+        Subclasses may override to request extra quantities (e.g., level indices,
+        full vectors) during masking and batching. Each `ParamSpec` declares
+        the tensor category ("scalar", "vector", "matrix") and dtype.
+
+        :return: List of `ParamSpec` instances specifying auxiliary output parameters.
         """
         return []
 
     def _cashed_resfield(self, sample: spin_system.MultiOrientedSample,
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
+        """Compute or retrieve cached resonance fields and eigensystem.
+
+        On first call, delegates to `_recomputed_resfield` and stores results.
+        Subsequent calls return the cached tensors without recomputation.
+
+        :param sample: Spin system with orientation mesh and interactions.
+        :param B_low: Lower bound of magnetic field sweep.
+        :param B_high: Upper bound of magnetic field sweep.
+        :param F: Field-independent part of the Hamiltonian.
+        :param Gz: Zeeman operator along z.
+        :return: Same as `_recomputed_resfield`.
+        """
         if not self._cashed_flag:
             (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields,\
                 self.resonance_energies, self.full_eigen_vectors =\
@@ -1317,6 +1607,23 @@ class BaseSpectra(nn.Module, ABC):
     def _recomputed_resfield(self, sample: spin_system.MultiOrientedSample,
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
+        """Compute resonance fields and associated quantum states.
+
+        Calls the configured resonance algorithm to solve for transitions
+        within the specified field window.
+
+        :param sample: Spin system definition.
+        :param B_low: Lower bound of magnetic field sweep.
+        :param B_high: Upper bound of magnetic field sweep.
+        :param F: Static Hamiltonian term.
+        :param Gz: Zeeman coupling operator.
+        :return: Tuple containing:
+            - (vectors_u, vectors_v): lower/upper eigenvectors [..., M, N]
+            - (lvl_down, lvl_up): level indices [..., M]
+            - res_fields: resonance fields [..., M]
+            - resonance_energies: eigenvalues [..., N]
+            - full_eigen_vectors: complete eigenbasis [..., N, N] or None
+        """
         (vectors_u, vectors_v), (valid_lvl_down, valid_lvl_up), res_fields, resonance_energies, full_eigen_vectors =\
                 self.res_algorithm(sample, self.resonance_parameter, B_low, B_high, F, Gz)
 
@@ -1326,13 +1633,17 @@ class BaseSpectra(nn.Module, ABC):
     def forward(self,
                  sample: spin_system.MultiOrientedSample,
                  fields: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
-        """
-        :param sample: MultiOrientedSample object.
+        """Compute EPR spectrum over a given magnetic fields range.
 
+        Orchestrates the full simulation pipeline: diagonalization, intensity
+        calculation, broadening, orientation averaging, and line-shape convolution.
+
+        :param sample: MultiOrientedSample object.
         :param fields: The magnetic fields in Tesla units
         :param time: It is used only for time resolved spectra
         :param kwargs:
-        :return: spectra in 1D or 2D. Batched or un batched
+        :return: spectra in 1D or 2D. Batched or un batched.
+        Depending on spectra Proccessor it can be another output format
         """
         B_low = fields[..., 0]
         B_high = fields[..., -1]
@@ -1362,14 +1673,30 @@ class BaseSpectra(nn.Module, ABC):
         gauss = sample.gauss
         lorentz = sample.lorentz
 
-        return self._finalize(res_fields, intensities, width, gauss, lorentz, fields)
+        return self._finalize(res_fields, intensities, width, gauss, lorentz, fields, lvl_down, lvl_up)
 
     def _postcompute_batch_data(self, sample: spin_system.BaseSample, res_fields: torch.Tensor,
                                 intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
                                 Gz: torch.Tensor,
                                 full_system_vectors: tp.Optional[torch.Tensor],
-                                time: tp.Optional[torch.Tensor], *extras,  **kwargs):
+                                time: tp.Optional[torch.Tensor], *extras,  **kwargs) -> tp.Any:
+        """Apply post-diagonalization corrections or time-dependent population scaling.
+
+        Base implementation returns inputs unchanged. Subclasses (e.g., time-resolved)
+        override to inject population dynamics.
+
+        :param sample: Spin system instance.
+        :param res_fields: Resonance field positions.
+        :param intensities: Transition strengths.
+        :param width: linewidths .
+        :param F, Gx, Gy, Gz: Hamiltonian components.
+        :param full_system_vectors: Full eigenbasis if computed.
+        :param time: Time axis for dynamic simulations.
+        :param extras: Additional parameters from `_add_to_mask_additional`.
+        :param kwargs: Arbitrary keyword arguments.
+        :return: Potentially modified `(res_fields, intensities, width)`.
+        """
         return res_fields, intensities, width
 
     def _finalize(self,
@@ -1378,10 +1705,36 @@ class BaseSpectra(nn.Module, ABC):
                   width: torch.Tensor,
                   gauss: torch.Tensor,
                   lorentz: torch.Tensor,
-                  fields: torch.Tensor):
-        return self.spectra_processor(res_fields, intensities, width, gauss, lorentz, fields)
+                  fields: torch.Tensor,
+                  lvl_down: torch.Tensor,
+                  lvl_up: torch.Tensor):
+        """Apply final spectral integration and line broadening.
+
+        Delegates to the configured `spectra_processor` to produce the output spectrum.
+
+        :param res_fields: Resonance field positions.
+        :param intensities: Transition strengths.
+        :param width: Total Gaussian linewidth (FWHM).
+        :param gauss: Global Gaussian broadening (FWHM).
+        :param lorentz: Homogeneous Lorentzian broadening (FWHM).
+        :param fields: Output field axis.
+
+        :param lvl_down: Energy level indices of low spin state involved in transition. The shape is '[num_transitions]'
+        :param lvl_up: Energy level indices of high spin state involved in transition. The shape is '[num_transitions]'
+
+        :return: The output of the given spectra Proccessor depending on the output_mode
+        """
+        return self.spectra_processor(res_fields, intensities, width, gauss, lorentz, fields, lvl_down, lvl_up)
 
     def _mask_components(self, intensities_mask: torch.Tensor, *extras) -> list[tp.Any]:
+        """Apply intensity-based masking to auxiliary parameters.
+
+        Uses `ParamSpec` metadata to correctly slice scalar, vector, or matrix extras.
+
+        :param intensities_mask: Boolean mask indicating retained transitions.
+        :param extras: Auxiliary tensors to mask, ordered per `_get_param_specs`.
+        :return: Masked versions of each extra tensor.
+        """
         updated_extras = []
         for idx, param_spec in enumerate(self._param_specs):
             if param_spec.category == "scalar":
@@ -1396,14 +1749,33 @@ class BaseSpectra(nn.Module, ABC):
 
     def _add_to_mask_additional(self, vector_down: torch.Tensor, vector_up: torch.Tensor,
                            lvl_down: torch.Tensor, lvl_up: torch.Tensor,
-                           resonance_energies: torch.Tensor):
+                           resonance_energies: torch.Tensor) -> tp.Any:
+        """Return additional tensors to be masked alongside intensities.
+
+        Subclasses may override to include level indices, energies, or vectors
+        in the masking step. Base class returns empty tuple.
+
+        :param vector_down: Eigenvector of lower state.
+        :param vector_up: Eigenvector of upper state.
+        :param lvl_down: Index of lower energy level.
+        :param lvl_up: Index of upper energy level.
+        :param resonance_energies: Hamiltonian eigenvalues.
+        :return: Extra tensors to mask (must match `_get_param_specs` count/order).
+        """
         return ()
 
     def _mask_full_system_eigenvectors(
             self,
             mask: torch.Tensor,
             full_system_vectors: tp.Optional[torch.Tensor]
-    ):
+    ) -> tp.Optional[torch.Tensor]:
+        """Optionally mask the full eigenbasis using transition selection.
+
+        :param mask: Boolean mask over transitions.
+        :param full_system_vectors: Full set of eigenvectors [..., N, N].
+        :return: Masked eigenbasis [..., M, N, N] or None if input was None.
+        """
+
         if full_system_vectors is not None:
             return full_system_vectors[..., mask, :, :]
         else:
@@ -1415,7 +1787,17 @@ class BaseSpectra(nn.Module, ABC):
                            Gx: torch.Tensor,
                            Gy: torch.Tensor,
                            Gz: torch.Tensor,
-                           full_system_vectors: tp.Optional[torch.Tensor], *extras):
+                           full_system_vectors: tp.Optional[torch.Tensor], *extras) -> tp.Any:
+        """Compute derived quantities from masked resonance data.
+
+        Intended for subclass extension. Base implementation returns extras unchanged.
+
+        :param sample: Spin system.
+        :param F, Gx, Gy, Gz: Hamiltonian terms.
+        :param full_system_vectors: Full eigenbasis.
+        :param extras: Previously masked auxiliary data.
+        :return: Processed extras (same length as input).
+        """
         return extras
 
     def compute_parameters(self, sample: spin_system.MultiOrientedSample,
@@ -1533,7 +1915,8 @@ class StationarySpectra(BaseSpectra):
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
-                 secular: bool = False,
+                 hamiltonian_mode: tp.Union[str, HamComputationMethod] = HamComputationMethod.DIRECT,
+                 output_mode: tp.Union[str, OutputSpectraMode] = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1592,10 +1975,21 @@ class StationarySpectra(BaseSpectra):
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
-        :param secular: bool
-            If parameter is True, then secular approximation will be used to compute resonance parameters.
-            For time-resolved rotating wave approximation is necessary to use only True
-            In general it is qute quicker than precise computation. Default is False
+        :param hamiltonian_mode: str, HamComputationMethod
+         {"secular", "direct"} or HamComputationMethod, default="direct"
+            Method for Hamiltonian eigen values, eigen vectors, resonance filed computation:
+            - "secular": uses secular approximation (faster)
+            - "direct": use the general algorithm: res-field or res-freq (slower, the most general)
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
 
         :param device: cpu / cuda. Base device for computations.
 
@@ -1607,7 +2001,7 @@ class StationarySpectra(BaseSpectra):
                          populator, spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
                          integration_chunk_size,
-                         inference_mode, output_eigenvector, context, secular,
+                         inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
     def _postcompute_batch_data(self, sample: spin_system.BaseSample,
@@ -1622,14 +2016,50 @@ class StationarySpectra(BaseSpectra):
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
                                 chunk_size: int,
+                                output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
+        """Create a processor for integrating and post-processing spectral data.
+        :param spectra_integrator: Custom integrator; if None, one is auto-selected.
+        :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
+        :param post_spectra_processor: Line-broadening and convolution handler.
+        :param chunk_size: Number of field points processed per integration batch.
+        :param output_mode: The output mode for spectra computation
+        :return: Initialized spectra processor instance.
+        """
         if self.mesh.disordered:
             return PowderStationaryProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                              chunk_size=chunk_size, device=device, dtype=dtype)
+                                              chunk_size=chunk_size,
+                                              output_mode=output_mode,
+                                              device=device, dtype=dtype)
         else:
             return CrystalStationaryProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                               chunk_size=chunk_size, device=device, dtype=dtype)
+                                               chunk_size=chunk_size,
+                                               output_mode=output_mode,
+                                               device=device, dtype=dtype)
+
+    def _get_intensity_calculator(self,
+                                  intensity_calculator: tp.Optional[BaseIntensityCalculator],
+                                  temperature: float,
+                                  populator: tp.Optional[tp.Union[BasePopulator, str]],
+                                  context: tp.Optional[contexts.BaseContext],
+                                  device: torch.device, dtype: torch.dtype):
+        """Instantiate or return the intensity calculator for transition strengths.
+
+        :param intensity_calculator: Pre-configured calculator; if None, one is created.
+        :param temperature: Sample temperature in Kelvin.
+        :param populator: Population model or identifier.
+        :param context: Relaxation/population dynamics context.
+        :param device: Computation device.
+        :param dtype: Floating-point precision.
+        :return: Ready-to-use intensity calculator.
+        """
+        if intensity_calculator is None:
+            return StationaryIntensityCalculator(
+                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+            )
+        else:
+            return intensity_calculator
 
     def __call__(self,
                 sample: spin_system.MultiOrientedSample,
@@ -1640,7 +2070,7 @@ class StationarySpectra(BaseSpectra):
         :param fields: The magnetic fields in Tesla units
         :param time: It is used only for time resolved spectra
         :param kwargs:
-        :return:
+        :return: spectra or some resonance data depending on the output_mode
         """
         return super().__call__(sample, fields, time)
 
@@ -1677,7 +2107,8 @@ class TruncTimeSpectra(BaseSpectra):
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
-                 secular: bool = False,
+                 hamiltonian_mode: tp.Union[str, HamComputationMethod] = HamComputationMethod.DIRECT,
+                 output_mode: tp.Union[str, OutputSpectraMode] = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1739,10 +2170,21 @@ class TruncTimeSpectra(BaseSpectra):
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
-        :param secular: bool
-            If parameter is True, then secular approximation will be used to compute resonance parameters.
-            For time-resolved rotating wave approximation is necessary to use only True
-            In general it is qute quicker than precise computation. Default is False
+        :param hamiltonian_mode: str, HamComputationMethod
+         {"secular", "direct"} or HamComputationMethod, default="direct"
+            Method for Hamiltonian eigen values, eigen vectors, resonance filed computation:
+            - "secular": uses secular approximation (faster)
+            - "direct": use the general algorithm: res-field or res-freq (slower, the most general)
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
 
         :param device: cpu / cuda. Base device for computations.
 
@@ -1754,20 +2196,19 @@ class TruncTimeSpectra(BaseSpectra):
                          spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
                          integration_chunk_size,
-                         inference_mode, output_eigenvector, context, secular,
+                         inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
-    def __call__(self, sample: spin_system.MultiOrientedSample, field: torch.Tensor, time: torch.Tensor, **kwargs) ->\
-            torch.Tensor:
+    def __call__(self, sample: spin_system.MultiOrientedSample, fields: torch.Tensor, time: torch.Tensor, **kwargs):
         """
         :param sample: MultiOrientedSample object.
 
         :param fields: The magnetic fields in Tesla units
         :param time: Time to compute time resolved spectra
         :param kwargs:
-        :return: EPR spectra
+        :return: spectra or some resonance data depending on the output_mode
         """
-        return super().__call__(sample, field, time, **kwargs)
+        return super().__call__(sample, fields, time, **kwargs)
 
     def _get_intensity_calculator(self, intensity_calculator: tp.Optional[BaseIntensityCalculator],
                                   temperature: float,
@@ -1816,14 +2257,27 @@ class TruncTimeSpectra(BaseSpectra):
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
                                 chunk_size: int,
+                                output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
+        """Create a processor for integrating and post-processing spectral data.
+        :param spectra_integrator: Custom integrator; if None, one is auto-selected.
+        :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
+        :param post_spectra_processor: Line-broadening and convolution handler.
+        :param chunk_size: Number of field points processed per integration batch.
+        :param output_mode: The output mode for spectra computation
+        :return: Initialized spectra processor instance.
+        """
         if self.mesh.disordered:
             return PowderTimeProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                        chunk_size=chunk_size, device=device, dtype=dtype)
+                                        chunk_size=chunk_size,
+                                        output_mode=output_mode,
+                                        device=device, dtype=dtype)
         else:
             return CrystalTimeProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                        chunk_size=chunk_size, device=device, dtype=dtype)
+                                         chunk_size=chunk_size,
+                                         output_mode=output_mode,
+                                         device=device, dtype=dtype)
 
     def _init_recompute_spin_flag(self) -> bool:
         """
@@ -1892,7 +2346,8 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
-                 secular: bool = True,
+                 hamiltonian_mode: tp.Union[str, HamComputationMethod] = HamComputationMethod.SECULAR,
+                 output_mode: tp.Union[str, OutputSpectraMode] = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  ):
@@ -1957,11 +2412,23 @@ class DensityTimeSpectra(CoupledTimeSpectra):
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
 
-        :param secular: bool
-            If parameter is True, then secular approximation will be used to compute resonance parameters.
-            For time-resolved rotating wave approximation (RWA) is necessary to use only True
-            In general it is qute quicker than precise computation.
-            For this class default is True bacause RWA is default method.
+        :param hamiltonian_mode: str, HamComputationMethod
+         {"secular", "direct"} or HamComputationMethod, default="secular"
+            Method for Hamiltonian eigen values, eigen vectors, resonance filed computation:
+            - "secular": uses secular approximation (faster)
+            - "direct": use the general algorithm: res-field or res-freq (slower, the most general)
+
+            For this class default is secular because RWA is default method.
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
 
         :param device: cpu / cuda. Base device for computations.
 
@@ -1973,7 +2440,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                          spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
                          integration_chunk_size,
-                         inference_mode, output_eigenvector, context, secular,
+                         inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
     def _postcompute_batch_data(self, sample: spin_system.BaseSample,
@@ -2036,6 +2503,8 @@ class StationaryFreqSpectra(StationarySpectra):
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
+                 hamiltonian_mode: tp.Union[str, HamComputationMethod] = HamComputationMethod.DIRECT,
+                 output_mode: tp.Union[str, OutputSpectraMode] = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32
                  ):
@@ -2093,15 +2562,42 @@ class StationaryFreqSpectra(StationarySpectra):
             The instance of BaseContext which describes the relaxation mechanism.
             It can have the initial population logic, transition between energy levels, dephasings, driven transition,
             out system transitions. For more complicated scenario the full relaxation superoperator can be used.
+
+        :param hamiltonian_mode: str, HamComputationMethod
+         {"secular", "direct"} or HamComputationMethod, default="direct"
+            Method for Hamiltonian eigen values, eigen vectors, resonance filed computation:
+            FreqSpectra supports only direct conputation of spectra.
+
+        :param output_mode: str, OutputSpectraMode:
+        Controls the organization of the computed spectrum.
+
+        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+
+        "transitions": returns dict of lvl_down, lvl_up and spectrum,
+        where each slice corresponds to the contribution of an individual transition
+        (e.g., between specific energy levels).
+        Default is "total".
         """
         super().__init__(field, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
                          integration_chunk_size,
-                         inference_mode, output_eigenvector, context,
+                         inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
-    def _init_res_algorithm(self, output_eigenvector: bool, secular: bool, device: torch.device, dtype: torch.dtype):
+    def _init_res_algorithm(self,
+                            output_eigenvector: bool,
+                            hamiltonian_mode: HamComputationMethod, device: torch.device, dtype: torch.dtype):
+        """Instantiate the resonance field computation algorithm.
+
+        Selects an appropriate Hamiltonian eigen data backend based on
+        whether full eigenvectors are needed and whether some approximation is used.
+
+        :param output_eigenvector: Whether full system eigenvectors should be computed.
+        :param hamiltonian_mode: the method to use to compute the Hamiltonian eigen data.
+
+        :return: Configured resonance field solver.
+        """
         return res_freq_algorithm.ResFreq(
             spin_system_dim=self.spin_system_dim,
             mesh_size=self.mesh_size,
@@ -2111,16 +2607,38 @@ class StationaryFreqSpectra(StationarySpectra):
             dtype=dtype
         )
 
+    def _get_intensity_calculator(self,
+                                  intensity_calculator: tp.Optional[BaseIntensityCalculator],
+                                  temperature: float,
+                                  populator: tp.Optional[tp.Union[BasePopulator, str]],
+                                  context: tp.Optional[contexts.BaseContext],
+                                  device: torch.device, dtype: torch.dtype):
+        """Instantiate or return the intensity calculator for transition strengths.
+
+        :param intensity_calculator: Pre-configured calculator; if None, one is created.
+        :param temperature: Sample temperature in Kelvin.
+        :param populator: Population model or identifier.
+        :param context: Relaxation/population dynamics context.
+        :param device: Computation device.
+        :param dtype: Floating-point precision.
+        :return: Ready-to-use intensity calculator.
+        """
+        if intensity_calculator is None:
+            return StationaryIntensityCalculator(
+                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+            )
+        else:
+            return intensity_calculator
+
     def __call__(self,
                 sample: spin_system.MultiOrientedSample,
                 freq: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
         :param sample: MultiOrientedSample object.
-
         :param freq: The frequency in Hz units
         :param time: It is used only for time resolved spectra
         :param kwargs:
-        :return:
+        :return: spectra or some resonance data depending on the output_mode
         """
         return super().__call__(sample, freq, time)
 

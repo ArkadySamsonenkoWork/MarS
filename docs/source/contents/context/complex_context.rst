@@ -4,25 +4,33 @@ Complex Context Construction
 =============================
 
 Real spin systems often involve multiple simultaneous relaxation mechanisms or coupled subsystems.
-MarS provides powerful algebraic operations to construct complex Context objects from simpler building blocks: **addition** (``+``) and **multiplication** (``@``).
+MarS provides powerful algebraic operations to construct complex Context objects from simpler building blocks: **addition** (``+``), **multiplication** (``@``), and concationation (via :func:`mars.concat).
 
 Context Algebra Overview
 -------------------------
 
-MarS supports two fundamental operations:
+MarS supports three fundamental operations:
 
-1. **Addition** (``context_1 + context_2``): Combines independent relaxation processes acting on the **same** spin system
+1. **Addition** (``context_1 + context_2``): Combines independent relaxation processes acting on the same spin system
 
-2. **Multiplication** (``context_1 @ context_2``): Creates a composite system from **independent** subsystems
+2. **Kronecker-Multiplication** (``context_1 @ context_2``): Creates a composite system from independent subsystems of different spin-centers
 
-Both operations automatically handle:
+3. **Concatenation** (:func:`mars.concat([context_1, context_2]) <mars.concat>`): Creates a composite system from independent subsystems of the spin-center via direct sum 
+
+Operations automatically handle:
 
 - Basis transformations to a common eigenbasis
 - Detailed balance enforcement
 - Proper composition of kinetic matrices or relaxation superoperators
 
-Addition: Combining Relaxation Mechanisms
-------------------------------------------
+Addition
+--------
+
+.. image:: _static/context/summed_context.png
+   :width: 100%
+   :alt: addition context
+   :align: center
+
 
 The addition operator combines multiple relaxation pathways that act simultaneously on the same set of quantum states. This is the more common operation for building realistic relaxation models.
 
@@ -57,7 +65,6 @@ Common situations requiring addition:
 
 1. **Multiple relaxation pathways:** Phosphorescence decay + relaxation between triplet sublevels
 2. **Different bases:** Initial populations in ZFS basis + transitions in eigen basis
-3. **Competing processes:** Fast equilibration + slow population loss
 
 
 Example 1: Triplet State with Multiple Mechanisms
@@ -93,7 +100,7 @@ A triplet state formed by intersystem crossing typically exhibits:
    
    # Context 1: Selective population and phosphorescence (ZFS basis)
 
-   initial_pops = [0.72, 0.08, 0.20]  # [TX, TY, TZ]
+   initial_pops = [0.72, 0.08, 0.20]  # [TZ, TX, TY]
    
    # Different phosphorescence rates for each sublevel
    phosphorescence = torch.tensor([105.0, 48.0, 82.0])  # s^-1
@@ -138,7 +145,7 @@ A triplet state formed by intersystem crossing typically exhibits:
    
    spectrum_2d = tr_spectra(sample, fields, times)
 
-**Physical behavior:**
+Physical behavior:
 
 - **t < 1 ms:** Fast redistribution of population between Zeeman levels
 - **1 ms < t < 10 ms:** Slow decay of total triplet population via phosphorescence
@@ -168,8 +175,7 @@ Therefore, even if the dephasing is unknown, it is best to specify it to avoid u
    )
    
    # Context 2: Pure dephasing (only affects coherences)
-   # Faster dephasing for higher energy levels
-   T2_probs = torch.tensor([6e3, 9.5e3, 14e3])  # s^-1
+   T2_probs = torch.tensor([6e5, 9.5e5, 14e5])  # s^-1
    
    context_dephasing = population.Context(
        sample=sample,
@@ -187,7 +193,7 @@ Therefore, even if the dephasing is unknown, it is best to specify it to avoid u
        harmonic=0,
        context=context_density,
        temperature=140.0,
-       populator="rwa"  # Rotating wave approximation
+       populator="rwa"  # Rotating wave approximation. It is default for DensityTimeSpectra
    )
    
    spectrum_with_dephasing = tr_spectra_density(sample, fields, times)
@@ -199,11 +205,11 @@ Radical pair systems may have multiple competing decay channels:
 
 .. code-block:: python
 
-   # Context 1: Singlet-triplet interconversion
+   # Context 1: Singlet-triplet interconversion  |S=0, Mz=0> <-> |S=1, Mz=0>
    st_mixing = torch.tensor([
-       [0.0,    2500.0,  0.0,     0.0],
-       [2500.0, 0.0,     0.0,     0.0],
+       [0.0,    0.0,  2500.0,     0.0],
        [0.0,    0.0,     0.0,     0.0],
+       [2500.0, 0.0,     0.0,     0.0],
        [0.0,    0.0,     0.0,     0.0]
    ])  # s^-1
    
@@ -250,16 +256,21 @@ Properties of Addition
 
 4. **Initial state:** All initial populations are summed up. 
 
-Multiplication: Composite Quantum Systems
-------------------------------------------
+Kronecker-Multiplication
+------------------------
+
+.. image:: _static/context/kronecker_multiplication.png
+   :width: 100%
+   :alt: Kronecker multiplication context
+   :align: center
 
 The multiplication operator (``@``) constructs a composite quantum system from two (or more) independent subsystems. This is essential for modeling weakly coupled or non-interacting spin systems.
 
-For the multiplication the :class:`mars.population.contexts.CompositeContext` is used. In the general for speed up it can be instantiated directly
+For the multiplication the :class:`mars.population.contexts.KroneckerContext` is used. In the general for speed up it can be instantiated directly
 
 .. code-block:: python
 
-   mul_context = population.CompositeContext(contexts=[context_1, context_2, context_N])  # The same as context_1 @ context_2 @ context_N, but more efficiently
+   mul_context = population.KroneckerContext(contexts=[context_1, context_2, context_N])  # The same as context_1 @ context_2 @ context_N, but more efficiently
 
 Mathematical Formulation
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -324,9 +335,8 @@ where :math:`\mathbb{I}` and :math:`\hat{\mathbb{I}}` are identity operators in 
    K_total = transform_kronecker_matrix([K1, K2], coeffs)
    # Shape: [..., 6, 6]
 
-
 Combining Multiplication and Addition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For complex systems, both operations can be combined:
 
 .. code-block:: python
@@ -382,32 +392,166 @@ Properties of Multiplication
 
 5. **Product basis:** Natural for specifying independent initial conditions
 
-Practical Considerations
--------------------------
+Concatenation
+--------------
 
-Choosing Between Addition and Multiplication
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. image:: _static/context/concat_context.png
+   :width: 100%
+   :alt: Concatenation of contexts
+   :align: center
 
-**Use addition (+) when:**
+The concatenation operation (:func:`mars.concat([context_1, context_2]) <mars.concat>`) constructs a composite system from energy-isolated subspaces within a single physical spin system.
+This situation arises when a molecule can exist in multiple distinct configurations such as different conformational isomers or spatially localized states.
 
-- Multiple processes affect the same spin system
-- Different physical mechanisms
-- Processes defined in different bases
-- Adding coherence effects to population dynamics
+In this case, the total Hilbert space decomposes as a **direct sum** of subspaces:
 
-**Use multiplication (@) when:**
+.. math::
 
-- System consists of coupled subsystems
-- Independent initial conditions for each subsystem
+   \mathcal{H}_{\text{total}} = \mathcal{H}^{(1)} \oplus \mathcal{H}^{(2)}
 
+Accordingly, initial states and relaxation operators combine via direct summation:
+
+For population dynamics (kinetic matrices)
+
+.. math::
+
+   \mathbf{n}_{\text{total}} = \mathbf{n}^{(1)} \oplus \mathbf{n}^{(2)}, \quad
+   K_{\text{total}} = K^{(1)} \oplus K^{(2)}
+
+For density matrix dynamics:
+
+.. math::
+
+   \rho_{\text{total}} = \rho^{(1)} \oplus \rho^{(2)}, \quad
+   \hat{\mathcal{R}}_{\text{total}} = \hat{\mathcal{R}}^{(1)} \oplus \hat{\mathcal{R}}^{(2)}
+
+Example: Two Triplet States in Distinct Conformers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Consider a molecule that can adopt two stable conformations, each hosting a triplet state.
+The two triplets are separated by a energy gap (:math:`\sim`10–100 GHz), and interconversion between conformers is slow (:math:`\ll 10^3` s\ :sup:`-1`).
+Each triplet has three spin sublevels (:math:`m_S = -1, 0, +1`), so the full system has six levels—but they form two decoupled blocks in the absence of inter-conformer relaxation.
+
+We model each conformer independently, then concatenate their contexts:
+
+.. code-block:: python
+
+   import torch
+   import mars
+   from mars import spin_system, population
+   
+   device = torch.device('cpu')
+   dtype = torch.float64
+   
+   # Define two identical triplet systems.
+   g_tensor = spin_system.Interaction(2.0032, dtype=dtype)
+   zfs = spin_system.DEInteraction([540e6, 78e6], dtype=dtype)
+   
+   triplet_1 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g_tensor],
+       electron_electron=[(0, 0, zfs)]
+   )
+   
+   triplet_2 = spin_system.SpinSystem(
+       electrons=[1.0],
+       g_tensors=[g_tensor],
+       electron_electron=[(0, 0, zfs)],
+       energy_shift=1e10,  # Shift energy (10 GHz) of second triplet to simulate the energy gap between states
+   )
+   
+   # Combine into a single sample for concatenated system
+   triplet_sample_1 = spin_system.MultiOrientedSample(
+       spin_system=triplet_1,
+       ham_strain=2.2e7,
+       gauss=0.0011,
+       lorentz=0.0011
+   )
+
+   triplet_sample_2 = spin_system.MultiOrientedSample(
+       spin_system=triplet_2,
+       ham_strain=2.2e7,
+       gauss=0.0011,
+       lorentz=0.0011
+   )
+   
+   init_populations = [0.7, 0.2, 0.1]  # [TZ, TX, TY]
+   out_probs = torch.tensor([100.0, 50.0, 80.0], device=device, dtype=dtype)
+   
+   # Context for first conformer (low-energy triplet)
+   context_zfs_1 = population.Context(
+       sample=triplet_sample_1,
+       basis="zfs",
+       init_populations=init_populations,
+       out_probs=out_probs,
+       device=device,
+       dtype=dtype
+   )
+   
+   # Context for second conformer (high-energy triplet)
+   context_zfs_2 = population.Context(
+       sample=triplet_sample_2,
+       basis="zfs",
+       init_populations=init_populations,
+       out_probs=out_probs,
+       device=device,
+       dtype=dtype
+   )
+   
+   # Concatenate the two isolated triplets
+   context_concat = mars.concat([context_zfs_1, context_zfs_2])
+   combined_sample = mars.concat((triplet_sample_1, triplet_sample_2))
+
+Now, suppose there is slow thermal relaxation between corresponding spin sublevels of the two triplets.
+We add this as a separate context defined in the eigenbasis of the combined system:
+
+.. code-block:: python
+
+   dim = 6  # 3 + 3 levels
+   probs_exchange = torch.zeros((dim, dim), device=device, dtype=dtype)
+   relaxation_rate = 1e2  # 100 s⁻¹
+   
+   # Relaxation from high-energy triplet (indices 3,4,5) → low-energy triplet (0,1,2)
+   probs_exchange[3, 0] = relaxation_rate  # m_S = -1 → m_S = -1
+   probs_exchange[4, 1] = relaxation_rate  # m_S =  0 → m_S =  0
+   probs_exchange[5, 2] = relaxation_rate  # m_S = +1 → m_S = +1
+   
+   
+   context_exchange = population.Context(
+       sample=triplet_combined,
+       basis="eigen",
+       free_probs=probs_exchange,
+       temperature=300.0,
+       device=device,
+       dtype=dtype
+   )
+   
+   # Full context: concatenated triplets + slow inter-conformer relaxation
+   context_full = context_concat + context_exchange
+
+This construction correctly separates **fast intra-triplet dynamics** (handled by concatenation) from **slow inter-triplet relaxation** (added via summation).
+
+Properties of Concatenation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. **Non-commutative in labeling**: While mathematically symmetric, the order affects level indexing (e.g., ``context_1 ⊕ context_2`` places ``context_1`` in lower indices).
+2. **Dimensionality**: :math:`N_{\text{total}} = N_1 + N_2`
 
 Order of Operations
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
-When combining both operations:
+When combining the set of operations:
 
 .. code-block:: python
 
    # These are equivalent:
    result1 = (context_1 @ context_2) + context_3  # Multiply first
    result2 = context_3 + (context_1 @ context_2)  # Addition is commutative
+
+   # These are equivalent:
+   result_3 = mars.concat((context_1, context_2)) + context_3
+   result_4 = context_3 + mars.concat((context_1, context_2))
+
+   # These are equivalent:
+   result_5 = mars.concat((context_1, context_2)) + mars.concat((context_3, context_4))
+   result_6 = mars.concat((context_1, context_4)) + mars.concat((context_3, context_2))

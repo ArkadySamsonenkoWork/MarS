@@ -32,9 +32,9 @@ def _compute_pair_location(spin_dim: int):
 def _plot_energy_levels(E_scaled: np.ndarray, E: np.ndarray):
     spin_dim = E_scaled.shape[-1]
     for i in range(spin_dim):
-        plt.hlines(E_scaled[i], -x_delta, x_delta, color='black')
-        plt.text(x_delta + 0.08, E_scaled[i], f"E={E[i]:.2g} (Hz)", va='center',
-                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=1))
+        plt.hlines(E_scaled[i], -x_delta, x_delta, color="black")
+        plt.text(x_delta + 0.08, E_scaled[i], f"E={E[i]:.2g} (Hz)", va="center",
+                 bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", pad=1))
 
 
 def _point_transitions(pair_offsets: dict[frozenset[int, int]],
@@ -65,7 +65,7 @@ def _point_transitions(pair_offsets: dict[frozenset[int, int]],
 
                     y_text = y_mid + np.clip(y_delta / 6, -0.05, 0.05)
                     plt.text(x - 0.01, y_text, f"{abs(transition_matrix[i, j]):.2e} (1/s)", fontsize=7,
-                             bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=1))
+                             bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", pad=1))
                 else:
                     x -= 0.01
                     y_mid = (y_start + y_end) / 2
@@ -73,12 +73,12 @@ def _point_transitions(pair_offsets: dict[frozenset[int, int]],
                     y_text = y_mid + np.clip(y_delta / 6, -0.05, 0.05)
 
                     plt.text(x - 0.01, y_text, f"{abs(transition_matrix[i, j]):.2e} (1/s)", fontsize=7,
-                             bbox=dict(facecolor='white', alpha=0.9, edgecolor='none', pad=1))
+                             bbox=dict(facecolor="white", alpha=0.9, edgecolor="none", pad=1))
                 plt.arrow(
                     x, y_start, 0, y_end_adjusted - y_start,
                     head_width=0.005, head_length=0.005, width=0.0005,
                     length_includes_head=True,
-                    color='blue',
+                    color="blue",
                 )
 
 
@@ -124,11 +124,11 @@ def _point_out_transitions(transition_matrix: np.ndarray, E_scaled: np.ndarray) 
                 -arrow_length, -y_offset,
                 head_width=0.005, head_length=0.005, width=0.001,
                 length_includes_head=True,
-                color='green',
+                color="green",
             )
             plt.text(x_position + 0.01, E_scaled[i],
-                     f"+{out_rates[i]:.2e} (1/s)", fontsize=8, va='center',
-                     bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=1))
+                     f"+{out_rates[i]:.2e} (1/s)", fontsize=8, va="center",
+                     bbox=dict(facecolor="white", alpha=0.8, edgecolor='none', pad=1))
 
         else:
             plt.arrow(

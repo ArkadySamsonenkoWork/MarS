@@ -32,8 +32,9 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     Note: The Rotating Wave Approximation introduces several important constraints:
 
     1. The oscillating magnetic field (e.g., microwave or RF) is assumed to be circularly polarized.
-    2. The g-tensor must be isotropic, meaning the Zeeman operators are proportional to spin operators:
-       Gx = g * mu_B * Sx, Gy = g * mu_B * Sy, Gz = g * mu_B * Sz.,
+    2. The g-tensor must be isotropic or close to isotropic,
+    meaning the Zeeman operators are proportional to spin operators:
+       Gx = gx * mu_B * Sx, Gy = gy * mu_B * Sy, Gz = gz * mu_B * Sz.,
     3. The static part of the Hamiltonian (denoted F) must commute with Gz (i.e., [F, Gz] = 0).
     4. The relaxation superoperator Rijkl-which couples matrix elements rho_ij
     and rho_kl - is only non-zero when i - j equals k - l.
@@ -429,7 +430,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
     the signal is averaged over the Euler angle γ by evaluating two orthogonal field polarizations.
 
     While more computationally demanding than RWA-based methods, this approach is necessary
-    for systems where RWA assumptions (isotropic g, circular polarization, [F, Gz] = 0) are violated,
+    for systems where RWA assumptions (close to isotropic g, circular polarization, [F, Gz] = 0) are violated,
     such as in single-molecule magnets, metal complexes, or high-field EPR.
     """
     def __init__(self,
@@ -442,6 +443,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
                  difference_out: bool = False,
                  disordered: bool = True,
+                 n_steps: int = 100,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
@@ -475,6 +477,9 @@ class PropagatorDensityPopulator(RWADensityPopulator):
 
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
 
+        :param n_steps: the number of steps to find U(2pi) and Integral U sin(phi) at the interval (0, 2pi].
+            This is quite crucial value for rk4 loop. If this value is small then the results will be dramatic
+
         :param device: device to compute (cpu / gpu)
         :param dtype: dtype of computation
         """
@@ -486,7 +491,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
             torch.tensor(measurement_time, dtype=dtype, device=device)\
                 if measurement_time is not None else measurement_time
         self.register_buffer("measurement_time", measurement_time)
-        self.n_steps = 16
+        self.n_steps = n_steps
 
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,

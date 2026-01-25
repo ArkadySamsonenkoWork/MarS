@@ -8,25 +8,27 @@ Overview
 
 In electron paramagnetic resonance (EPR), the observable signal for a transition between two spin eigenstates :math:`|a\rangle` and :math:`|b\rangle` generally depends on:
 
-1. The **magnetic transition dipole moment**, a quantum-mechanical matrix element that quantifies how strongly the radiation couples to the spin system.
-2. The **population difference** between the initial and final states, which can be determined from ф thermal equilibrium conditions or defined via :class:`mars.population.contexts.Context`.
+1. The *magnetic transition dipole moment*, a matrix element of magnitization vector.
+2. The *population difference* between the initial and final states, which can be determined from ф thermal equilibrium conditions or defined via :class:`mars.population.contexts.Context`.
 
 This two-factor decomposition is valid for *incoherent, rate-based descriptions* of EPR (e.g., continuous-wave or time-resolved experiments with relaxation where quantum coherences are neglected).  
 However, it does not hold in coherent treatments based on the density matrix, where populations and coherences evolve jointly under the Liouville–von Neumann equation. 
 
-For stationary EPR under *thermal equilibrium*, the detected signal is proportional to the *absorbed microwave power*, which—within Fermi golden rule - is given by:
+For stationary EPR under *thermal equilibrium*, the detected signal is proportional to the absorbed microwave power, which within Fermi golden rule is given by:
 
 .. math::
+
    I_{ab} \propto (p_a - p_b) \cdot \left| \mathbf{n}_1^\top \boldsymbol{\mu}_{ab} \right|^2,
 
 where:
+
 - :math:`p_a = e^{-E_a / k_B T}/Z` and :math:`p_b = e^{-E_b / k_B T}/Z` are Boltzmann populations,
-- :math:`\boldsymbol{\mu}_{ab} = \langle b | \hat{\boldsymbol{\mu}} | a \rangle` is the **magnetic transition dipole moment vector**,
+- :math:`\boldsymbol{\mu}_{ab} = \langle b | \hat{\boldsymbol{\mu}} | a \rangle` is the magnetic transition dipole moment vector,
 - :math:`\mathbf{n}_1` is the unit polarization vector of the oscillating magnetic field :math:`\mathbf{B}_1`,
 - :math:`Z` is the partition function.
 
-For density matrix-based time dependant methods, the signal is computed directly as ~:math:`\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))`,
-   where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection method and computation method)
+For density matrix-based time-dependent methods, the signal is computed directly as :math:`\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))`,
+where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection method and computational approach).
 
 Intensity Calculator Classes
 -----------------------------
@@ -34,7 +36,7 @@ Intensity Calculator Classes
 MarS provides several intensity calculator implementations through :class:`mars.spectra_manager.spectra_manager.BaseIntensityCalculator` and its subclasses:
 
 **StationaryIntensityCalculator**
-   For continuous-wave (CW) EPR experiments with thermal equilibrium populations. Uses Boltzmann distributions or context-defined populations.
+   For continuous-wave (CW) EPR experiments 	with thermal equilibrium populations. Uses Boltzmann distributions or context-defined populations.
    Reference: :class:`mars.spectra_manager.spectra_manager.StationaryIntensityCalculator`
 
 **TimeIntensityCalculator**

@@ -81,7 +81,7 @@ class EvolutionBase(ABC):
         pass
 
     @abstractmethod
-    def __ceil__(self, *args, **kwargs) -> torch.Tensor:
+    def __call__(self, *args, **kwargs) -> torch.Tensor:
         """
         :param args:
 
@@ -673,23 +673,10 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         if measurement_time is not None:
             M_power = int(torch.ceil(measurement_time / period_time).item())
             integral = self._modify_integral_term(integral, U_2pi, M_power, delta_phi)
-
         else:
             integral = self._modify_integral_term_single_period(integral, U_2pi, None, delta_phi)
         powers = torch.ceil(time / period_time)
         direct, inverse, eigen_values = self._U_N_batched(U_2pi, powers)
-        """Un = torch.stack([torch.matrix_power(U_2pi, int(m.item())) for m in
-        powers], dim=-3).
-
-        rho_t = Un @ liouvilleator.vec(initial_density).unsqueeze(-2).unsqueeze(-1)
-        rho_t = rho_t.squeeze()
-        sum_signal = integral.unsqueeze(-3) @ rho_t.unsqueeze(-1)
-        sum_signal = sum_signal.squeeze()
-        detect = torch.einsum(
-            "...i,...ti->...t", liouvilleator.vec(hamiltonain_time_dep.transpose(-2, -1)), rho_t)
-        detect = -detect.movedim(-1, 0).real
-        return detect
-        """
         return self._compute_out(
             liouvilleator.vec(hamiltonain_time_dep.transpose(-2, -1)),
             integral, direct, eigen_values, inverse, liouvilleator.vec(initial_density)

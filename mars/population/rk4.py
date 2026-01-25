@@ -44,13 +44,14 @@ def solve_matrix_ode_rk4(superop_static: torch.Tensor, superop_dynamic: torch.Te
     cos1_vals = torch.cos(phi_1)
     cos_mid_vals = torch.cos(phi_mid)
     cos4_vals = torch.cos(phi_4)
-    sin_mid_vals = torch.sin(phi_mid)
+    sin4_vals = torch.sin(phi_4)
 
     for step in range(n_steps):
         cos1 = cos1_vals[step]
         cos_mid = cos_mid_vals[step]
         cos4 = cos4_vals[step]
-        sin_mid = sin_mid_vals[step]
+        sin4 = sin4_vals[step]
+
         torch.add(superop_static, superop_dynamic, alpha=cos1, out=L_t)
         torch.matmul(L_t, U, out=k1)
 
@@ -72,7 +73,7 @@ def solve_matrix_ode_rk4(superop_static: torch.Tensor, superop_dynamic: torch.Te
         k4.mul_(b4)
         k1.add_(k2).add_(k3).add_(k4)
         U.add_(k1, alpha=d_phi)
-
-        integral.add_(U, alpha=sin_mid)
         phi = phi + d_phi
+        integral.add_(U, alpha=sin4)
+
     return U, integral

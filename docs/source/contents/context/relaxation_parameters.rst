@@ -41,17 +41,16 @@ A diagonal vector where element :math:`o_i` represents the loss rate from level 
    from mars import population
    
    # Define different phosphorescence rates for each sublevel
-   # TX sublevel decays fastest, TZ slowest
    out_probs = torch.tensor([120.0, 50.0, 80.0])  # s^-1
    
-   # In ZFS basis: [TX, TY, TZ]
+   # In XYZ basis: [TX, TY, TZ]
    # TX: 120 s^-1 → lifetime ~8.3 ms
    # TY: 50 s^-1  → lifetime ~20 ms  
    # TZ: 80 s^-1  → lifetime ~12.5 ms
    
    context = population.Context(
        sample=triplet_sample,
-       basis="zfs",
+       basis="xyz",
        init_populations=[0.4, 0.2, 0.4],
        out_probs=out_probs
    )
@@ -263,7 +262,7 @@ A realistic triplet state with all relaxation mechanisms:
    )
    
    # Initial selective population (spin polarization)
-   init_populations = [0.7, 0.05, 0.25]  # Strong TX population
+   init_populations = [0.7, 0.05, 0.25]  # Strong population of one of the states
    
    # Outgoing probabilities in ZFS basis
    out_probs = torch.tensor([100.0, 45.0, 70.0])  # s^-1
