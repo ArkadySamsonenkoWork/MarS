@@ -5,6 +5,7 @@ from ... import constants
 from . import core
 from .. import contexts
 
+
 class StationaryPopulator(core.BasePopulator):
     """Omputes the population-dependent part of the transition intensity for
     stationary (CW) EPR spectra.
@@ -27,7 +28,7 @@ class StationaryPopulator(core.BasePopulator):
                 lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor,
                 full_system_vectors: tp.Optional[torch.Tensor],
-                *args, **kwargs):
+                *args, **kwargs) -> torch.Tensor:
         """Computes the population difference for each resonant EPR transition.
 
         :param energies:
@@ -51,4 +52,6 @@ class StationaryPopulator(core.BasePopulator):
             shape [..., R], ready to be multiplied by transition matrix elements.
         """
         populations = self._initial_populations(energies, lvl_down, lvl_up, full_system_vectors)
+        if self.context is not None:
+            self.context.close_context()
         return self._out_population_difference(populations, lvl_down, lvl_up)

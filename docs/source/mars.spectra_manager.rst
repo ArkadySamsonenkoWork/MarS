@@ -4,11 +4,21 @@ mars.spectra\_manager package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.spectra\_manager.spectra\_manager module
+---------------------------------------------
 
-   mars.spectra_manager.spectra_manager
-   mars.spectra_manager.wave_calculator
+.. automodule:: mars.spectra_manager.spectra_manager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.spectra\_manager.wave\_calculator module
+---------------------------------------------
+
+.. automodule:: mars.spectra_manager.wave_calculator
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

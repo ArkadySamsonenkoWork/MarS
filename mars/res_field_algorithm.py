@@ -7,7 +7,7 @@ import typing as tp
 import torch
 from torch import nn
 
-from . import spin_system
+from . import spin_model
 
 
 class ViewIndexator(nn.Module):
@@ -67,6 +67,7 @@ class EighEigenSolver(BaseEigenSolver):
 
     def compute_eigenvalues(self, F: torch.Tensor, G: torch.Tensor, B: torch.Tensor):
         return torch.linalg.eigvalsh(F + G * B)
+
 
 # IT WAS BE REBUILDED
 def has_sign_change(res_low: torch.Tensor, res_high: torch.Tensor) -> torch.Tensor:
@@ -130,6 +131,14 @@ class BaseResonanceIntervalSolver(nn.Module, ABC):
                  eigen_finder: tp.Optional[BaseEigenSolver] = EighEigenSolver(), r_tol: float = 1e-5,
                  max_iterations: float = 20,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
+        """
+        :param spin_dim: The dimension of a spin system
+        :param eigen_finder: The class to find eigen values and eigen vectors
+        :param r_tol: relative tolerance of res-field sector computations
+        :param max_iterations: maximum iterations of sectors splitting
+        :param device:
+        :param dtype:
+        """
         super().__init__()
         self.eigen_finder = eigen_finder
         self.r_tol = torch.tensor(r_tol, dtype=dtype, device=device)
@@ -1495,6 +1504,8 @@ class ResField(nn.Module):
                  mesh_size: torch.Size,
                  batch_dims: tp.Union[torch.Size, tuple],
                  eigen_finder: BaseEigenSolver = EighEigenSolver(), output_full_eigenvector: bool = False,
+                 r_tol: float = 1e-5,
+                 splitting_max_iterations: int = 20,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """Initialize the ResField resonance solver for spin systems.
@@ -1516,6 +1527,13 @@ class ResField(nn.Module):
                                         at each resonance field. If False (default), only eigenvectors of the two states
                                         involved in each transition are returned.
         :type output_full_eigenvector: bool, optional
+
+        :param r_tol: relative tolerance of res-field sector computations
+        :type r_tol: float
+
+        :param splitting_max_iterations: maximum iterations of sectors splitting
+        :type splitting_max_iterations: int
+
         :param device: Device on which all internal tensors and computations are allocated (e.g., CPU or CUDA).
                        Default is CPU.
         :type device: torch.device, optional
@@ -1528,11 +1546,16 @@ class ResField(nn.Module):
         self.register_buffer("spin_system_dim", torch.tensor(spin_system_dim))
         self.output_full_eigenvector = output_full_eigenvector
         self.general_solver = GeneralResonanceIntervalSolver(self.spin_system_dim, eigen_finder=eigen_finder,
+                                                             r_tol=r_tol, max_iterations=splitting_max_iterations,
                                                              device=device, dtype=dtype)
+
         self.general_locator = GeneralResonanceLocator(output_full_eigenvector=self.output_full_eigenvector,
                                                        device=device, dtype=dtype)
+
         self.zerofree_solver = ZeroFreeResonanceIntervalSolver(self.spin_system_dim, eigen_finder=eigen_finder,
+                                                               r_tol=r_tol, max_iterations=splitting_max_iterations,
                                                                device=device, dtype=dtype)
+
         self.zerofree_locator = BaseResonanceLocator(output_full_eigenvector=self.output_full_eigenvector,
                                                      device=device, dtype=dtype)
         self.mesh_size = mesh_size
@@ -1753,7 +1776,7 @@ class ResField(nn.Module):
         return (vectors_u, vectors_v), (valid_lvl_down, valid_lvl_up),\
             res_fields, resonance_energies * resonance_frequency, full_eigen_vectors
 
-    def forward(self, sample: spin_system.BaseSample,
+    def forward(self, sample: spin_model.BaseSample,
                  resonance_frequency: torch.Tensor,
                  B_low: torch.Tensor, B_high: torch.Tensor, F: torch.Tensor, Gz: torch.Tensor) ->\
             tuple[

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from .res_field_algorithm import BaseEigenSolver, EighEigenSolver
-from . import spin_system
+from . import spin_model
 
 
 class SecSolver(nn.Module):
@@ -244,7 +244,7 @@ class SecSolver(nn.Module):
                 B_low: torch.Tensor, B_high: torch.Tensor,
                 resonance_frequency: torch.Tensor, *args):
         """
-        B = (ℏω - ΔE_F) / Δgz.
+        B = (ℏw - ΔE_F) / Δgz.
 
         Calculate the resonance fields, where the resonance field is possible.
         :param F: Magnetic filed free stationary Hamiltonian matrix. The shape is [..., K, K],
@@ -329,7 +329,7 @@ class ResSecular(nn.Module):
         self.device = device
         self.eigen_finder = eigen_finder
 
-    def forward(self, sample: spin_system.BaseSample,
+    def forward(self, sample: spin_model.BaseSample,
                  resonance_frequency: torch.Tensor,
                  B_low: torch.Tensor, B_high: torch.Tensor, F: torch.Tensor, Gz: torch.Tensor) ->\
             tuple[

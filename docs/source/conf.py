@@ -10,7 +10,7 @@ project = 'MarS'
 copyright = '2026, Arakady Samsonenko'
 author = 'Arakady Samsonenko'
 release = '2026.01.11'
-version = '0.0.1'
+version = '0.0.1b1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -24,6 +24,7 @@ extensions = [
     'sphinx.ext.coverage',  # проверяет покрытие документации
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',  # условные директивы в документации
+    'sphinx.ext.autosummary',
     'nbsphinx'
 ]
 
@@ -34,8 +35,9 @@ autodoc_default_options = {
     'undoc-members': False,  # set to True if you want undocumented members shown
     'exclude-members': '__weakref__'
 }
+autosummary_generate = True  # Generate stub pages automatically
+autosummary_imported_members = True
 
-# autodoc_mock_imports = ["numpy", "scipy", "torch", ]
 autodoc_mock_imports = ["torch", "optuna", "nevergrad", "optuna_dashboard"]
 
 templates_path = ['_templates']
@@ -61,3 +63,8 @@ autodoc_member_order = "bysource"
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../'))
+
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+if on_rtd:
+    # Don't need to import these on RTD since they're mocked
+    pass

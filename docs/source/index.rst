@@ -25,11 +25,11 @@ Welcome to MarS!
    contents/spectrum_constraction
    contents/fitting_tutorial
    contents/interactions/index
-   contents/spectra_creators/index
-   contents/meshers/index
-   contents/intensity_calculators/index
    contents/populators/index
    contents/context/index
+   contents/spectra_creators/index
+   contents/intensity_calculators/index
+   contents/meshers/index
 
 .. toctree::
    :maxdepth: 2

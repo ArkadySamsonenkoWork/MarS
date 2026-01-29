@@ -1,5 +1,5 @@
 Frame, Rotations and Euler Angles
-======================
+=================================
 
 In MarS, the orientation of any interaction tensor relative to the laboratory frame is defined by a rotation, which can be specified either as Euler angles or as a full 3×3 rotation matrix.
 
@@ -38,13 +38,13 @@ To express this tensor in the laboratory frame, it is rotated using the rotation
 Specifying Orientation at Initialization
 ----------------------------------------
 
-When constructing an :class:`mars.spin_system.Interaction` or :class:`mars.spin_system.DEInteraction`, the ``frame`` argument accepts:
+When constructing an :class:`mars.spin_model.Interaction` or :class:`mars.spin_model.DEInteraction`, the ``frame`` argument accepts:
 
 * ``None`` → identity (tensor aligned with lab frame),
 * A sequence ``[α, β, γ]`` (in radians),
 * A 3×3 rotation matrix (``torch.Tensor``).
 
-Similarly, when initializing a :class:`mars.spin_system.SpinSystem`, you can specify the orientation of the entire spin system relative to the lab frame using the same formats.
+Similarly, when initializing a :class:`mars.spin_model.SpinSystem`, you can specify the orientation of the entire spin system relative to the lab frame using the same formats.
 
 Example:
 
@@ -81,15 +81,15 @@ For an entire spin system:
 Orientation in Sample Construction
 ----------------------------------
 
-When creating a sample, you can also specify the orientation of the entire spin system relative to the lab frame via the ``spin_system_frame`` argument in :class:`mars.spin_system.MultiOrientedSample` or :class:`mars.spin_system.BaseSample`.
+When creating a sample, you can also specify the orientation of the entire spin system relative to the lab frame via the ``spin_system_frame`` argument in :class:`mars.spin_model.MultiOrientedSample` or :class:`mars.spin_model.BaseSample`.
 
 Example:
 
 .. code-block:: python
 
-   sample = spin_system.MultiOrientedSample(
+   sample = spin_model.MultiOrientedSample(
        spin_system_frame=rotation_matrix,  # or use angles directly
-       spin_system=base_spin_system,
+       base_spin_system=base_spin_system,
        ham_strain=5e7,
        gauss=0.001,
        lorentz=0.001,

@@ -1,7 +1,7 @@
 Interaction
 ===========
 
-The :class:`mars.spin_system.Interaction` class is the general-purpose container for symmetric second-rank tensor interactions in EPR spectroscopy. It supports isotropic, axial, and orthorhombic symmetry and can be rotated into an arbitrary molecular frame via Euler angles or a rotation matrix.
+The :class:`mars.spin_model.Interaction` class is the general-purpose container for symmetric second-rank tensor interactions in EPR spectroscopy. It supports isotropic, axial, and orthorhombic symmetry and can be rotated into an arbitrary molecular frame via Euler angles or a rotation matrix.
 
 Mathematical Form
 -----------------
@@ -40,7 +40,7 @@ Note: All values must be provided in SI-compatible units (Hz for couplings, dime
 Addition and Interaction Summation
 ----------------------------------
 
-Two :class:`mars.spin_system.Interaction` and :class:`mars.spin_system.DEInteraction`  instances can be added using the ``+`` operator. The result is a new interaction that represents the sum of their second-rank tensors in the laboratory frame.
+Two :class:`mars.spin_model.Interaction` and :class:`mars.spin_model.DEInteraction`  instances can be added using the ``+`` operator. The result is a new interaction that represents the sum of their second-rank tensors in the laboratory frame.
 
 Frame handling
 ~~~~~~~~~~~~~~
@@ -57,7 +57,7 @@ then summed as full 3×3 matrices:
 
    \mathbf{T}_{\text{sum}}^{\text{lab}} = \mathbf{T}^{(1)}_{\text{lab}} + \mathbf{T}^{(2)}_{\text{lab}}.
 
-The resulting tensor is diagonalized to extract new principal values and a new orientation frame. The output is always stored as a valid :class:`mars.spin_system.Interaction` with its own intrinsic frame and rotation to the lab frame.
+The resulting tensor is diagonalized to extract new principal values and a new orientation frame. The output is always stored as a valid :class:`mars.spin_model.Interaction` with its own intrinsic frame and rotation to the lab frame.
 
 Strain handling
 ~~~~~~~~~~~~~~~
@@ -67,7 +67,7 @@ Strain parameters describe distributions of the principal values in the intrinsi
 - Strain vectors from each operand are concatenated.
 - A combined ``strain_correlation`` matrix is built to map this concatenated strain vector onto perturbations of the final derivatives of principal components :math:\partial Dx,\partial Dx,\partial Dx, . (see also :ref:`strain-management-mars`)
 
-This mechanism works consistently even when combining a generic :class:`mars.spin_system.Interaction` with a :class:`mars.spin_system.DEInteraction`.
+This mechanism works consistently even when combining a generic :class:`mars.spin_model.Interaction` with a :class:`mars.spin_model.DEInteraction`.
 
 For example::
 

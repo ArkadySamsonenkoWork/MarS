@@ -1,21 +1,21 @@
 .. _complex_context:
 
 Complex Context Construction
-=============================
+============================
 
 Real spin systems often involve multiple simultaneous relaxation mechanisms or coupled subsystems.
-MarS provides powerful algebraic operations to construct complex Context objects from simpler building blocks: **addition** (``+``), **multiplication** (``@``), and concationation (via :func:`mars.concat).
+MarS provides powerful algebraic operations to construct complex Context objects from simpler building blocks: addition (``+``), multiplication (``@``), and concationation (via :func:`mars.concatination.concat`).
 
 Context Algebra Overview
--------------------------
+------------------------
 
 MarS supports three fundamental operations:
 
 1. **Addition** (``context_1 + context_2``): Combines independent relaxation processes acting on the same spin system
 
-2. **Kronecker-Multiplication** (``context_1 @ context_2``): Creates a composite system from independent subsystems of different spin-centers
+2. **Kronecker-Multiplication** (``context_1 @ context_2`` or ``mars.multiply((context_1, context_2))``): Creates a composite system from independent subsystems of different spin-centers
 
-3. **Concatenation** (:func:`mars.concat([context_1, context_2]) <mars.concat>`): Creates a composite system from independent subsystems of the spin-center via direct sum 
+3. **Concatenation** (:func:`mars.concat((context_1, context_2)) or <mars.concatination.concat>`): Creates a composite system from independent subsystems of the spin-center via direct sum 
 
 Operations automatically handle:
 
@@ -79,20 +79,20 @@ A triplet state formed by intersystem crossing typically exhibits:
 .. code-block:: python
 
    import torch
-   from mars import spin_system, population, spectra_manager
+   from mars import spin_model. population, spectra_manager
    
    # Define triplet system
-   g_tensor = spin_system.Interaction(2.0032, dtype=torch.float64)
-   zfs = spin_system.DEInteraction([540e6, 78e6], dtype=torch.float64)
+   g_tensor = spin_modelInteraction(2.0032, dtype=torch.float64)
+   zfs = spin_modelDEInteraction([540e6, 78e6], dtype=torch.float64)
    
-   triplet_system = spin_system.SpinSystem(
+   triplet_system = spin_modelSpinSystem(
        electrons=[1.0],
        g_tensors=[g_tensor],
        electron_electron=[(0, 0, zfs)]
    )
    
-   sample = spin_system.MultiOrientedSample(
-       spin_system=triplet_system,
+   sample = spin_modelMultiOrientedSample(
+       base_spin_system=triplet_system,
        ham_strain=2.2e7,
        gauss=0.0011,
        lorentz=0.0011
@@ -382,15 +382,37 @@ For complex systems, both operations can be combined:
 Properties of Multiplication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. **Commutative:** ``context_1 @ context_2 == context_2 @ context_1``
+1. **Non-commutative**: While mathematically symmetric, the order affects level indexing
 
 2. **Associative:** ``(context_1 @ context_2) @ context_3 == context_1 @ (context_2 @ context_3)``
 
 3. **Dimensionality:** :math:`N_{\text{total}} = N_1 \times N_2`
 
-4. **Independent evolution:** Each subsystem evolves according to its own dynamics
+Multiplication with Summed Contexts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-5. **Product basis:** Natural for specifying independent initial conditions
+The behavior of Kronecker multiplication when one operand is a :class:`SummedContext` is not distributive in the naive sense because populations and kinetic matrices transform differently under tensor products.
+
+Consider:
+
+- Populations (density matrices) combine as:  
+  :math:`(\mathbf{n_1} + \mathbf{n_2}) \otimes \mathbf{n_3} = \mathbf{n_1} \otimes \mathbf{n_3} + \mathbf{n_2} \otimes \mathbf{n_3}`
+
+- Kinetic matrices (or superoperators) combine as:  
+  :math:`(K_1 + K_2) \otimes \mathbb{I} + \mathbb{I} \otimes K_3 = (K_1 \otimes \mathbb{I} + \mathbb{I} \otimes K_3) + (K_2 \otimes \mathbb{I}) + (\mathbb{I} \otimes 0)`
+
+In this case, MarS rewrites the result as a sum of two elements:
+
+1. :math:`(\mathbf{n_1}, K_1) \otimes (\mathbf{n_3}, K_3)`
+2. :math:`(\mathbf{n_2}, K_2) \otimes (\mathbf{n_3}, 0)`
+
+This rule is applied automatically when evaluating expressions like:
+
+.. code-block:: python
+
+   (context_A + context_B) @ context_C
+
+The resulting object is a :class:`SummedContext` containing two :class:`KroneckerContext` terms.
 
 Concatenation
 --------------
@@ -400,11 +422,10 @@ Concatenation
    :alt: Concatenation of contexts
    :align: center
 
-The concatenation operation (:func:`mars.concat([context_1, context_2]) <mars.concat>`) constructs a composite system from energy-isolated subspaces within a single physical spin system.
-This situation arises when a molecule can exist in multiple distinct configurations such as different conformational isomers or spatially localized states.
+The concatenation operation (:func:`mars.concat([context_1, context_2]) <mars.concatination.concat>`) constructs a composite system from energy-isolated subspaces within a single physical spin system.
+This situation arises when a molecule can exist in multiple distinct configurations, such as different conformational isomers or spatially localized states.
 
 In this case, the total Hilbert space decomposes as a **direct sum** of subspaces:
-
 .. math::
 
    \mathcal{H}_{\text{total}} = \mathcal{H}^{(1)} \oplus \mathcal{H}^{(2)}
@@ -438,22 +459,22 @@ We model each conformer independently, then concatenate their contexts:
 
    import torch
    import mars
-   from mars import spin_system, population
+   from mars import spin_model. population
    
    device = torch.device('cpu')
    dtype = torch.float64
    
    # Define two identical triplet systems.
-   g_tensor = spin_system.Interaction(2.0032, dtype=dtype)
-   zfs = spin_system.DEInteraction([540e6, 78e6], dtype=dtype)
+   g_tensor = spin_modelInteraction(2.0032, dtype=dtype)
+   zfs = spin_modelDEInteraction([540e6, 78e6], dtype=dtype)
    
-   triplet_1 = spin_system.SpinSystem(
+   triplet_1 = spin_modelSpinSystem(
        electrons=[1.0],
        g_tensors=[g_tensor],
        electron_electron=[(0, 0, zfs)]
    )
    
-   triplet_2 = spin_system.SpinSystem(
+   triplet_2 = spin_modelSpinSystem(
        electrons=[1.0],
        g_tensors=[g_tensor],
        electron_electron=[(0, 0, zfs)],
@@ -461,15 +482,15 @@ We model each conformer independently, then concatenate their contexts:
    )
    
    # Combine into a single sample for concatenated system
-   triplet_sample_1 = spin_system.MultiOrientedSample(
-       spin_system=triplet_1,
+   triplet_sample_1 = spin_modelMultiOrientedSample(
+       base_spin_system=triplet_1,
        ham_strain=2.2e7,
        gauss=0.0011,
        lorentz=0.0011
    )
 
-   triplet_sample_2 = spin_system.MultiOrientedSample(
-       spin_system=triplet_2,
+   triplet_sample_2 = spin_modelMultiOrientedSample(
+       base_spin_system=triplet_2,
        ham_strain=2.2e7,
        gauss=0.0011,
        lorentz=0.0011
@@ -534,24 +555,18 @@ This construction correctly separates **fast intra-triplet dynamics** (handled b
 Properties of Concatenation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. **Non-commutative in labeling**: While mathematically symmetric, the order affects level indexing (e.g., ``context_1 ⊕ context_2`` places ``context_1`` in lower indices).
+1. **Non-commutative**: Although the direct sum operation is mathematically symmetric, it is **non-commutative in practice** with respect to level indexing. Specifically,
+:math:`\texttt{context\_1} \oplus \texttt{context\_2} \neq \texttt{context\_2} \oplus \texttt{context\_1}`
+because :math:`\texttt{context\_1}` occupies the lower indices in the resulting combined system.
+
+2. **Associative:**:   concat(concat(context_1, context_2), context_3) == concat(context_1, concat(context_2, context_3))
+
 2. **Dimensionality**: :math:`N_{\text{total}} = N_1 + N_2`
 
 Order of Operations
--------------------
-
-When combining the set of operations:
-
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: python
 
-   # These are equivalent:
-   result1 = (context_1 @ context_2) + context_3  # Multiply first
-   result2 = context_3 + (context_1 @ context_2)  # Addition is commutative
-
-   # These are equivalent:
-   result_3 = mars.concat((context_1, context_2)) + context_3
-   result_4 = context_3 + mars.concat((context_1, context_2))
-
-   # These are equivalent:
-   result_5 = mars.concat((context_1, context_2)) + mars.concat((context_3, context_4))
-   result_6 = mars.concat((context_1, context_4)) + mars.concat((context_3, context_2))
+   #  They are equivalent
+   result_1 = mars.concat((context_1, context_2)) + mars.concat((context_3, context_4))
+   result_2 = mars.concat((context_1, context_4)) + mars.concat((context_3, context_2))

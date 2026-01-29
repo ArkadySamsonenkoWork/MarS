@@ -4,11 +4,21 @@ mars.particles package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.particles.nuclei\_db\_creation module
+------------------------------------------
 
-   mars.particles.nuclei_db_creation
-   mars.particles.typed_particles
+.. automodule:: mars.particles.nuclei_db_creation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.particles.typed\_particles module
+--------------------------------------
+
+.. automodule:: mars.particles.typed_particles
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

@@ -1,3 +1,5 @@
+.. _rotating-wave-approximation:
+
 Rotating Wave Approximation
 ============================
 
@@ -24,7 +26,7 @@ where:
 * **H**: Spin Hamiltonian
 * **R**: Relaxation superoperator describing decoherence and population transfer
 
-To solve this numerically, the equation is transformed into Liouville space where the density matrix becomes a vector of dimension N² and operators become N²×N² superoperators:
+To solve this numerically, the equation is transformed into Liouville space where the density matrix becomes a vector of dimension N^2 and operators become N^2xN^2 superoperators:
 
 .. math::
 
@@ -39,7 +41,7 @@ where:
 Rotating Frame Transformation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For time-dependent Hamiltonians oscillating at the spectrometer frequency ω, the RWA eliminates rapidly oscillating terms by transforming to a rotating reference frame:
+For time-dependent Hamiltonians oscillating at the spectrometer frequency w, the RWA eliminates rapidly oscillating terms by transforming to a rotating reference frame:
 
 .. math::
 

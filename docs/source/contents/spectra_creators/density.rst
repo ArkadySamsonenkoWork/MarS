@@ -9,7 +9,7 @@ The time evolution of the spin density matrix :math:`\rho(t)` is governed by the
 
 where :math:`\hat{H}` is the system Hamiltonian and :math:`\mathcal{R}[\rho]` is the relaxation superoperator.
 
-The relaxation superoperator :math:`\mathcal{R}[\rho]` accounts for four physically distinct processes that govern population and coherence dynamics in time-resolved EPR:
+The relaxation superoperator :math:`\mathcal{R}[\rho]` accounts for four physically distinct processes that govern population and coherence dynamics in time-resolved EPR (see more details in :ref:`relaxation_parameters`):
 
 - **Free probabilities**: thermalizing transitions between eigenstates obeying detailed balance,
 - **Driven probabilities**: coherent or incoherent microwave-induced transitions,
@@ -25,15 +25,16 @@ These processes are encoded in the **Lindblad master equation**, which provides 
       - \frac{1}{2} \{ \hat{L}_k^\dagger \hat{L}_k, \rho \}
    \right)
 
-In addition to the four standard contributions, MarS supports **user-defined superoperators**, allowing custom relaxation, measurement back-action, or phenomenological models to be incorporated directly into :math:`\mathcal{R}[\rho]`.
+In addition to the four standard contributions, MarS supports user-defined superoperators, allowing custom relaxation, or phenomenological models to be incorporated directly into :math:`\mathcal{R}[\rho]`.
 
 Two computational strategies are available for time propagation:
 
 - **Rotating Wave Approximation (RWA)**  
-  The Hamiltonian is transformed into a frame rotating at the excitation frequency, and fast-oscillating terms are discarded. This yields a time-independent effective Liouvillian, enabling efficient simulation near resonance.
+  The Hamiltonian is transformed into a frame rotating at the excitation frequency, and fast-oscillating terms are discarded.
+  This yields a time-independent effective Liouvillian, enabling efficient simulation. (see details in :ref:`rotating-wave-approximation`)
 
 - **Full Propagator Construction**  
-  The complete Liouvillian (including full time dependence, if present) is used to construct the exact evolution superoperator via matrix exponentiation:
+  The complete Liouvillian is used to construct the exact evolution superoperator (see details in :ref:`propagator-computations`):
 
   .. math::
 
@@ -41,7 +42,7 @@ Two computational strategies are available for time propagation:
 
 While RWA reduces computational cost, it suffers from limitations:
 
-- The electron Zeeman interaction must be isotropic: :math:`\hat{G}_x = g \mu_B \hat{S}_x`, etc.
+- The electron Zeeman interaction must be isotropic or close to isotropic: :math:`\hat{G}_x = g \mu_B \hat{S}_x`, etc.
 - The static part of the Hamiltonian :math:`\hat{F}` (all terms except Zeeman) must commute with :math:`\hat{G}_z`: :math:`[\hat{F}, \hat{G}_z] = 0`.
 - The relaxation superoperator only couples matrix elements :math:`\rho_{ij}` and :math:`\rho_{kl}` when :math:`i - j = k - l`.
 

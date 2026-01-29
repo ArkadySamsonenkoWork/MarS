@@ -1,3 +1,5 @@
+.. _propagator-computations:
+
 Propagator-Based Density Matrix Evolution
 ===========================================
 
@@ -38,7 +40,7 @@ where H is the spin Hamiltonian in Hilbert space and I is the identity matrix.
 Floquet Theory for Periodic Hamiltonians
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The time-dependent Hamiltonian H(t) is periodic with period T = 2π/ω, where ω is the microwave frequency (9-10 GHz in X-band, giving T ~ 0.1 ns). This periodicity enables efficient long-time propagation using Floquet theory.
+The time-dependent Hamiltonian H(t) is periodic with period T = 2π/w, where w is the microwave frequency (9-10 GHz in X-band, giving T ~ 0.1 ns). This periodicity enables efficient long-time propagation using Floquet theory.
 
 For any time t = kT + τ where k is an integer and 0 ≤ τ < T:
 

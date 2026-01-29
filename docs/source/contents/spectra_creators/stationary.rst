@@ -44,11 +44,11 @@ Examples
 
 .. code-block:: python
 
-   g_tensor = spin_system.Interaction(2.0023)
-   zfs = spin_system.DEInteraction([500e6, 100e6])  # D=500 MHz, E=100 MHz
-   sys = spin_system.SpinSystem(electrons=[1.0], g_tensors=[g_tensor],
+   g_tensor = spin_model.Interaction(2.0023)
+   zfs = spin_model.DEInteraction([500e6, 100e6])  # D=500 MHz, E=100 MHz
+   sys = spin_model.SpinSystem(electrons=[1.0], g_tensors=[g_tensor],
                                 electron_electron=[(0, 0, zfs)])
-   sample = spin_system.MultiOrientedSample(sys, gauss=0.001, lorentz=0.001)
+   sample = spin_model.MultiOrientedSample(sys, gauss=0.001, lorentz=0.001)
    creator = spectra_manager.StationarySpectra(freq=9.8e9, sample=sample)
    fields = torch.linspace(0.30, 0.40, 1000)
    spec = creator(sample, fields)
@@ -59,9 +59,9 @@ Examples
 
    D_vals = torch.tensor([480e6, 520e6])
    E_vals = torch.tensor([90e6, 110e6])
-   zfs_batch = spin_system.DEInteraction(torch.stack([D_vals, E_vals], dim=1))
-   sys = spin_system.SpinSystem(electrons=[2.5], electron_electron=[(0,0,zfs_batch)])
-   sample = spin_system.MultiOrientedSample(sys, gauss=0.002, lorentz=0.001)
+   zfs_batch = spin_model.DEInteraction(torch.stack([D_vals, E_vals], dim=1))
+   sys = spin_model.SpinSystem(electrons=[2.5], electron_electron=[(0,0,zfs_batch)])
+   sample = spin_model.MultiOrientedSample(sys, gauss=0.002, lorentz=0.001)
    creator = spectra_manager.StationarySpectra(freq=9.5e9, sample=sample, temperature=4.0)
    fields = torch.stack([torch.linspace(0.25, 0.45, 1000)] * 2)
    spectra = creator(sample, fields)  # shape: (2, 1000)

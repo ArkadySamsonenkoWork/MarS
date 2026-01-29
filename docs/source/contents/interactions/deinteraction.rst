@@ -1,12 +1,12 @@
 DEInteraction
 =============
 
-The :class:`mars.spin_system.DEInteraction` is a specialized subclass of :class:`Interaction` designed explicitly for interactions determined not as 3 principal values but D and E paramers: zero-field splitting or dipolar interaction. It parameterizes the traceless tensor using the conventional spectroscopic parameters :math:`D` (axial) and :math:`E` (rhombic).
+The :class:`mars.spin_model.DEInteraction` is a specialized subclass of :class:`Interaction` designed explicitly for interactions determined not as 3 principal values but D and E paramers: zero-field splitting or dipolar interaction. It parameterizes the traceless tensor using the conventional spectroscopic parameters :math:`D` (axial) and :math:`E` (rhombic).
 
 Difference from General Interaction
 -----------------------------------
 
-While a general :class:`mars.spin_system.Interaction` treats :math:`(D_x, D_y, D_z)` as independent, :class:`mars.spin_system.DEInteraction` enforces the physical constraint:
+While a general :class:`mars.spin_model.Interaction` treats :math:`(D_x, D_y, D_z)` as independent, :class:`mars.spin_model.DEInteraction` enforces the physical constraint:
 
 .. math::
 

@@ -1,13 +1,13 @@
 Installation
 ============
 
-From PyPI (when published):
+From PyPI:
 ::
 
 
    pip install mars-epr
 
-From source (development):
+From source:
 ::
 
 

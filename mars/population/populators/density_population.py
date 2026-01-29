@@ -400,11 +400,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         """
         H0 = self._get_initial_Hamiltonian(energies) * self.two_pi
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
-        evo = tr_utils.EvolutionSuper(energies)
+
 
         Gx, Gy, Sz = self._compute_hamiltonian_operators(
             Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
-
+        evo = tr_utils.EvolutionSuper(energies)
         tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
                                                              lvl_down, lvl_up, energies, vector_down,
                                                              vector_up, full_system_vectors, resonance_frequency,

@@ -188,7 +188,7 @@ class AxialSpectraIntegratorStationary(SpectraIntegratorStationary):
         :param spectral_field: The magnetic fields where spectra should be created. The shape is [...., N]
         :return: result: Tensor of shape [..., N] with the value of the integral for each B
         """
-        width.mul_(self._width_conversion)
+        width = width * self._width_conversion
         A_mean = A_mean * area
         width = self.natural_width + width
         res_fields, _ = torch.sort(res_fields, dim=-1, descending=True)

@@ -86,7 +86,7 @@ MarS provides powerful tools for defining complex relaxation processes:
 - **Population losses** (e.g., phosphorescence from triplet states)
 - **Spontaneous transitions** (free transitions satisfying detailed balance)
 - **Induced transitions** (driven transitions)
-- **Decoherence** (for density matrix formalism)
+- **Dephasing** (for density matrix formalism)
 
 All mechanisms can be specified in any of several predefined bases or custom transformation matrices.
 
@@ -97,7 +97,9 @@ Comprehensive support for relaxation parameter specification in multiple bases:
 - **Eigenbasis** (`eigen`): Hamiltonian eigenstates in magnetic field
 - **Zero-field splitting basis** (`zfs`): Eigenstates of the ZFS operator
 - **Multiplet basis** (`multiplet`): Total spin and projection states |S, M⟩
-- **Product basis** (`product`): Individual spin projections
+- **Product basis** (`product`): Individual spin projections |ms1, ms2, ..., msk, is1, ..., ism⟩
+- **Triplet xyz basis** (`xyz`): Tx, Ty, Tz basis used for triplet molecules
+- **Zeeman** (`zeeman`): Basis in high magnetic field
 - **Custom bases**: User-defined transformation matrices
 
 Automatic transformation of kinetic matrices and relaxation superoperators between bases.
@@ -106,8 +108,8 @@ Automatic transformation of kinetic matrices and relaxation superoperators betwe
 
 ### Relaxation Algebra
 - **Summation**: Combine multiple relaxation mechanisms defined in different bases
-- **Tensor product**: Construct composite quantum systems with independent subsystem dynamics
-
+- **Multiplication**: Construct relaxation mechanism of interacting spin centers
+- **Concatenation**: Construct relaxation mechanism of isolated sub-systems.
 ---
 
 ### Liouville Space Formalism
@@ -125,7 +127,7 @@ Multiple solution strategies optimized for different scenarios:
 - Adaptive ODE integration (via `torchdiffeq`, for general time dependence)
 
 **Density matrix evolution:**
-- Rotating frame approximation (computationally efficient, limited to isotropic g-factors)
+- Rotating frame approximation (computationally efficient, limited to isotropic or close to isotropic g-factors)
 - Propagator computation approach (fully general, supports arbitrary anisotropy and relaxation)
 
 ---
@@ -150,16 +152,16 @@ pip install mars-epr
 
 import torch
 import matplotlib.pyplot as plt
-from mars import spin_system, spectra_manager
+from mars import spin_model, spectra_manager
 
 # Select device and precision
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dtype = torch.float64
 
 # Define a simple electron spin system
-g_tensor = spin_system.Interaction((2.02, 2.04, 2.06), dtype=dtype, device=device)
+g_tensor = spin_model.Interaction((2.02, 2.04, 2.06), dtype=dtype, device=device)
 
-system = spin_system.SpinSystem(
+system = spin_model.SpinSystem(
     electrons=[0.5],
     g_tensors=[g_tensor],
     dtype=dtype,
@@ -167,8 +169,8 @@ system = spin_system.SpinSystem(
 )
 
 # Create a powder sample
-sample = spin_system.MultiOrientedSample(
-    spin_system=system,
+sample = spin_model.MultiOrientedSample(
+    base_spin_system=system,
     gauss=0.001,
     lorentz=0.001,
     dtype=dtype,

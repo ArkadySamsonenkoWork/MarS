@@ -1,6 +1,6 @@
 Base Spin System
 ==============================
-The :class:`mars.spin_system.SpinSystem` class provides a flexible representation of spin systems commonly encountered in EPR spectroscopy. It supports arbitrary numbers of electron and nuclear spins, along with their mutual interactions (hyperfine, dipolar, exchange, zfs).
+The :class:`mars.spin_model.SpinSystem` class provides a flexible representation of spin systems commonly encountered in EPR spectroscopy. It supports arbitrary numbers of electron and nuclear spins, along with their mutual interactions (hyperfine, dipolar, exchange, zfs).
 
 
 Examples
@@ -12,11 +12,11 @@ Define a single electron with spin 1 and a D-tensor aligned with the lab frame:
 
 .. code-block:: python
 
-   from mars import spin_system, particles
+   from mars import spin_model, particles
 
-   g_tensor = spin_system.Interaction(2.002)  # g = 2.002
-   D_tensor = spin_system.DEInteraction(components=0.35 * 1e9)  # D = 0.35 GHz
-   triplet = spin_system.SpinSystem(electrons=[1.0], g_tensors=[g_tensor], electron_electron=[(0, 0, D_tensor)])
+   g_tensor = spin_model.Interaction(2.002)  # g = 2.002
+   D_tensor = spin_model.DEInteraction(components=0.35 * 1e9)  # D = 0.35 GHz
+   triplet = spin_model.SpinSystem(electrons=[1.0], g_tensors=[g_tensor], electron_electron=[(0, 0, D_tensor)])
 
 This creates a three-level system with Hamiltonian :math:`H = gβBSz + D(S_z^2 - S(S+1)/3)`.
 
@@ -26,12 +26,12 @@ Model two interacting S = 1/2 centers with distinct g-anisotropy and a dipolar c
 
 .. code-block:: python
 
-   g1 = spin_system.Interaction([2.002, 2.004, 2.008])  # gx, gy, gz
-   g2 = spin_system.Interaction([1.998, 2.000, 2.006])
+   g1 = spin_model.Interaction([2.002, 2.004, 2.008])  # gx, gy, gz
+   g2 = spin_model.Interaction([1.998, 2.000, 2.006])
 
-   anisotropic = spin_system.Interaction([0.01 * 1e9, 0.0 * 1e9, 0.02 * 1e9])  # Dx, Dy, Dz
+   anisotropic = spin_model.Interaction([0.01 * 1e9, 0.0 * 1e9, 0.02 * 1e9])  # Dx, Dy, Dz
 
-   system = spin_system.SpinSystem(
+   system = spin_model.SpinSystem(
        electrons=[1/2, 1/2],
        g_tensors=[g1, g2],
        electron_electron=[(0, 1, anisotropic)]
@@ -41,13 +41,13 @@ The total Hilbert space dimension is 4, and the dipolar term is added via scalar
 
 **3. Electron coupled to a nucleus (hyperfine interaction)**
 
-Simulate a nitroxide radical with a ^14N nucleus (I = 1):
+Simulate a nitroxide radical with isotropic hyperfine interaction with 14N nucleus (I = 1):
 
 .. code-block:: python
 
-   g_el = spin_system.Interaction([2.006, 2.006, 2.002])
-   hyperfine = spin_system.Interaction([20.01 * 1e6, 20.0  * 1e6, 80.0  * 1e6]) # A-tensor in MHz
-   system = spin_system.SpinSystem(
+   g_el = spin_model.Interaction([2.006, 2.006, 2.002])
+   hyperfine = spin_model.Interaction([20.01 * 1e6, 20.0  * 1e6, 80.0  * 1e6]) # A-tensor in MHz
+   system = spin_model.SpinSystem(
        electrons=[1/2],
        g_tensors=[g_el],
        nuclei=["14N"],
@@ -60,7 +60,7 @@ The resulting system has dimension :math:`(2S+1)(2I+1) = 6`
 Useful Features
 ---------------
 
-:class:`mars.spin_system.SpinSystem` provides several utility methods for advanced quantum-mechanical analysis, including access to key spin operators.
+:class:`mars.spin_model.SpinSystem` provides several utility methods for advanced quantum-mechanical analysis, including access to key spin operators.
 These are especially useful when working with total spin manifolds or custom spectral models.
 
 Basis and Operator Methods
@@ -76,7 +76,7 @@ In MarS, all operators and vectors are initially defined in the product basis of
    Me = system.get_electron_projections()       # Electron-only Mₑ per product state
    Mt = system.get_total_projections()          # Total M = Σmₑ + Σmₙ per product state
 
-- :meth:`mars.spin_system.SpinSystem.get_electron_z_operator`  
+- :meth:`mars.spin_model.SpinSystem.get_electron_z_operator`
   Returns the total electron spin projection operator along the *z*-axis:
 
   .. math::
@@ -86,7 +86,7 @@ In MarS, all operators and vectors are initially defined in the product basis of
   - **Shape**: ``(spin_dim, spin_dim)``
   - **Example**: For two spin-½ electrons, returns a 4×4 diagonal matrix with entries ``[1, 0, 0, -1]``.
 
-- :meth:`mars.spin_system.SpinSystem.get_electron_squared_operator`  
+- :meth:`mars.spin_model.SpinSystem.get_electron_squared_operator`
   Returns the total electron spin-squared operator:
 
   .. math::
@@ -98,14 +98,14 @@ In MarS, all operators and vectors are initially defined in the product basis of
   - **Eigenvalues**: :math:`S(S+1)`, where :math:`S` is the total electron spin quantum number.
   - **Example**: For two spin-½ electrons, eigenvalues are ``0`` (singlet) and ``2`` (triplet).
 
-- :meth:`mars.spin_system.SpinSystem.get_electron_projections`  
+- :meth:`mars.spin_model.SpinSystem.get_electron_projections`
   Returns a 1D tensor containing the total electron magnetic quantum number :math:`M_e = \sum_i m_{e_i}` for each product state.
 
   - **Ignores nuclear spins** (sets their projections to zero).
   - **Shape**: ``(spin_dim,)``
   - **Example**: For one electron (:math:`S = \tfrac{1}{2}`) and one nucleus (:math:`I = \tfrac{1}{2}`), returns ``[0.5, 0.5, -0.5, -0.5]``.
 
-- :meth:`mars.spin_system.SpinSystem.get_total_projections`  
+- :meth:`mars.spin_model.SpinSystem.get_total_projections`
   Returns the total magnetic quantum number :math:`M = \sum_i m_{e_i} + \sum_j m_{n_j}` for every product state.
 
   - **Includes both electrons and nuclei**.
@@ -156,24 +156,24 @@ The Hamiltonian decomposes as:
 Usage
 ^^^^^
 
-The concatenation can be performed using :func:`mars.concat` or directly via :func:`mars.spin_system.concat_spin_systems`:
+The concatenation can be performed using :func:`mars.concatination.concat` or directly via :func:`mars.spin_model.concat_spin_systems`:
 
 .. code-block:: python
 
-   from mars import concat, spin_system
+   from mars import concat, spin_model
    
    # Define two independent triplet systems
-   g1 = spin_system.Interaction(2.002)
-   D1 = spin_system.DEInteraction([350e6, 50e6])
-   triplet_1 = spin_system.SpinSystem(
+   g1 = spin_model.Interaction(2.002)
+   D1 = spin_model.DEInteraction([350e6, 50e6])
+   triplet_1 = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g1],
        electron_electron=[(0, 0, D1)]
    )
    
-   g2 = spin_system.Interaction(2.008)
-   D2 = spin_system.DEInteraction([280e6, 35e6])
-   triplet_2 = spin_system.SpinSystem(
+   g2 = spin_model.Interaction(2.008)
+   D2 = spin_model.DEInteraction([280e6, 35e6])
+   triplet_2 = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g2],
        electron_electron=[(0, 0, D2)]
@@ -181,6 +181,6 @@ The concatenation can be performed using :func:`mars.concat` or directly via :fu
    
    # Concatenate into single 6-dimensional system
    composite_system = concat([triplet_1, triplet_2])
-   # Equivalent to: spin_system.concat_spin_systems([triplet_1, triplet_2])
+   # Equivalent to: spin_model.concat_spin_systems([triplet_1, triplet_2])
 
-**See also**: :func:`mars.spin_system.concat_spin_systems` for implementation details.
+**See also**: :func:`mars.spin_model.concat_spin_systems` for implementation details.

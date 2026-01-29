@@ -5,7 +5,7 @@ from scipy.optimize import linear_sum_assignment
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from ..spin_system import MultiOrientedSample
+from ..spin_model import MultiOrientedSample
 from .. import constants
 
 

@@ -30,10 +30,10 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
         │     basis_1 states →                      │
         │    ┌─────────────┬─────────────┐          │
         │    │             │             │          │
-        │    │ |⟨b2₀|b1₀⟩|² │ |⟨b2₀|b1₁⟩|² │        │
+        │    │ ⟨b2₀|b1₀⟩   │ ⟨b2₀|b1₁⟩   │          │
         │ b  │             │             │          │
         │ a  │             │             │          │
-        │ s  │ |⟨b2₁|b1₀⟩|² │ |⟨b2₁|b1₁⟩|² │        │
+        │ s  │ ⟨b2₁|b1₀⟩   │ ⟨b2₁|b1₁⟩   │          │
         │ i  │             │             │          │
         │ s  │             │             │          │
         │ _  └─────────────┴─────────────┘          │
@@ -361,7 +361,6 @@ def batched_kron(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
     a_expanded = a[..., :, None, :, None]
     b_expanded = b[..., None, :, None, :]
-
     result = a_expanded * b_expanded
     return result.reshape(*batch_dims, M * P, N * Q)
 
@@ -590,7 +589,7 @@ def transform_kronecker_superoperator(
     total_dim = int(torch.prod(torch.tensor(k_dims)))
 
     unitarty = get_coupled_unitary(coeffs, len(superoperator_list))  # K, K
-    T = torch.einsum('...ij,...kl->...ikjl', unitarty, unitarty.conj())
+    T = batched_kron(unitarty, unitarty.conj())
     T = T.reshape(
         *T.shape[:-4],
         T.shape[-4] * T.shape[-3],

@@ -1,4 +1,4 @@
-... _strain-management-mars:
+.. _strain-management-mars:
 
 Strain in MarS
 =======================
@@ -19,7 +19,7 @@ In explicit modeling, you would generate many spin systems with different parame
 .. code-block:: python
 
    import torch
-   from mars import spin_system
+   from mars import spin_model
    
    # Generate 1000 samples from a Gaussian distribution
    n_samples = 1000
@@ -32,7 +32,7 @@ In explicit modeling, you would generate many spin systems with different parame
    # Create 1000 different spin systems
    spin_systems = []
    for i in range(n_samples):
-       g = spin_system.Interaction(g_samples[i])
+       g = spin_model.Interaction(g_samples[i])
        spin_systems.append(g)
    
    # Compute spectrum for each and average
@@ -44,10 +44,10 @@ Strain modeling achieves the same result analytically using second-order perturb
 .. code-block:: python
 
    import torch
-   from mars import spin_system
+   from mars import spin_model
    
    # Single spin system with strain parameters
-   g = spin_system.Interaction(
+   g = spin_model.Interaction(
        components=(2.002, 2.004, 2.008),
        strain=(0.001, 0.001, 0.002)  # FWHM of distributions
    )
@@ -67,7 +67,7 @@ This approach is equivalent to Monte Carlo sampling in the limit of small strain
 How Strain Works
 ----------------
 
-For any interaction, strain is modeled as a Gaussian distribution of the principal values. In the case of :class:`mars.spin_system.Interaction`, strain is applied independently to :math:`T_x, T_y, T_z`. For :class:`mars.spin_system.DEInteraction`, strain is applied to the underlying :math:`D` and :math:`E` parameters.
+For any interaction, strain is modeled as a Gaussian distribution of the principal values. In the case of :class:`mars.spin_model.Interaction`, strain is applied independently to :math:`T_x, T_y, T_z`. For :class:`mars.spin_model.DEInteraction`, strain is applied to the underlying :math:`D` and :math:`E` parameters.
 
 During simulation, MarS integrates over this distribution analytically (via second-order perturbation theory) when computing the spectrum, avoiding costly Monte Carlo sampling. The result is a broadened lineshape consistent with Gaussian disorder in the Hamiltonian parameters.
 
@@ -92,7 +92,7 @@ Units must match those of the components (e.g., Hz for couplings, dimensionless 
 Important Notes
 ---------------
 
-- Strain in MarS is **uncorrelated by default** for :class:`mars.spin_system.Interaction` (diagonal covariance).
+- Strain in MarS is **uncorrelated by default** for :class:`mars.spin_model.Interaction` (diagonal covariance).
 - Strain distributions are assumed Gaussian and static.
 - MarS allows you to set any type of correlation within a single interaction using the :meth:`set_strain` method: ``interaction.set_strain(new_strain, new_correlation_matrix)``
 
@@ -147,10 +147,10 @@ In MarS, this is implemented as follows:
 .. code-block:: python
 
    import torch
-   from mars import spin_system
+   from mars import spin_model
 
    # Define base g-tensor
-   g = spin_system.Interaction(
+   g = spin_model.Interaction(
        components=(2.002, 2.004, 2.008),
        strain=torch.tensor([0.001, 0.002])  # Two strain parameters: σ_s, σ_t
    )
@@ -174,10 +174,10 @@ When g-tensor components vary independently (default behavior):
 .. code-block:: python
 
    import torch
-   from mars import spin_system
+   from mars import spin_model
 
    # Three independent Gaussian distributions for gx, gy, gz
-   g = spin_system.Interaction(
+   g = spin_model.Interaction(
        components=(2.002, 2.004, 2.008),
        strain=(0.001, 0.001, 0.002)
    )
@@ -198,10 +198,10 @@ When all g-tensor components shift together (isotropic strain):
 .. code-block:: python
 
    import torch
-   from mars import spin_system
+   from mars import spin_model
 
    # Single strain parameter affects all components equally
-   g = spin_system.Interaction(
+   g = spin_model.Interaction(
        components=(2.002, 2.004, 2.008),
        strain=torch.tensor([0.001])  # Single strain parameter
    )

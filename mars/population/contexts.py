@@ -3,13 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import math
 import warnings
+import itertools
 
 import torch
 from torch import nn
 
 import typing as tp
 
-from .. import spin_system
+from .. import spin_model
 from . import transform
 
 
@@ -20,6 +21,246 @@ def transform_to_complex(vector):
         return vector.to(torch.complex128)
     else:
         return vector
+
+
+def _normalize_to_components(
+        contexts: tp.List[tp.Union[Context, SummedContext]]
+) -> tp.Tuple[tp.List[tp.List[Context]], tp.List[int], tp.List[int], tp.List[int], torch.device, torch.dtype]:
+    """
+    Normalize input contexts into uniform component lists with metadata.
+
+    Converts all inputs to lists of atomic Context objects while preserving:
+    - Component structure (flattening SummedContexts)
+    - System properties (dimension, )
+
+    :param contexts: List of Context or SummedContext objects to normalize
+    :return:
+        component_lists: List of component lists for each input context
+        num_with_population: Count of population-equipped components per input context
+        num_with_density: Count of density-equipped components per input context
+        spin_system_dimension: Count of size of spin system
+        device:
+        dtype:
+    """
+    dtype, device = None, None
+    for ctx in contexts:
+        ref_ctx = ctx
+        dtype, device = ref_ctx.dtype, ref_ctx.device
+        if dtype is not None:
+            break
+
+    for ctx in contexts[1:]:
+        if ctx.dtype is not None:
+            if ctx.dtype != dtype or ctx.device != device:
+                raise ValueError("All contexts must share the same dtype and device")
+
+    component_lists = []
+    num_with_population = []
+    num_with_density = []
+    spin_system_dim = []
+
+    for ctx in contexts:
+        if isinstance(ctx, Context):
+            components = [ctx]
+            n_population = 1 if ctx.contexted_init_population is not None else 0
+            n_density = 1 if ctx.contexted_init_density is not None else 0
+            spin_system_dim.append(ctx.spin_system_dim)
+        elif isinstance(ctx, SummedContext):
+            components = list(ctx.component_contexts)
+            n_population = ctx.num_contexts_with_populations
+            n_density = ctx.num_contexts_with_density
+            spin_system_dim.append(ctx.spin_system_dim)
+        else:
+            raise TypeError(f"Unsupported context type: {type(ctx)}")
+
+        if not components:
+            continue
+
+        component_lists.append(components)
+        num_with_population.append(n_population)
+        num_with_density.append(n_density)
+
+    return component_lists, num_with_population, num_with_density, spin_system_dim, device, dtype
+
+
+def _create_zero_context(
+        dim: int,
+        device: torch.device,
+        dtype: torch.dtype,
+        init_populations: tp.Optional[torch.Tensor],
+        init_density: tp.Optional[torch.Tensor],
+        has_basis: bool
+) -> Context:
+    """
+    Create a zero-initialized context with specified properties.
+
+    :param dim: Dimension of the spin system
+    :param device: Device to place tensors on
+    :param dtype: Floating-point dtype for real components
+    :param init_populations: Initial population of a context
+    :param init_density: Initial density of a context
+    :param has_basis: Whether to include an identity basis matrix
+    :return: Minimal context object with zero-initialized properties
+    """
+    if has_basis:
+        complex_dtype = torch.complex64 if dtype == torch.float32 else torch.complex128
+        basis = torch.eye(dim, device=device, dtype=complex_dtype)
+    else:
+        basis = None
+
+    context = Context(
+        basis=basis,
+        init_populations=init_populations,
+        init_density=init_density,
+        device=device,
+        dtype=dtype
+    )
+    context.spin_system_dim = dim
+    return context
+
+
+def _group_components_by_position(
+        component_lists: tp.List[tp.List[Context]],
+        num_with_population: tp.List[int],
+        num_with_density: tp.List[int],
+        spin_system_dim: tp.List[int],
+        device: torch.device,
+        dtype: torch.dtype,
+) -> tp.List[tp.Sequence[Context]]:
+    """
+    Group components by position with intelligent zero-padding for Kronecker multiplication.
+
+    This function handles the multiplication of SummedContext objects by distributing
+    the Kronecker product over addition.
+
+    Mathematical Background:
+    ------------------------
+    When multiplying summed contexts, we apply distributivity:
+        (K₁ + K₂) ⊗ I + I ⊗ K₃ = (K₁ ⊗ I + I ⊗ K₃) + (K₂ ⊗ I + I ⊗ 0)
+        (n₁ + n₂) ⊗ n₃ = n₁ ⊗ n₃ + n₂ ⊗ n₃
+
+    Population Distribution in SummedContext:
+    -----------------------------------------
+    In SummedContext, components are sorted so that:
+    1. All components WITH populations come first (positions 0 to num_with_population-1)
+    2. All components WITHOUT populations come after
+
+
+    Example 1 - Equal length, all populated:
+        component_lists = [
+            [ctx_A1(pop=0.5), ctx_A2(pop=0.3), ctx_A3(pop=None)],  # 2 populated at start
+            [ctx_B1(pop=0.4), ctx_B2(pop=0.2), ctx_B3(pop=None)]   # 2 populated at start
+        ]
+        num_with_population = [2, 2]
+
+        Returns: [
+            [ctx_A1(pop=0.5), ctx_B1(pop=0.4)],  # Position 0: both populated
+            [ctx_A2(pop=0.3), ctx_B2(pop=0.2)],  # Position 1: both populated
+            [ctx_A1(pop=0.5, K=None), ctx_B1(pop=0.2, K=None)],  # Position 2:
+            [ctx_A1(pop=0.3, K=None), ctx_B1(pop=0.4, K=None)],  # Position 3:
+            [ctx_A3(pop=None), ctx_B3(pop=None)]  # Position 4: both unpopulated
+        ]
+
+    Example 2 - Unequal lengths, different population counts:
+        component_lists = [
+            [ctx_A1(pop=0.5), ctx_A2(pop=0.3), ctx_A3(pop=None), ctx_A4(pop=None)],
+            [ctx_B1(pop=0.4)]
+        ]
+        num_with_population = [2, 1]
+        spin_system_dim = [3, 3]
+
+        Padding analysis:
+        - Position 0: A1 (populated), B1 (populated) → no padding needed
+        - Position 1: A2 (populated), B missing → pad B with ZERO POPULATION
+        - Position 2: A3 (unpopulated), B missing → pad B with None
+        - Position 3: A4 (unpopulated), B missing → pad B with None
+
+        Returns: [
+            [ctx_A1(pop=0.5), ctx_B1(pop=0.4)],           # Both populated
+            [ctx_A2(pop=0.3), zero_B(pop=0.4, K=None)],      # A2 populated
+            [ctx_A3(pop=None), zero_B(pop=None)],         # Both unpopulated
+            [ctx_A4(pop=None), zero_B(pop=None)]          # Both unpopulated
+        ]
+
+    :param component_lists: Normalized component lists per context (one list per input context).
+                           Components are already sorted: populated first, unpopulated after.
+    :param num_with_population: Number of components with initial populations per input context.
+                                Defines the boundary: positions [0, n_pop) have populations.
+    :param num_with_density: Number of components with initial density matrices per input context.
+    :param spin_system_dim: Spin system dimensions for each input context.
+    :param device: Torch device for tensor allocation.
+    :param dtype: Torch dtype for floating-point tensors.
+    :return: List of context groups, where each group contains one component from each
+             input context at the same position. Zero-padding preserves position semantics.
+    """
+    if not component_lists:
+        return []
+
+    n_contexts = len(component_lists)
+
+    populated_indices = [list(range(n_pop)) for n_pop in num_with_population]
+    population_combinations = list(itertools.product(*populated_indices))
+    max_unpopulated = max(
+        len(components) - n_pop
+        for components, n_pop in zip(component_lists, num_with_population)
+    )
+
+    result_groups = []
+    for combo_indices in population_combinations:
+        group = []
+        for ctx_idx, pop_idx in enumerate(combo_indices):
+            ctx = component_lists[ctx_idx][pop_idx]
+            group.append(ctx)
+        result_groups.append(group)
+
+    for unpop_offset in range(max_unpopulated):
+        group = []
+        for ctx_idx, (components, n_pop) in enumerate(zip(component_lists, num_with_population)):
+            unpop_idx = n_pop + unpop_offset
+
+            if unpop_idx < len(components):
+                ctx = components[unpop_idx]
+                group.append(ctx)
+            else:
+                has_basis = any(c.basis is not None for c in components)
+                zero_ctx = _create_zero_context(
+                    dim=spin_system_dim[ctx_idx],
+                    device=device,
+                    dtype=dtype,
+                    init_populations=None,
+                    init_density=None,
+                    has_basis=has_basis
+                )
+                group.append(zero_ctx)
+
+        result_groups.append(group)
+
+    return result_groups
+
+
+def multiply_contexts(contexts: tp.List[tp.Union[Context, SummedContext]]) -> tp.Union[KroneckerContext, SummedContext]:
+    """Perform kronecker multiplication of multiple contexts
+    (either Context or SummedContext objects) into a single Composite context.
+
+    Creates a new context where:
+    - Hilbert space dimension is the product of individual system dimensions
+    - Parameters of populations and densitities are combined via kronecker product.
+       Kynetic parameters are combined via K1 x I + I x K2
+    - Callables (time-dependent parameters) are not supported
+
+    Physical interpretation:
+    The resulting context describes multiple spin-centers with their own relaxation mechanism
+
+    :return:
+        A single KroneckerContext object or the summ of KroneckerContext
+    """
+    component_lists, num_with_population, num_with_density, spin_system_dim, device, dtype =\
+        _normalize_to_components(contexts)
+    padded_component_lists = _group_components_by_position(
+        component_lists, num_with_population, num_with_density, spin_system_dim, device, dtype
+    )
+    results = [KroneckerContext(group) for group in padded_component_lists]
+    return results[0] if len(results) == 1 else SummedContext(results)
 
 
 class BaseContext(nn.Module, ABC):
@@ -619,7 +860,7 @@ class Context(TransformedContext):
     def __init__(
             self,
             basis: tp.Optional[tp.Union[torch.Tensor, str, None]] = None,
-            sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+            sample: tp.Optional[spin_model.MultiOrientedSample] = None,
             init_populations: tp.Optional[tp.Union[torch.Tensor, tp.List[float]]] = None,
             init_density: tp.Optional[torch.Tensor] = None,
 
@@ -643,10 +884,10 @@ class Context(TransformedContext):
           -`str`: one of {"zfs", "multiplet", "product", "eigen"}. If a string is
             given, `sample` **must** be provided so the basis can be constructed.
             * "zfs"       : eigenvectors of the zero-field Hamiltonian (unsqueezed)
-            * "xyz": The common molecular triplet basis: Tx, Ty, Tz. It is defined only for triplet states
+            * "xyz": The common molecular triplet basis: |Tx>, |Ty⟩, |Tz⟩. It is defined only for triplet states
             * "multiplet" : total spin multiplet basis |S, M⟩
-            * "product"   : computational product basis |ms1, ms2, ..., is1, ...⟩
-             * "zeeman"   : the basis of the Hamiltonian in infinite magnetic field - Eigen vectors of Gz
+            * "product"   : Basis of individual spin projections |ms1, ms2, ..., is1, ...⟩
+            * "zeeman"    : the basis of the Hamiltonian in infinite magnetic field - Eigen vectors of Gz
             * "eigen"     : use the eigen basis at the resonance fields (represented as `None`)
             In all cases except the product case, the basis is sorted in ascending order of eigenvalues.
             In the product basis, sorting occurs in descending order of projections.
@@ -663,13 +904,12 @@ class Context(TransformedContext):
             The param is ignored if init_density is provided!
 
             Initial populations at the working basis or as a list. Shape `[..., N]`.
-            If provided, it will be converted to a `torch.tensor` and optionally
-            normalized by `get_transformed_init_populations`.
+            If provided, it will be converted to a `torch.tensor`.
 
         :param init_density: torch.Tensor, optional.
             Initial density of the spin system. Shape [..., N, N]
-            If provided then init_populations will be ignored and populations will be computed as
-            diagonal elements of init_density (as it needed)
+            If provided then init_populations will be ignored for density required computations,
+            however for the most cases it is better to set only one among init_populations / init_density
 
         :param free_probs:   torch.Tensor or callable or None, optional
             Thermal (Boltzmann-weighted) transition probabilities.
@@ -725,7 +965,12 @@ class Context(TransformedContext):
         self.register_buffer("_init_density_real", init_density_real)
         self.register_buffer("_init_density_imag", init_density_imag)
 
-        self.out_probs = out_probs
+        if isinstance(out_probs, torch.Tensor) or out_probs is None:
+            pass
+        else:
+            out_probs = torch.tensor(out_probs, device=device, dtype=dtype)
+        self.register_buffer("out_probs", out_probs)
+
         self.free_probs = free_probs
         self.driven_probs = driven_probs
 
@@ -737,8 +982,6 @@ class Context(TransformedContext):
 
         self.eigen_basis_flag = False
         if isinstance(basis, str):
-            if sample is None:
-                raise ValueError("Sample must be provided when basis is specified as a string method")
             self.basis = self._create_basis_from_string(basis, sample)
         elif isinstance(basis, torch.Tensor):
             if basis.shape[-1] != basis.shape[-2]:
@@ -877,7 +1120,7 @@ class Context(TransformedContext):
     @property
     def contexted_init_population(self) -> bool:
         """Indicates whether initial populations are provided via context."""
-        return self.init_populations is not None
+        return (self.init_populations is not None) or (self._init_density_real is not None)
 
     @property
     def contexted_init_density(self) -> bool:
@@ -888,6 +1131,14 @@ class Context(TransformedContext):
         otherwise False.
         """
         return (self.init_populations is not None) or (self._init_density_real is not None)
+
+    def close_context(self) -> None:
+        """
+        Reset Context cach parameters: basis coefficients
+        """
+        self.transformation_basis_coeff = None
+        self.transformation_basis = None
+        self.transformation_superop_coeff = None
 
     @property
     def init_density(self) -> tp.Optional[torch.Tensor]:
@@ -924,7 +1175,7 @@ class Context(TransformedContext):
             elif init_populations is not None:
                 return torch.tensor(init_populations, dtype=dtype, device=device)
         else:
-            return torch.diagonal(init_density, dim1=-1, dim2=-2).to(dtype)
+            return None
 
     def _set_init_dephasing(self,
                              dephasing: tp.Optional[torch.Tensor],
@@ -1019,11 +1270,17 @@ class Context(TransformedContext):
             coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
             return transform.transform_liouville_superop(transform_to_complex(relaxation_superop), coeffs)
 
-    def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_system.MultiOrientedSample]):
+    def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_model.MultiOrientedSample]):
         """Factory method to create basis from string identifier."""
+        if basis_type == "eigen":
+            self.eigen_basis_flag = True
+            return None
+        if sample is None:
+            raise ValueError("Sample must be provided when basis is specified as a string method")
+
         if basis_type == "zfs":
             return sample.get_zero_field_splitting_basis().unsqueeze(-3)
-        if basis_type == "xyz":
+        elif basis_type == "xyz":
             return sample.get_xyz_basis().unsqueeze(-3)
         elif basis_type == "multiplet":
             return sample.get_spin_multiplet_basis()\
@@ -1033,9 +1290,6 @@ class Context(TransformedContext):
                 .unsqueeze(-3).unsqueeze(-4).to(sample.complex_dtype)
         elif basis_type == "zeeman":
             return sample.get_zeeman_basis().unsqueeze(-3)
-        elif basis_type == "eigen":
-            self.eigen_basis_flag = True
-            return None
         else:
             raise KeyError(
                 "Basis must be one of:\n"
@@ -1083,6 +1337,7 @@ class Context(TransformedContext):
         """
         return self.profile(time)[(...,) + (None,) * (-(self.time_dimension+1))]
 
+    # Must be rebuild futher
     def get_transformed_init_populations(
             self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = True
     ) -> tp.Optional[torch.Tensor]:
@@ -1111,8 +1366,15 @@ class Context(TransformedContext):
         as-is.
         :return: Initial populations with shape [...N]
         """
-        populations = self.transformed_populations(self.init_populations, full_system_vectors)
-        if normalize and (populations is not None):
+        if self.init_populations is not None:
+            populations = self.transformed_populations(self.init_populations, full_system_vectors)
+        elif self._init_density_real is not None:
+            density = self.get_transformed_init_density(full_system_vectors)
+            populations = torch.diagonal(density.real, dim1=-2, dim2=-1)
+        else:
+            return None
+
+        if normalize:
             return populations / torch.sum(populations, dim=-1, keepdim=True)
         else:
             return populations
@@ -1179,7 +1441,7 @@ class KroneckerContext(TransformedContext):
        ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ
     3. Dynamics: Each subsystem evolves according to its own Hamiltonian and relaxation
        operators, which are embedded into the composite space using tensor products with
-       identity operators.
+       identity operators: K = K1 ⊗ I + I ⊗ K2
 
     Transformation rules:
     - Basis transformations use Clebsch-Gordan coefficients to map between product bases
@@ -1196,7 +1458,7 @@ class KroneckerContext(TransformedContext):
     If it is not Eigen, please considet other types of basis
     """
     def __init__(self,
-                 contexts: list[TransformedContext],
+                 contexts: tp.Sequence[Context],
                  time_dimension: int = -3,
                  ):
         """Initialize a composite context from multiple subsystem contexts.
@@ -1213,8 +1475,19 @@ class KroneckerContext(TransformedContext):
         super().__init__(time_dimension=time_dimension)
         self.component_contexts = nn.ModuleList(contexts)
         self.transformation_basis_coeff = None
+        self.transformation_superop_coeff = None
         self._setup_prob_getters()
         self._setup_transformers()
+
+    def _check_eigen_basis(self, contexts: list[Context]):
+        flag = any([context.eigen_basis_flag for context in contexts])
+        if flag:
+            raise NotImplementedError(
+                "KroneckerContext does not support contexts that use the 'eigen' basis (or a None basis). "
+                "This is because the resulting behavior would be ambiguous or ill-defined."
+                "Please specify a defined physical basis such as 'zfs', 'multiplet', 'product',"
+                "or another supported option."
+            )
 
     @property
     def basis(self) -> tp.Optional[torch.Tensor]:
@@ -1255,7 +1528,7 @@ class KroneckerContext(TransformedContext):
 
         composite_basis = expanded_bases[0].clone()
         for basis in expanded_bases[1:]:
-            composite_basis = torch.kron(composite_basis, basis)
+            composite_basis = transform.batched_kron(composite_basis, basis)
 
         return composite_basis
 
@@ -1264,14 +1537,14 @@ class KroneckerContext(TransformedContext):
         """Indicates whether the system parameters are time-dependent
         profile."""
         for context in self.component_contexts:
-            if context.profile is not None:
+            if context.time_dependant:
                 return True
         return False
 
     @property
     def contexted_init_population(self):
         """Indicates whether initial populations are provided via context."""
-        if [None for context in self.component_contexts if context.contexted_init_population is not None]:
+        if all([context.contexted_init_population for context in self.component_contexts]):
             return True
         else:
             return False
@@ -1284,10 +1557,37 @@ class KroneckerContext(TransformedContext):
         Returns True if either `init_populations` or a user-defined initial density matrix is provided;
         otherwise False.
         """
-        if [context.init_populations for context in self.component_contexts if context.contexted_init_desnity]:
+        if all([context.contexted_init_density for context in self.component_contexts]):
             return True
         else:
             return False
+
+    @property
+    def device(self):
+        """Context computation device"""
+        return self.component_contexts[0].device
+
+    @property
+    def spin_system_dim(self):
+        """Context spin system dimension"""
+        size = 1
+        for ctx in self.component_contexts:
+            size *= ctx.spin_system_dim
+        return size
+
+    @property
+    def dtype(self):
+        """Context float dtype"""
+        return self.component_contexts[0].dtype
+
+    def close_context(self) -> None:
+        """
+        Reset Context cach parameters: basis coefficients
+        """
+        self.transformation_basis_coeff = None
+        self.transformation_superop_coeff = None
+        for ctx in self.component_contexts:
+            ctx.close_context()
 
     def __len__(self):
         """This is just entire context. Let's set its len as 1"""
@@ -1319,12 +1619,12 @@ class KroneckerContext(TransformedContext):
 
     def _compute_transformation_superop_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute and cache superoperator transformation coefficients."""
-        if self.transformation_basis_coeff is not None:
-            return self.transformation_basis_coeff
+        if self.transformation_superop_coeff is not None:
+            return self.transformation_superop_coeff
         else:
             basises = [context.basis for context in self.component_contexts]
-            self.transformation_basis_coeff = transform.compute_clebsch_gordan_coeffs(full_system_vectors, basises)
-            return self.transformation_basis_coeff
+            self.transformation_superop_coeff = transform.compute_clebsch_gordan_coeffs(full_system_vectors, basises)
+            return self.transformation_superop_coeff
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         for context in self.component_contexts:
@@ -1533,10 +1833,17 @@ class KroneckerContext(TransformedContext):
         _transformation_basis_coeff = self._compute_transformation_superop_coeff(full_system_vectors)
         return transform.transform_kronecker_density(component_densities, _transformation_basis_coeff)
 
+    def __add__(self, other: BaseContext) -> SummedContext:
+        """"""
+        if isinstance(other, SummedContext):
+            return SummedContext([self] + list(other.component_contexts))
+        else:
+            return SummedContext([self, other])
+
     def __matmul__(self, other: BaseContext) -> KroneckerContext:
         """"""
         if isinstance(other, SummedContext):
-            raise NotImplementedError("multiplication with SummedContext is not implemented.")
+            return multiply_contexts([self, other])
         elif isinstance(other, KroneckerContext):
             KroneckerContext([*self.component_contexts, *other.component_contexts], time_dimension=self.time_dimension)
         else:
@@ -1580,23 +1887,49 @@ class SummedContext(BaseContext):
         contexts with not None basis and contexts with None basis
 
         """
+        # Sort rule 1) KroneckerContext, 2) Context: 2.1) Basis is not None, 2.2) Contexted is not None
         super().__init__()
-        sorted_context_list = []
-        _num_contexts_with_basis = 0
-        for context in contexts:
-            if isinstance(context, KroneckerContext):
-                sorted_context_list.append(context)
-                _num_contexts_with_basis += 1
-                continue
-            if context.basis is not None:
-                sorted_context_list.append(context)
-                _num_contexts_with_basis += 1
-                continue
-            else:
-                sorted_context_list.append(context)
+        sorted_context_list = sorted(contexts, key=self._get_context_priority)
+        _num_contexts_with_basis = sum(
+            1 for ctx in contexts if isinstance(ctx, KroneckerContext) or ctx.basis is not None)
+
+        _num_contexts_with_populations = sum(
+            1 for ctx in contexts if ctx.contexted_init_population)
+        _num_contexts_with_density = sum(
+            1 for ctx in contexts if ctx.contexted_init_density)
 
         self.component_contexts = nn.ModuleList(sorted_context_list)
         self._num_contexts_with_basis = _num_contexts_with_basis
+
+        self._num_contexts_with_populations = _num_contexts_with_populations
+        self._num_contexts_with_density = _num_contexts_with_density
+
+    def _get_context_priority(self, context):
+        """
+        The function is used to sort contexts in the next order
+        1) KroneckerContext
+        2) Context with not-none basis and with population
+        3) Context with not-none basis and without population
+        4) Context with none basis and with population
+        5) Context with none basis and without population
+
+        :param context: The relaxation context
+        :return:
+        """
+        is_kronecker = isinstance(context, KroneckerContext)
+        has_basis = context.basis is not None
+        has_population = hasattr(context, "population") and context.population is not None
+
+        if is_kronecker:
+            return 0
+        elif has_basis and has_population:
+            return 1
+        elif has_basis and not has_population:
+            return 2
+        elif not has_basis and has_population:
+            return 3
+        else:
+            return 4
 
     @property
     def num_contexts_with_basis(self) -> int:
@@ -1607,6 +1940,24 @@ class SummedContext(BaseContext):
         :return: The number of contexts with defined initial basis
         """
         return self._num_contexts_with_basis
+
+    @property
+    def num_contexts_with_populations(self) -> int:
+        """
+        Return the number of contexts with defined initial populations
+
+        :return: The number of contexts with defined initial populations
+        """
+        return self._num_contexts_with_populations
+
+    @property
+    def num_contexts_with_density(self) -> int:
+        """
+        Return the number of contexts with defined initial density
+
+        :return: The number of contexts with defined initial density
+        """
+        return self._num_contexts_with_density
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Evaluate time-dependent profile at specified time points.
@@ -1619,6 +1970,13 @@ class SummedContext(BaseContext):
             if context.profile is not None:
                 return context.profile(time)[(...,) + (None,) * -(context.time_dimension+1)]
 
+    def close_context(self) -> None:
+        """
+        Reset Context cach parameters: basis coefficients
+        """
+        for ctx in self.component_contexts:
+            ctx.close_context()
+
     def __len__(self):
         """This is just entire context. Let's set its len as 1"""
         return len(self.component_contexts)
@@ -1628,7 +1986,7 @@ class SummedContext(BaseContext):
         """Indicates whether the system parameters are time-dependent
         profile."""
         for context in self.component_contexts:
-            if context.profile is not None:
+            if context.time_dependant:
                 return True
         return False
 
@@ -1653,7 +2011,7 @@ class SummedContext(BaseContext):
     @property
     def contexted_init_population(self):
         """Indicates whether initial populations are provided via context."""
-        if [None for context in self.component_contexts if context.init_populations is not None]:
+        if any([context.contexted_init_population for context in self.component_contexts]):
             return True
         else:
             return False
@@ -1666,7 +2024,7 @@ class SummedContext(BaseContext):
         Returns True if either `init_populations` or a user-defined initial density matrix is provided;
         otherwise False.
         """
-        if [context.init_populations for context in self.component_contexts if context.contexted_init_desnity]:
+        if any([context.contexted_init_density for context in self.component_contexts]):
             return True
         else:
             return False
@@ -1868,4 +2226,4 @@ class SummedContext(BaseContext):
 
     def __matmul__(self, other: BaseContext):
         """"""
-        raise NotImplementedError("multiplication with SummedContext is not implemented.")
+        return multiply_contexts([self, other])

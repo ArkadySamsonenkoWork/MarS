@@ -11,7 +11,7 @@ import torch.nn as nn
 
 from .. import constants
 from .. import mesher
-from .. import res_field_algorithm, secular_approximation, spin_system, res_freq_algorithm
+from .. import res_field_algorithm, secular_approximation, spin_model, res_freq_algorithm
 
 from ..spectral_integration import BaseSpectraIntegrator,\
     SpectraIntegratorStationary, MeanIntegrator, AxialSpectraIntegratorStationary
@@ -234,6 +234,38 @@ class OutputSpectraMode(str, Enum):
     TRANSITIONS = "transitions"
 
 
+@dataclass
+class ComputationalDetails:
+    """
+    Specifies computational parameters used during the generation of EPR spectra.
+
+    These settings control numerical integration, adaptive field resolution,
+    and intensity-based filtering of transitions.
+
+    Parameters
+    ----------
+    integration_chunk_size : int, default=128
+        Number of magnetic field points processed together during spectrum integration.
+        Larger values may improve performance but increase memory usage.
+
+    res_field_r_tol : float, default=1e-5
+        Relative tolerance for adaptive splitting of magnetic field sectors
+        during res-field procedures. Smaller values yield finer
+        field resolution at higher computational cost.
+
+    res_field_split_max_iterations : int, default=20
+        Maximum number of recursive sector splits allowed during res-field procedures.
+
+    intensity_threshold : float, default=1e-2
+        Transitions with intensity below this fraction of the maximum intensity
+        are discarded.
+    """
+    integration_chunk_size: int = 128
+    res_field_r_tol: float = 1e-5
+    res_field_split_max_iterations: int = 20
+    intensity_threshold: float = 1e-2
+
+
 class BaseProcessing(nn.Module, ABC):
     """Base class for spectral integration and spectral post-processing over
     orientation meshes.
@@ -278,7 +310,7 @@ class BaseProcessing(nn.Module, ABC):
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__()
-        self.register_buffer("threshold", torch.tensor(1e-4, device=device))
+        self.register_buffer("threshold", torch.tensor(1e-3, device=device))
         self.mesh = mesh
         self.post_spectra_processor = post_spectra_processor
         self.spectra_integrator = self._init_spectra_integrator(spectra_integrator, harmonic,
@@ -362,7 +394,7 @@ class BaseProcessing(nn.Module, ABC):
         """Apply intensity-based masking to discard negligible transitions.
 
         Transitions are retained only if their normalized intensity exceeds
-        the internal threshold (default 1e-4). This reduces computational load
+        the internal threshold. This reduces computational load
         during integration by excluding insignificant contributions.
 
         :param res_fields: Resonance fields at triangle vertices. Shape [..., M, 3] or [..., M]
@@ -871,7 +903,7 @@ class Broadener(nn.Module):
                 )
         ).square().sum(dim=-2)
 
-    def add_hamiltonian_straine(self, sample: spin_system.MultiOrientedSample, squared_width: torch.Tensor) ->\
+    def add_hamiltonian_straine(self, sample: spin_model.MultiOrientedSample, squared_width: torch.Tensor) ->\
             torch.Tensor:
         """Adds residual broadening due to unresolved interactions.
 
@@ -882,7 +914,7 @@ class Broadener(nn.Module):
         hamiltonian_width = sample.build_ham_strain().unsqueeze(-1).square()
         return (squared_width + hamiltonian_width).sqrt()
 
-    def forward(self, sample: spin_system.MultiOrientedSample,
+    def forward(self, sample: spin_model.MultiOrientedSample,
                  vector_down: torch.Tensor, vector_up: torch.Tensor, B_trans: torch.Tensor) -> torch.Tensor:
         """Compute total Gaussian linewidth (FWHM) for each transition by
         combining:
@@ -1178,7 +1210,7 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                                     vector_down: torch.Tensor, vector_up: torch.Tensor,
                                     full_system_vectors: tp.Optional[torch.Tensor],
                                     *args, **kwargs
-                             ):
+    ):
         return self.populator(time, res_fields, lvl_down,
                               lvl_up, resonance_energies,
                               vector_down, vector_up,
@@ -1254,7 +1286,7 @@ class BaseSpectra(nn.Module, ABC):
     """
     def __init__(self,
                  resonance_parameter: tp.Union[float, torch.Tensor],
-                 sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+                 sample: tp.Optional[spin_model.MultiOrientedSample] = None,
                  spin_system_dim: tp.Optional[int] = None,
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
@@ -1265,7 +1297,7 @@ class BaseSpectra(nn.Module, ABC):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
-                 integration_chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
@@ -1307,10 +1339,24 @@ class BaseSpectra(nn.Module, ABC):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For stationary creator is True, for time resolves is False
 
-        :param integration_chunk_size:
-            Chunk Size of integration process. Current implementation of powder integration is iterative.
-            For whole set of resonance lines chunk size of spectral freq/field is computed.
-            Increasing the size increases the integration speed, but also increases the required memory allocation.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
+            Contains the following fields:
+
+            - **chunk_size** (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            - **res_field_r_tol** (`float`, default=1e-5):
+              Relative tolerance for adaptive subdivision of field intervals during resolution enhancement.
+
+            - **res_field_split_max_iterations** (`int`, default=20):
+              Maximum depth of recursive field-sector splitting.
+
+            - **intensity_threshold** (`float`, default=1e-2):
+              Minimum relative intensity (as a fraction of the strongest transition) required for
+              transition to be included.
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -1335,12 +1381,12 @@ class BaseSpectra(nn.Module, ABC):
         :param output_mode: str, OutputSpectraMode:
         Controls the organization of the computed spectrum.
 
-        "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
+            "total": returns the conventional summed spectrum over all allowed transitions (default behavior).
 
-        "transitions": returns dict of lvl_down, lvl_up and spectrum,
-        where each slice corresponds to the contribution of an individual transition
-        (e.g., between specific energy levels).
-        Default is "total".
+            "transitions": returns dict of lvl_down, lvl_up and spectrum,
+            where each slice corresponds to the contribution of an individual transition
+            (e.g., between specific energy levels).
+            Default is "total".
 
         :param device: cpu / cuda. Base device for computations.
 
@@ -1356,7 +1402,9 @@ class BaseSpectra(nn.Module, ABC):
             raise ValueError(f"Invalid computation_method: {hamiltonian_mode}")
 
         self.register_buffer("resonance_parameter", torch.tensor(resonance_parameter, device=device, dtype=dtype))
-        self.register_buffer("threshold", torch.tensor(1e-2, device=device, dtype=dtype))
+        self.register_buffer("threshold", torch.tensor(
+            computational_details.intensity_threshold, device=device, dtype=dtype)
+        )
         self.register_buffer("tolerance", torch.tensor(1e-10, device=device, dtype=dtype))
         self.register_buffer("intensity_std", torch.tensor(1e-7, device=device, dtype=dtype))
 
@@ -1367,7 +1415,10 @@ class BaseSpectra(nn.Module, ABC):
 
         self.output_eigenvector = self._init_output_eigenvector(output_eigenvector, context)
         self.res_algorithm = self._init_res_algorithm(
-            output_eigenvector=self.output_eigenvector, hamiltonian_mode=hamiltonian_mode, device=device, dtype=dtype)
+            output_eigenvector=self.output_eigenvector,
+            hamiltonian_mode=hamiltonian_mode,
+            computational_details=computational_details,
+            device=device, dtype=dtype)
 
         if hamiltonian_mode == HamComputationMethod.SECULAR:
             self._hamiltonian_getter = lambda s: s.get_hamiltonian_terms_secular()
@@ -1386,7 +1437,7 @@ class BaseSpectra(nn.Module, ABC):
         self.spectra_processor = self._init_spectra_processor(spectra_integrator,
                                                               harmonic,
                                                               post_spectra_processor,
-                                                              chunk_size=integration_chunk_size,
+                                                              chunk_size=computational_details.integration_chunk_size,
                                                               output_mode=output_mode,
                                                               device=device, dtype=dtype)
         self.recompute_spin_parameters = recompute_spin_parameters
@@ -1434,7 +1485,9 @@ class BaseSpectra(nn.Module, ABC):
                 return forward_fn(*args, **kwargs)
         return wrapper
 
-    def _init_res_algorithm(self, output_eigenvector: bool, hamiltonian_mode: HamComputationMethod,
+    def _init_res_algorithm(self, output_eigenvector: bool,
+                            hamiltonian_mode: HamComputationMethod,
+                            computational_details: ComputationalDetails,
                             device: torch.device, dtype: torch.dtype):
         """Instantiate the resonance field computation algorithm.
 
@@ -1444,12 +1497,17 @@ class BaseSpectra(nn.Module, ABC):
         :param output_eigenvector: Whether full system eigenvectors should be computed.
         :param hamiltonian_mode: the method to use to compute the Hamiltonian eigen data.
 
+        :param computational_details: The computational details to create EPR spectra:
+                accuracy, number of iterations, and so on.
+
         :return: Configured resonance field solver.
         """
         return res_field_algorithm.ResField(
             spin_system_dim=self.spin_system_dim,
             mesh_size=self.mesh_size,
             batch_dims=self.batch_dims,
+            splitting_max_iterations=computational_details.res_field_split_max_iterations,
+            r_tol=computational_details.res_field_r_tol,
             output_full_eigenvector=output_eigenvector,
             device=device,
             dtype=dtype
@@ -1479,7 +1537,7 @@ class BaseSpectra(nn.Module, ABC):
         pass
 
     def _init_sample_parameters(self,
-                                sample: tp.Optional[spin_system.MultiOrientedSample],
+                                sample: tp.Optional[spin_model.MultiOrientedSample],
                                 spin_system_dim: tp.Optional[int],
                                 batch_dims: tp.Optional[tp.Union[int, tuple]],
                                 mesh: tp.Optional[mesher.BaseMesh]):
@@ -1579,7 +1637,7 @@ class BaseSpectra(nn.Module, ABC):
         """
         return []
 
-    def _cashed_resfield(self, sample: spin_system.MultiOrientedSample,
+    def _cashed_resfield(self, sample: spin_model.MultiOrientedSample,
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
         """Compute or retrieve cached resonance fields and eigensystem.
@@ -1604,7 +1662,7 @@ class BaseSpectra(nn.Module, ABC):
         return (self.vectors_u, self.vectors_v), (self.valid_lvl_down, self.valid_lvl_up), self.res_fields,\
             self.resonance_energies, self.full_eigen_vectors
 
-    def _recomputed_resfield(self, sample: spin_system.MultiOrientedSample,
+    def _recomputed_resfield(self, sample: spin_model.MultiOrientedSample,
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
         """Compute resonance fields and associated quantum states.
@@ -1631,7 +1689,7 @@ class BaseSpectra(nn.Module, ABC):
             resonance_energies, full_eigen_vectors
 
     def forward(self,
-                 sample: spin_system.MultiOrientedSample,
+                 sample: spin_model.MultiOrientedSample,
                  fields: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """Compute EPR spectrum over a given magnetic fields range.
 
@@ -1675,7 +1733,7 @@ class BaseSpectra(nn.Module, ABC):
 
         return self._finalize(res_fields, intensities, width, gauss, lorentz, fields, lvl_down, lvl_up)
 
-    def _postcompute_batch_data(self, sample: spin_system.BaseSample, res_fields: torch.Tensor,
+    def _postcompute_batch_data(self, sample: spin_model.BaseSample, res_fields: torch.Tensor,
                                 intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
                                 Gz: torch.Tensor,
@@ -1782,7 +1840,7 @@ class BaseSpectra(nn.Module, ABC):
             return full_system_vectors
 
     def _compute_additional(self,
-                           sample: spin_system.MultiOrientedSample,
+                           sample: spin_model.MultiOrientedSample,
                            F: torch.Tensor,
                            Gx: torch.Tensor,
                            Gy: torch.Tensor,
@@ -1800,7 +1858,7 @@ class BaseSpectra(nn.Module, ABC):
         """
         return extras
 
-    def compute_parameters(self, sample: spin_system.MultiOrientedSample,
+    def compute_parameters(self, sample: spin_model.MultiOrientedSample,
                            F: torch.Tensor,
                            Gx: torch.Tensor,
                            Gy: torch.Tensor,
@@ -1900,7 +1958,7 @@ class StationarySpectra(BaseSpectra):
     """
     def __init__(self,
                  freq: tp.Union[float, torch.Tensor],
-                 sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+                 sample: tp.Optional[spin_model.MultiOrientedSample] = None,
                  spin_system_dim: tp.Optional[int] = None,
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
@@ -1911,7 +1969,7 @@ class StationarySpectra(BaseSpectra):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
-                 integration_chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
@@ -1957,10 +2015,24 @@ class StationarySpectra(BaseSpectra):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For stationary creator is True.
 
-        :param integration_chunk_size:
-            Chunk Size of integration process. Current implementation of powder integration is iterative.
-            For whole set of resonance lines chunk size of spectral freq/field is computed.
-            Increasing the size increases the integration speed, but also increases the required memory allocation.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
+            Contains the following fields:
+
+            - **chunk_size** (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            - **res_field_r_tol** (`float`, default=1e-5):
+              Relative tolerance for adaptive subdivision of field intervals during resolution enhancement.
+
+            - **res_field_split_max_iterations** (`int`, default=20):
+              Maximum depth of recursive field-sector splitting.
+
+            - **intensity_threshold** (`float`, default=1e-2):
+              Minimum relative intensity (as a fraction of the strongest transition) required for
+              transition to be included.
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -2000,11 +2072,11 @@ class StationarySpectra(BaseSpectra):
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
-                         integration_chunk_size,
+                         computational_details,
                          inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
-    def _postcompute_batch_data(self, sample: spin_system.BaseSample,
+    def _postcompute_batch_data(self, sample: spin_model.BaseSample,
                                 res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor, Gz: torch.Tensor,
                                 full_system_vectors: tp.Optional[torch.Tensor],
@@ -2062,7 +2134,7 @@ class StationarySpectra(BaseSpectra):
             return intensity_calculator
 
     def __call__(self,
-                sample: spin_system.MultiOrientedSample,
+                sample: spin_model.MultiOrientedSample,
                 fields: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
         :param sample: MultiOrientedSample object.
@@ -2092,7 +2164,7 @@ class TruncTimeSpectra(BaseSpectra):
     """
     def __init__(self,
                  freq: tp.Union[float, torch.Tensor],
-                 sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+                 sample: tp.Optional[spin_model.MultiOrientedSample] = None,
                  spin_system_dim: tp.Optional[int] = None,
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
@@ -2103,7 +2175,7 @@ class TruncTimeSpectra(BaseSpectra):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
-                 integration_chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
@@ -2152,10 +2224,24 @@ class TruncTimeSpectra(BaseSpectra):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For time resolved spectra creator is False
 
-        :param integration_chunk_size:
-            Chunk Size of integration process. Current implementation of powder integration is iterative.
-            For whole set of resonance lines chunk size of spectral freq/field is computed.
-            Increasing the size increases the integration speed, but also increases the required memory allocation.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
+            Contains the following fields:
+
+            - **chunk_size** (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            - **res_field_r_tol** (`float`, default=1e-5):
+              Relative tolerance for adaptive subdivision of field intervals during resolution enhancement.
+
+            - **res_field_split_max_iterations** (`int`, default=20):
+              Maximum depth of recursive field-sector splitting.
+
+            - **intensity_threshold** (`float`, default=1e-2):
+              Minimum relative intensity (as a fraction of the strongest transition) required for
+              transition to be included.
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -2195,11 +2281,11 @@ class TruncTimeSpectra(BaseSpectra):
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator, populator,
                          spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
-                         integration_chunk_size,
+                         computational_details,
                          inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
-    def __call__(self, sample: spin_system.MultiOrientedSample, fields: torch.Tensor, time: torch.Tensor, **kwargs):
+    def __call__(self, sample: spin_model.MultiOrientedSample, fields: torch.Tensor, time: torch.Tensor, **kwargs):
         """
         :param sample: MultiOrientedSample object.
 
@@ -2238,7 +2324,7 @@ class TruncTimeSpectra(BaseSpectra):
 
         return lvl_down, lvl_up, resonance_energies, vector_down, vector_up
 
-    def _postcompute_batch_data(self, sample: spin_system.BaseSample,
+    def _postcompute_batch_data(self, sample: spin_model.BaseSample,
                                 res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
                                 Gz: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor],
@@ -2294,7 +2380,7 @@ class TruncTimeSpectra(BaseSpectra):
         :param new_context: New context object with updated parameters
         :return:
         """
-        self.intensity_calculator.populator.context = new_context
+        self.intensity_calculator.populator.set_context(new_context)
 
 
 class CoupledTimeSpectra(TruncTimeSpectra):
@@ -2331,7 +2417,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
 
     def __init__(self,
                  freq: tp.Union[float, torch.Tensor],
-                 sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+                 sample: tp.Optional[spin_model.MultiOrientedSample] = None,
                  spin_system_dim: tp.Optional[int] = None,
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
@@ -2342,7 +2428,7 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
-                 integration_chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
@@ -2394,10 +2480,24 @@ class DensityTimeSpectra(CoupledTimeSpectra):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For time resolved spectra creator is False
 
-        :param integration_chunk_size:
-            Chunk Size of integration process. Current implementation of powder integration is iterative.
-            For whole set of resonance lines chunk size of spectral freq/field is computed.
-            Increasing the size increases the integration speed, but also increases the required memory allocation.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
+            Contains the following fields:
+
+            - **chunk_size** (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            - **res_field_r_tol** (`float`, default=1e-5):
+              Relative tolerance for adaptive subdivision of field intervals during resolution enhancement.
+
+            - **res_field_split_max_iterations** (`int`, default=20):
+              Maximum depth of recursive field-sector splitting.
+
+            - **intensity_threshold** (`float`, default=1e-2):
+              Minimum relative intensity (as a fraction of the strongest transition) required for
+              transition to be included.
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -2439,11 +2539,11 @@ class DensityTimeSpectra(CoupledTimeSpectra):
         super().__init__(freq, sample, spin_system_dim, batch_dims, mesh, intensity_calculator, populator,
                          spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
-                         integration_chunk_size,
+                         computational_details,
                          inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
-    def _postcompute_batch_data(self, sample: spin_system.BaseSample,
+    def _postcompute_batch_data(self, sample: spin_model.BaseSample,
                                 res_fields: torch.Tensor, intensities: torch.Tensor, width: torch.Tensor,
                                 F: torch.Tensor, Gx: torch.Tensor, Gy: torch.Tensor,
                                 Gz: torch.Tensor, full_system_vectors: tp.Optional[torch.Tensor],
@@ -2488,7 +2588,7 @@ class StationaryFreqSpectra(StationarySpectra):
 
     def __init__(self,
                  field: tp.Union[float, torch.Tensor],
-                 sample: tp.Optional[spin_system.MultiOrientedSample] = None,
+                 sample: tp.Optional[spin_model.MultiOrientedSample] = None,
                  spin_system_dim: tp.Optional[int] = None,
                  batch_dims: tp.Optional[tp.Union[int, tuple]] = None,
                  mesh: tp.Optional[mesher.BaseMesh] = None,
@@ -2499,7 +2599,7 @@ class StationaryFreqSpectra(StationarySpectra):
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
                  temperature: tp.Optional[tp.Union[float, torch.Tensor]] = 293,
                  recompute_spin_parameters: bool = True,
-                 integration_chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  inference_mode: bool = True,
                  output_eigenvector: tp.Optional[bool] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
@@ -2545,10 +2645,24 @@ class StationaryFreqSpectra(StationarySpectra):
         :param recompute_spin_parameters:
             Recompute spin parameters in __call__ methods. For stationary creator is True.
 
-        :param integration_chunk_size:
-            Chunk Size of integration process. Current implementation of powder integration is iterative.
-            For whole set of resonance lines chunk size of spectral freq/field is computed.
-            Increasing the size increases the integration speed, but also increases the required memory allocation.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
+            Contains the following fields:
+
+            - **chunk_size** (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            - **res_field_r_tol** (`float`, default=1e-5):
+              It is not suppotred for StationaryFreqSpectra
+
+            - **res_field_split_max_iterations** (`int`, default=20):
+              It is not suppotred for StationaryFreqSpectra
+
+            - **intensity_threshold** (`float`, default=1e-2):
+              Minimum relative intensity (as a fraction of the strongest transition) required for
+              transition to be included.
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -2581,13 +2695,15 @@ class StationaryFreqSpectra(StationarySpectra):
         super().__init__(field, sample, spin_system_dim, batch_dims, mesh, intensity_calculator,
                          populator, spectra_integrator, harmonic, post_spectra_processor,
                          temperature, recompute_spin_parameters,
-                         integration_chunk_size,
+                         computational_details,
                          inference_mode, output_eigenvector, context, hamiltonian_mode, output_mode,
                          device=device, dtype=dtype)
 
     def _init_res_algorithm(self,
                             output_eigenvector: bool,
-                            hamiltonian_mode: HamComputationMethod, device: torch.device, dtype: torch.dtype):
+                            hamiltonian_mode: HamComputationMethod,
+                            computational_details: ComputationalDetails,
+                            device: torch.device, dtype: torch.dtype):
         """Instantiate the resonance field computation algorithm.
 
         Selects an appropriate Hamiltonian eigen data backend based on
@@ -2595,6 +2711,8 @@ class StationaryFreqSpectra(StationarySpectra):
 
         :param output_eigenvector: Whether full system eigenvectors should be computed.
         :param hamiltonian_mode: the method to use to compute the Hamiltonian eigen data.
+        :param computational_details: The computational details to create EPR spectra:
+                accuracy, number of iterations, and so on.
 
         :return: Configured resonance field solver.
         """
@@ -2631,7 +2749,7 @@ class StationaryFreqSpectra(StationarySpectra):
             return intensity_calculator
 
     def __call__(self,
-                sample: spin_system.MultiOrientedSample,
+                sample: spin_model.MultiOrientedSample,
                 freq: torch.Tensor, time: tp.Optional[torch.Tensor] = None, **kwargs):
         """
         :param sample: MultiOrientedSample object.
@@ -2642,7 +2760,7 @@ class StationaryFreqSpectra(StationarySpectra):
         """
         return super().__call__(sample, freq, time)
 
-    def compute_parameters(self, sample: spin_system.MultiOrientedSample,
+    def compute_parameters(self, sample: spin_model.MultiOrientedSample,
                            F: torch.Tensor,
                            Gx: torch.Tensor,
                            Gy: torch.Tensor,

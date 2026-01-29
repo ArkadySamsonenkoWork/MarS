@@ -7,16 +7,16 @@ Simulate a basic EPR spectrum:
 
    import torch
    import matplotlib.pyplot as plt
-   from mars import spin_system, spectra_manager
+   from mars import spin_model, spectra_manager
 
    # Select device and precision
    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
    dtype = torch.float64
 
    # Define a simple electron spin system
-   g_tensor = spin_system.Interaction((2.02, 2.04, 2.06), dtype=dtype, device=device)
+   g_tensor = spin_model.Interaction((2.02, 2.04, 2.06), dtype=dtype, device=device)
 
-   system = spin_system.SpinSystem(
+   system = spin_model.SpinSystem(
        electrons=[0.5],
        g_tensors=[g_tensor],
        dtype=dtype,
@@ -24,8 +24,8 @@ Simulate a basic EPR spectrum:
    )
 
    # Create a powder sample
-   sample = spin_system.MultiOrientedSample(
-       spin_system=system,
+   sample = spin_model.MultiOrientedSample(
+       base_spin_system=system,
        gauss=0.001,
        lorentz=0.001,
        dtype=dtype,

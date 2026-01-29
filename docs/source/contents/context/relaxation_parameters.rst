@@ -1,19 +1,36 @@
 .. _relaxation_parameters:
 
-Relaxation Parameters
-======================
+Relaxation Parameters and Initial States
+========================================
 
 The Context class in MarS supports four types of relaxation parameters that define how spin populations and coherences evolve over time. All probabilities are expressed in **s⁻¹** (inverse seconds).
 
-Overview
---------
+Initial States
+--------------
+
+Two mutually exclusive ways exist to specify the initial quantum state of a spin system:
+
+1.**init_populations** (Initial populations): A real-valued vector of length N specifying the probability of occupying each energy level in the working basis.
+This corresponds to a diagonal density matrix and assumes no initial coherences.
+
+2.**init_desnity** (Initial density matrix): A full complex-valued N×N density matrix that includes both populations (diagonal) and coherences (off-diagonal).
+
+If init_density is required for a computation but not provided, it is automatically constructed as a diagonal matrix from init_populations (if available).
+
+Conversely, if init_populations is required but not explicitly given, the system first transforms the provided init_density into the appropriate basis using the ansformation rules.
+After this transformation, the real part of the diagonal elements of the resulting density matrix is used as the initial populations.
+
+If both of these parameters are missing, then the equilibrium initial state at the given temperature will be used.
+
+Relaxation Overview
+-------------------
 
 MarS defines relaxation through four distinct mechanisms:
 
-1. **out_probs** - Population loss rates
-2. **free_probs** - Spontaneous transition probabilities  
-3. **driven_probs** - Stimulated transition probabilities
-4. **dephasing** - Pure dephasing rates used only for density-based relaxation
+1. **out_probs** (Outgoing probabilities) - Population loss rates
+2. **free_probs** (Free probabilities) - Spontaneous transition probabilities  
+3. **driven_probs** (Driven probabilities) - Stimulated transition probabilities
+4. **dephasing** (Dephasing) - Pure dephasing rates used only for density-based relaxation
 
 Each mechanism serves a specific physical purpose and transforms differently under basis changes.
 
@@ -130,7 +147,7 @@ Under basis transformation:
 
 .. math::
 
-   W' = |U|^T \cdot W \cdot |U|
+   W' = (|U|^2)^T \cdot W \cdot |U|^2
 
 Driven Probabilities (driven_probs)
 ------------------------------------
@@ -182,7 +199,7 @@ Same as free probabilities:
 
 .. math::
 
-   D' = |U|^T \cdot D \cdot |U|
+   D' = (|U|^2)^T \cdot D \cdot |U|
 
 Dephasing (dephasing)
 ---------------------
@@ -242,20 +259,20 @@ A realistic triplet state with all relaxation mechanisms:
 .. code-block:: python
 
    import torch
-   from mars import spin_system, population
+   from mars import spin_model. population
    
    # Create triplet system
-   g_tensor = spin_system.Interaction(2.004, dtype=torch.float64)
-   zfs = spin_system.DEInteraction([450e6, -90e6], dtype=torch.float64)
+   g_tensor = spin_model.Interaction(2.004, dtype=torch.float64)
+   zfs = spin_model.DEInteraction([450e6, -90e6], dtype=torch.float64)
    
-   triplet_system = spin_system.SpinSystem(
+   triplet_system = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g_tensor],
        electron_electron=[(0, 0, zfs)]
    )
    
-   sample = spin_system.MultiOrientedSample(
-       spin_system=triplet_system,
+   sample = spin_model.MultiOrientedSample(
+       base_spin_system=triplet_system,
        ham_strain=2.5e7,
        gauss=0.0012,
        lorentz=0.0012

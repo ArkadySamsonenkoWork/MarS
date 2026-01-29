@@ -4,12 +4,29 @@ mars.optimization package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.optimization.fitter module
+-------------------------------
 
-   mars.optimization.fitter
-   mars.optimization.interactions
-   mars.optimization.objectives
+.. automodule:: mars.optimization.fitter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.optimization.interactions module
+-------------------------------------
+
+.. automodule:: mars.optimization.interactions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.optimization.objectives module
+-----------------------------------
+
+.. automodule:: mars.optimization.objectives
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

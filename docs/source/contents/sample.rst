@@ -13,13 +13,13 @@ Simulate a frozen solution of a diradical with D = 0.35 GHz, E = 0, using a defa
 
 .. code-block:: python
 
-   from mars import spin_system, particles
+   from mars import spin_model. particles
 
-   g_tensor = spin_system.Interaction(2.002)  # g = 2.002
-   D_tensor = spin_system.DEInteraction(components=0.35 * 1e9)  # D = 0.35 GHz
-   triplet = spin_system.SpinSystem(electrons=[1.0], g_tensors=[g_tensor], electron_electron=[(0, 0, D_tensor)])
+   g_tensor = spin_model.Interaction(2.002)  # g = 2.002
+   D_tensor = spin_model.DEInteraction(components=0.35 * 1e9)  # D = 0.35 GHz
+   triplet = spin_model.SpinSystem(electrons=[1.0], g_tensors=[g_tensor], electron_electron=[(0, 0, D_tensor)])
 
-   sample = spin_system.MultiOrientedSample(spin_system=triplet, gauss="0.01") # It is better to specify some broadening
+   sample = spin_model.MultiOrientedSample(base_spin_system=triplet, gauss="0.01") # It is better to specify some broadening
 
 The total broadening of each spectral line is constructed from four components:
 
@@ -27,7 +27,7 @@ The total broadening of each spectral line is constructed from four components:
 2. **Inhomogeneous Gaussian broadening**, which is applied after the spectrum is constructed.  
    More information about final spectrum postprocessing can be found in :class:`mars.spectra_manager.spectra_manager.PostSpectraProcessing`.
 3. **Residual spectrum broadening** caused by unresolved interactions. This is specified by a parameter ``ham_strain`` and can be anisotropic.
-4. **Broadening caused by the presence of a Hamiltonian parameter distribution**. This is specified during :class:`mars.spin_system.Interaction` creation.
+4. **Broadening caused by the presence of a Hamiltonian parameter distribution**. This is specified during :class:`mars.spin_model.Interaction` creation.
 
 All widths are specified as full width at half maximum (FWHM).
 
@@ -40,8 +40,8 @@ Add orientation-dependent inhomogeneous broadening due to unresolved hyperfine s
    # Axial unresolved broadening: σ⊥ = 5 MHz, σ∥ = 15 MHz
    ham_strain = [5e-3 * 1e9, 5e-3 * 1e9, 15e-3 * 1e9]
 
-   sample = spin_system.MultiOrientedSample(
-       spin_system=triplet,
+   sample = spin_model.MultiOrientedSample(
+       base_spin_system=triplet,
        ham_strain=ham_strain,
        lorentz=0.001  # 1 mT homogeneous width
    )
@@ -54,8 +54,8 @@ Add orientation-dependent inhomogeneous broadening due to unresolved hyperfine s
    # Use only 80 orientations instead of default ~ 200
    coarse_mesh = (10, 20)  # (initial_grid_frequency, interpolation_grid_frequency)
 
-   fast_sample = spin_system.MultiOrientedSample(
-       spin_system=triplet,
+   fast_sample = spin_model.MultiOrientedSample(
+       base_spin_system=triplet,
        mesh=coarse_mesh
    )
 
@@ -66,8 +66,8 @@ This doesn't change the final spectrum of the sample, but it does change the eig
 
 .. code-block:: python
 
-   rotated_sample = spin_system.MultiOrientedSample(
-       spin_system=triplet,
+   rotated_sample = spin_model.MultiOrientedSample(
+       base_spin_system=triplet,
        spin_system_frame=[0.0, 0.2, 0.3],
    )
 
@@ -155,7 +155,7 @@ The secular approximation modifies the Hamiltonian terms in two steps:
 Useful Features
 ---------------
 
-:class:`mars.spin_system.BaseSample` and :class:`mars.spin_system.MultiOrientedSample` provide several utility methods for advanced quantum-mechanical analysis, including access to key spin operators and basis transformations.  
+:class:`mars.spin_model.BaseSample` and :class:`mars.spin_model.MultiOrientedSample` provide several utility methods for advanced quantum-mechanical analysis, including access to key spin operators and basis transformations.
 These are especially useful when working with total spin manifolds or custom spectral models.
 
 Basis Methods
@@ -168,7 +168,7 @@ The following methods allow you to construct and switch between common represent
    Mul = sample.get_spin_multiplet_basis()      # |S, M> basis (eigenbasis of S^2 and S_z)
    PR  = sample.get_product_state_basis()       # Computational |m1, m2, ...> basis
 
-- :meth:`mars.spin_system.MultiOrientedSample.get_spin_multiplet_basis`  
+- :meth:`mars.spin_model.MultiOrientedSample.get_spin_multiplet_basis`
   Constructs a unitary transformation matrix that converts from the product-state basis to the total-spin multiplet basis :math:`|S, M\rangle`.
 
   - **Output**: A matrix whose columns are eigenvectors of :math:`\hat{S}^2` and :math:`\hat{S}_z`, sorted first by :math:`S`, then by :math:`M`.
@@ -176,7 +176,7 @@ The following methods allow you to construct and switch between common represent
   - **Example**: For two spin-½ electrons, the basis order is  
     :math:`|S=0, M=0\rangle,\ |S=1, M=-1\rangle,\ |S=1, M=0\rangle,\ |S=1, M=+1\rangle`.
 
-- :meth:`mars.spin_system.MultiOrientedSample.get_product_state_basis`  
+- :meth:`mars.spin_model.MultiOrientedSample.get_product_state_basis`
   Returns the identity matrix, confirming that internal operators are represented in the standard product-state basis:
 
   .. math::
@@ -185,7 +185,7 @@ The following methods allow you to construct and switch between common represent
 
   - **Shape**: ``(spin_dim, spin_dim)``
 
-- :meth:`mars.spin_system.MultiOrientedSample.get_xyz_basis`  
+- :meth:`mars.spin_model.MultiOrientedSample.get_xyz_basis`
   Returns the transition moment basis vectors :math:`T_x`, :math:`T_y`, :math:`T_z` for a spin-1 system expressed in the molecular frame.
 
   The basis is defined in the :math:`|M_z = +1\rangle`, :math:`|M_z = 0\rangle`, :math:`|M_z = -1\rangle` eigenbasis of :math:`\hat{S}_z`.
@@ -200,7 +200,7 @@ The following methods allow you to construct and switch between common represent
        Ty = T[..., 1]               # y-component, shape: [..., orientations, 3]
        Tz = T[..., 2]               # z-component, shape: [..., orientations, 3]
 
-- :meth:`mars.spin_system.MultiOrientedSample.get_zero_field_splitting_basis`  
+- :meth:`mars.spin_model.MultiOrientedSample.get_zero_field_splitting_basis`
   Returns the eigenbasis of the zero-field splitting (ZFS) Hamiltonian, denoted as :math:`\mathbf{F}`.
 
   The eigenvectors are ordered from the lowest to the highest eigenvalue of :math:`\mathbf{F}`.
@@ -209,7 +209,7 @@ The following methods allow you to construct and switch between common represent
 
 .. code-block:: rst
 
-- :meth:`mars.spin_system.MultiOrientedSample.get_zeeman_basis`  
+- :meth:`mars.spin_model.MultiOrientedSample.get_zeeman_basis`
   Returns the eigenbasis of the Zeeman operator :math:`\mathbf{G}_z`, corresponding to the infinite magnetic field limit along the laboratory z-axis.
  
   The eigenvectors are ordered from the lowest to the highest eigenvalue of  :math:`\mathbf{G}_z`.
@@ -235,34 +235,34 @@ Concatenation requires all samples to have compatible parameters:
 
 .. code-block:: python
 
-   from mars import concat, spin_system
+   from mars import concat, spin_model
    
    # Define two independent triplet samples with same broadening
-   g1 = spin_system.Interaction(2.002)
-   D1 = spin_system.DEInteraction([350e6, 50e6])
-   triplet_1 = spin_system.SpinSystem(
+   g1 = spin_model.Interaction(2.002)
+   D1 = spin_model.DEInteraction([350e6, 50e6])
+   triplet_1 = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g1],
        electron_electron=[(0, 0, D1)]
    )
    
-   sample_1 = spin_system.MultiOrientedSample(
-       spin_system=triplet_1,
+   sample_1 = spin_model.MultiOrientedSample(
+       base_spin_system=triplet_1,
        gauss=0.0015,
        lorentz=0.0008,
        ham_strain=[3e6, 3e6, 8e6]
    )
    
-   g2 = spin_system.Interaction([2.006, 2.006, 2.002])
-   D2 = spin_system.DEInteraction([280e6, 35e6])
-   triplet_2 = spin_system.SpinSystem(
+   g2 = spin_model.Interaction([2.006, 2.006, 2.002])
+   D2 = spin_model.DEInteraction([280e6, 35e6])
+   triplet_2 = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g2],
        electron_electron=[(0, 0, D2)]
    )
    
-   sample_2 = spin_system.MultiOrientedSample(
-       spin_system=triplet_2,
+   sample_2 = spin_model.MultiOrientedSample(
+       base_spin_system=triplet_2,
        gauss=0.0015,  # Must match sample_1
        lorentz=0.0008,  # Must match sample_1
        ham_strain=[3e6, 3e6, 8e6],  # Must match sample_1
@@ -270,7 +270,7 @@ Concatenation requires all samples to have compatible parameters:
    
    # Concatenate samples
    mixture = concat([sample_1, sample_2])
-   # Equivalent to: spin_system.concat_multioriented_samples([sample_1, sample_2])
+   # Equivalent to: spin_model.concat_multioriented_samples([sample_1, sample_2])
 
 
-**See also**: :func:`mars.spin_system.concat_multioriented_samples` for implementation details and validation logic.
+**See also**: :func:`mars.spin_model.concat_multioriented_samples` for implementation details and validation logic.

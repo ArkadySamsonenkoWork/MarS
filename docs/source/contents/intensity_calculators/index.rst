@@ -1,7 +1,7 @@
 .. _intensity_calculation:
 
-Transition Intensity Calculation in MarS
-========================================
+Transition Intensity Calculation
+================================
 
 Overview
 --------

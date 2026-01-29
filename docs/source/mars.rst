@@ -18,18 +18,85 @@ Subpackages
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.concatination module
+-------------------------
 
-   mars.constants
-   mars.res_field_algorithm
-   mars.res_freq_algorithm
-   mars.save_procedures
-   mars.secular_approximation
-   mars.spectra_processing
-   mars.spectral_integration
-   mars.spin_system
-   mars.utils
+.. automodule:: mars.concatination
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.constants module
+---------------------
+
+.. automodule:: mars.constants
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.res\_field\_algorithm module
+---------------------------------
+
+.. automodule:: mars.res_field_algorithm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.res\_freq\_algorithm module
+--------------------------------
+
+.. automodule:: mars.res_freq_algorithm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.save\_procedures module
+----------------------------
+
+.. automodule:: mars.save_procedures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.secular\_approximation module
+----------------------------------
+
+.. automodule:: mars.secular_approximation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.spectra\_processing module
+-------------------------------
+
+.. automodule:: mars.spectra_processing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.spectral\_integration module
+---------------------------------
+
+.. automodule:: mars.spectral_integration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.spin\_system module
+------------------------
+
+.. automodule:: mars.spin_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.utils module
+-----------------
+
+.. automodule:: mars.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

@@ -64,7 +64,7 @@ MarS provides four predefined bases:
 
 
 Custom Transformation Basis
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Users can also provide a custom transformation basis with shape :math:`[\ldots, R, 1, N, N]`: 
 
@@ -72,10 +72,26 @@ Users can also provide a custom transformation basis with shape :math:`[\ldots, 
 - :math:`N` is the spin system dimension
 - This basis should be defined in laboratory frame (with repspect to orientations) and in the basis of individual spin projections.
 
+Specifying the Sample for Context Initialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When creating a :class:`mars.population.contexts.Context`, if you set some predefined basis, you must associate it with a "sample".
+
+In most cases, the same sample is used both to define the initial relaxation parameters (and populations) and to compute the resulting spectrum.
+However, advanced workflows allow you to:
+
+- Define populations and rates using one sample
+- Compute spectra for a different sample.
+
+Both samples must have the same Hilbert space dimension and compatible orientation grids.
+Notice, that if you choose "product", "multiplet", "xyz" basis, which doesn't depend on interactions,
+you will get the same result for any specified sample with the same Hilbert dimension and the same particles.
+
 Transformation Rules
 --------------------
 
-Let :math:`V_{\text{new}}` be the eigenbasis of the full Hamiltonian and :math:`V_{\text{old}}` be the user-specified basis. The transformation matrix is:
+Let :math:`V_{\text{new}}` be the eigenbasis of the full Hamiltonian and :math:`V_{\text{old}}` be the specified basis.
+The transformation matrix from coordinates in old basis to coordinates in a new basis is:
 
 .. math::
 
@@ -128,21 +144,41 @@ where :math:`|U|^2` denotes element-wise squaring of the transformation matrix.
    out_probs_old = torch.tensor([100.0, 50.0, 75.0])
    out_probs_new = transform_vector_to_new_basis(out_probs_old, coeffs)
 
-**Physical interpretation:** If state :math:`|i'\rangle` in the new basis is a superposition :math:`|i'\rangle = \sum_k U_{ik} |k\rangle`, then its population is the sum of populations with :math:`|U_{ik}|^2`.
+**Physical interpretation:** If state :math:`|i'\rangle` in the new basis is a superposition :math:`|i'\rangle = \sum_k U^{*}_{ik} |k\rangle`,
+then its population is the sum of populations with :math:`|U^{*}_{ik}|^2` which is equal to :math:`|U_{ik}|^2`.
+
+**Note** If you set the initial density as parameter of Context, then the denisty will be tranformed under desnity transforamtion rule (see futher),
+then the real part of transformed diagonal will be used as initial population if it is needed
 
 Transition Probabilities (Free and Driven)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Transition rates between states transform as bilinear forms:
+The library supports two types of transitions: **free** (spontaneous) and **driven** (induced), represented by matrices :math:`W` and :math:`D`, respectively.
+
+Analogously to populations which transform as :math:`n'_i = \sum_k |U_{ik}|^2 n_k` - transition probabilities are transformed by weighting both the initial and final states with their respective overlap probabilities.
+Specifically, the probability of transition from state :math:`j'` to :math:`i'` in the new basis is:
 
 .. math::
 
-   W' = |U|^T \cdot W \cdot |U|
+   W'_{i'j'} = \sum_{k,l} |U_{ik}|^2 \, W_{kl} \, |U_{jl}|^2,
+
+where :math:`|U_{ik}|^2 = |\langle i' | k \rangle|^2` is the probability that new basis state :math:`|i'\rangle` contains old basis state :math:`|k\rangle`.
+
+In compact matrix form, this becomes:
 
 .. math::
 
-   D' = |U|^T \cdot D \cdot |U|
+   W' = |U|^2 \, W \, (|U|^2)^\top,
 
+and identically for driven transitions:
+
+.. math::
+
+   D' = |U|^2 \, D \, (|U|^2)^\top.
+
+
+- **Free transition probabilities** describe spontaneous relaxation processes (e.g., spin-lattice relaxation).
+- **Driven transition probabilities** model field-induced transitions (e.g., microwave-driven mixing).
 
 **Implementation:** Uses :func:`mars.population.transform.transform_matrix_to_new_basis`:
 
@@ -160,7 +196,6 @@ Transition rates between states transform as bilinear forms:
    # Transform to new basis
    W_new = transform_matrix_to_new_basis(W_old, coeffs)
    # Applies: coeffs @ W_old @ coeffs.T
-
 
 Density Matrix
 ^^^^^^^^^^^^^^
@@ -272,7 +307,7 @@ Now, suppose we wish to evaluate the model at a low magnetic field (e.g., 10 mT)
     values, vectors = torch.linalg.eigh(F + field * Gz)
     vectors = vectors.unsqueeze(-3)  # Shape: [orientations, 1, N, N]
 
-The ``vectors`` tensor now represents the target basis (columns are eigenvectors of the full Hamiltonian). The :class:`~mars.population.contexts.Context` instance can transform all its internal quantities into this basis using the following methods:
+The ``vectors`` tensor now represents the target basis (columns are eigenvectors of the full Hamiltonian). The :class:`mars.population.contexts.Context` instance can transform all its internal quantities into this basis using the following methods:
 
 - **Initial populations (diagonal of the density matrix):**  
   See :meth:`mars.population.contexts.Context.get_transformed_init_populations`.
@@ -321,11 +356,4 @@ The ``vectors`` tensor now represents the target basis (columns are eigenvectors
 
       R_driven = context.get_transformed_driven_superop(full_system_vectors=vectors)
       # Returns: tensor of shape [..., N², N²]
-
-These methods automatically handle the appropriate transformation rules:
-
-- Populations and out-probabilities use the squared-modulus transformation :math:`|U|^2`.
-- Transition probability matrices use the bilinear form :math:`|U|^\top W |U|`.
-- Density matrices and superoperators use the full unitary transformation :math:`U \rho U^\dagger` or its Liouville-space equivalent.
-
 

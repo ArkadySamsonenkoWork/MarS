@@ -20,10 +20,10 @@ The Context class automatically handles basis transformations, and proper compos
 Key Features
 ------------
 
-- *Flexible Basis Definition*: Support for multiple predefined bases (eigen, zfs, multiplet, product
-- *Multiple Relaxation Paradigm**: Compatible with both population-based and density matrix-based dynamics
-- *Lindblad Formalism*: Ensures physical validity through proper jump operators
-- *Context Algebra*: Supports addition and multiplication operations for constructing complex relaxation scenarios
+- **Flexible Basis Definition**: Support for multiple predefined bases (eigen, zfs, multiplet, product
+- **Multiple Relaxation Paradigm**: Compatible with both population-based and density matrix-based dynamics
+- **Lindblad Formalism**: Ensures physical validity through proper jump operators
+- **Context Algebra**: Supports addition and multiplication operations for constructing complex relaxation scenarios
 
 Contents
 --------
@@ -42,20 +42,20 @@ Quick Example
 .. code-block:: python
 
    import torch
-   from mars import spin_system, population
+   from mars import spin_model. population
    
    # Create a triplet spin system
-   g_tensor = spin_system.Interaction(2.003, dtype=torch.float64)
-   zfs = spin_system.DEInteraction([600e6, -80e6], dtype=torch.float64)
+   g_tensor = spin_model.Interaction(2.003, dtype=torch.float64)
+   zfs = spin_model.DEInteraction([600e6, -80e6], dtype=torch.float64)
    
-   base_system = spin_system.SpinSystem(
+   base_system = spin_model.SpinSystem(
        electrons=[1.0],
        g_tensors=[g_tensor],
        electron_electron=[(0, 0, zfs)]
    )
    
-   sample = spin_system.MultiOrientedSample(
-       spin_system=base_system,
+   sample = spin_model.MultiOrientedSample(
+       base_spin_system=base_system,
        ham_strain=2e7,
        gauss=0.0008,
        lorentz=0.0008

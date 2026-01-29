@@ -1,18 +1,18 @@
 import typing as tp
 
-from . import spin_system
+from . import spin_model
 from . import population
 
 
 mars_items_types = tp.Union[
-    tp.Sequence[spin_system.SpinSystem],
-    tp.Sequence[spin_system.MultiOrientedSample],
+    tp.Sequence[spin_model.SpinSystem],
+    tp.Sequence[spin_model.MultiOrientedSample],
     tp.Sequence[population.BaseContext]
 ]
 
 mars_item_type = tp.Union[
-    spin_system.SpinSystem,
-    spin_system.MultiOrientedSample,
+    spin_model.SpinSystem,
+    spin_model.MultiOrientedSample,
     population.BaseContext
 ]
 
@@ -35,8 +35,8 @@ def concat(mars_items: mars_items_types) -> mars_item_type:
     In all cases, the direct sum of the elements you want to concatenate is calculated.
     To understand the logic and interpretation of operation in each case, see
 
-    - :func:`mars.spin_system.concat_spin_system`
-    - :func:`mars.spin_system.concat_multioriented_samples`
+    - :func:`mars.spin_model.concat_spin_system`
+    - :func:`mars.spin_model.concat_multioriented_samples`
     - :func:`mars.population.concatinations.concat_contexts`
 
     :param mars_items: A non-empty sequence of identical-type MARS objects.
@@ -53,9 +53,9 @@ def concat(mars_items: mars_items_types) -> mars_item_type:
                         (e.g., mismatched dtypes, devices, or spectral parameters).
     """
     ref_item = mars_items[0]
-    if isinstance(ref_item, spin_system.SpinSystem):
-        return spin_system.concat_spin_systems(mars_items)
-    elif isinstance(ref_item, spin_system.MultiOrientedSample):
-        return spin_system.concat_multioriented_samples(mars_items)
+    if isinstance(ref_item, spin_model.SpinSystem):
+        return spin_model.concat_spin_systems(mars_items)
+    elif isinstance(ref_item, spin_model.MultiOrientedSample):
+        return spin_model.concat_multioriented_samples(mars_items)
     elif isinstance(ref_item, population.BaseContext):
         return population.concat_contexts(mars_items)

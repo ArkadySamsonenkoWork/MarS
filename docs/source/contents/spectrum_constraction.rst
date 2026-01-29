@@ -1,7 +1,7 @@
 .. _epr_spectrum_construction:
 
-EPR Spectrum Construction in MarS
-=================================
+EPR Spectrum Construction
+=========================
 
 The construction of an EPR spectrum in MarS follows a sequence of well-defined computational steps:
 
@@ -9,12 +9,12 @@ The construction of an EPR spectrum in MarS follows a sequence of well-defined c
    The spin system consists of quantum particles-electrons and magnetic nuclei-each specified by its spin quantum number and intrinsic magnetic parameters.
 
 2. **Specify interactions**  
-   Interactions (e.g., hyperfine, zero-field splitting, nuclear-nuclear couplings) are defined using the :class:`mars.spin_system.Interaction` class.  
+   Interactions (e.g., hyperfine, zero-field splitting, nuclear-nuclear couplings) are defined using the :class:`mars.spin_model.Interaction` class.
    See :ref:`interaction_in_mars` for details.
 
 3. **Assemble the spin system and sample**  
-   Particles and interactions are combined into a :class:`mars.spin_system.SpinSystem`.  
-   Disordered (powder) samples are represented by :class:`mars.spin_system.MultiOrientedSample`.  
+   Particles and interactions are combined into a :class:`mars.spin_model.SpinSystem`.
+   Disordered (powder) samples are represented by :class:`mars.spin_model.MultiOrientedSample`.
    The next workflow is managed by the abstract class :class:`mars.spectra_manager.spectra_manager.BaseSpectra`.
 
 4. **Construct Hamiltonian matrices**  

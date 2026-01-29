@@ -4,14 +4,53 @@ mars.population package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.population.concatination module
+------------------------------------
 
-   mars.population.contexts
-   mars.population.matrix_generators
-   mars.population.rk4
-   mars.population.tr_utils
-   mars.population.transform
+.. automodule:: mars.population.concatination
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.population.contexts module
+-------------------------------
+
+.. automodule:: mars.population.contexts
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.population.matrix\_generators module
+-----------------------------------------
+
+.. automodule:: mars.population.matrix_generators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.population.rk4 module
+--------------------------
+
+.. automodule:: mars.population.rk4
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.population.tr\_utils module
+--------------------------------
+
+.. automodule:: mars.population.tr_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.population.transform module
+--------------------------------
+
+.. automodule:: mars.population.transform
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

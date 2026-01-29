@@ -17,10 +17,10 @@ Example
 
 .. code-block:: python
 
-   g = spin_system.Interaction((2.0, 2.1, 2.2))
-   zfs = spin_system.DEInteraction([10e9, 2e9])  # D=10 GHz
-   sys = spin_system.SpinSystem(electrons=[1.0], g_tensors=[g], electron_electron=[(0,0,zfs)])
-   sample = spin_system.MultiOrientedSample(sys)
+   g = spin_model.Interaction((2.0, 2.1, 2.2))
+   zfs = spin_model.DEInteraction([10e9, 2e9])  # D=10 GHz
+   sys = spin_model.SpinSystem(electrons=[1.0], g_tensors=[g], electron_electron=[(0,0,zfs)])
+   sample = spin_model.MultiOrientedSample(sys)
 
    freq_creator = spectra_manager.StationaryFreqSpectra(field=1.0, sample=sample)  # B = 1 T
    freqs = torch.linspace(200e9, 400e9, 1000)  # 200–400 GHz

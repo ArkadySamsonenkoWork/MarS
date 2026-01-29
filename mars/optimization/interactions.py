@@ -3,9 +3,9 @@ import copy
 
 import torch
 
-from .. import spin_system
+from .. import spin_model
 
-from ..spin_system import BaseSample
+from ..spin_model import BaseSample
 from .fitter import ParamSpec, ParameterSpace
 
 
@@ -328,15 +328,15 @@ class ComponentsParser:
 
 
 class SampleUpdator:
-    def __init__(self, sample: spin_system.BaseSample):
+    def __init__(self, sample: spin_model.BaseSample):
 
         self.device = torch.device("cpu")
         self.dtype = torch.float32
         self._base_sample = sample
-        self.electrons = sample.base_spin_system.electrons
-        self.nuclei = sample.base_spin_system.nuclei
+        self.electrons = sample.base_spin_model.electrons
+        self.nuclei = sample.base_spin_model.nuclei
 
-    def update(self, params: dict[str, float], *args) -> spin_system.BaseSample:
+    def update(self, params: dict[str, float], *args) -> spin_model.BaseSample:
         lorentz = None
         gauss = None
         if "lorentz" in params:
@@ -353,7 +353,7 @@ class SampleUpdator:
 
         return self._base_sample
 
-    def __call__(self, params: dict[str, float], *args) -> spin_system.BaseSample:
+    def __call__(self, params: dict[str, float], *args) -> spin_model.BaseSample:
         return self.update(params)
 
     def _copy_sample(self, sample):
@@ -433,7 +433,7 @@ class SampleUpdator:
         strain = self._reconstruct_strain(params, base_name)
 
         frame = self._reconstruct_frame(params, base_name)
-        return spin_system.Interaction(
+        return spin_model.Interaction(
             components=components,
             strain=strain,
             frame=frame,
@@ -532,7 +532,7 @@ class SampleUpdator:
 
     def _create_spin_system(self, g_tensors: tp.List, el_el: tp.List, el_nuc: tp.List, nuc_nuc: tp.List):
         """Create a new spin system with the reconstructed interactions."""
-        return spin_system.SpinSystem(
+        return spin_model.SpinSystem(
             electrons=self.electrons,
             nuclei=self.nuclei,
             g_tensors=g_tensors,
@@ -737,7 +737,7 @@ class SampleVary:
                 fixed_parameters[f"{base_name}_beta"] = float(spin_system_frame[1].item())
                 fixed_parameters[f"{base_name}_gamma"] = float(spin_system_frame[2].item())
 
-    def _parse_interaction(self, spin_system_interaction: spin_system.Interaction,
+    def _parse_interaction(self, spin_system_interaction: spin_model.Interaction,
                            vary_interaction: tp.Union[VaryDEInteraction, VaryInteraction],
                            vary_parameters: list[ParamSpec], fixed_parameters: dict[str, float], base_name: str):
         de_mode = isinstance(vary_interaction, VaryDEInteraction)

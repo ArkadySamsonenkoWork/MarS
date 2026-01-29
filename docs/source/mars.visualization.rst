@@ -4,12 +4,29 @@ mars.visualization package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+mars.visualization.levels\_plot module
+--------------------------------------
 
-   mars.visualization.levels_plot
-   mars.visualization.spin_system_plot
-   mars.visualization.transitions_plot
+.. automodule:: mars.visualization.levels_plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.visualization.time\_resolved module
+----------------------------------------
+
+.. automodule:: mars.visualization.time_resolved
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.visualization.transitions\_plot module
+-------------------------------------------
+
+.. automodule:: mars.visualization.transitions_plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

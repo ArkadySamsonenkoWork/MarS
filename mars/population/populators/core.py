@@ -38,10 +38,15 @@ class BasePopulator(nn.Module):
         self.register_buffer(
             "init_temperature", torch.tensor(init_temperature, device=device, dtype=dtype)
         )
-        self._context = context
-        self._init_context_meta()
+        self._context = None
+        self.set_context(context)
 
-    def _precompute(self, res_fields, lvl_down, lvl_up, energies, vector_down, vector_up, *args, **kwargs):
+    def _precompute(
+            self,
+            res_fields: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+            energies: torch.Tensor, vector_down: torch.Tensor,
+            vector_up: torch.Tensor, *args, **kwargs) ->\
+            tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         return res_fields, lvl_down, lvl_up, energies, vector_down, vector_up
 
     def _init_context_meta(self):
@@ -49,14 +54,14 @@ class BasePopulator(nn.Module):
 
         :return: None
         """
-        if self._context is not None:
-            if self._context.contexted_init_population:
+        if self.context is not None:
+            if self.context.contexted_init_population:
                 self.contexted = True
                 self._getter_init_population = self._context_dependant_init_population
             else:
                 self.contexted = False
                 self._getter_init_population = self._temp_dependant_init_population
-            self.time_dependant = self._context.time_dependant
+            self.time_dependant = self.context.time_dependant
 
         else:
             self.contexted = False
@@ -64,20 +69,25 @@ class BasePopulator(nn.Module):
             self.time_dependant = False
 
     @property
-    def context(self) -> contexts.BaseContext:
-        """:return: The context object."""
+    def context(self) -> tp.Optional[contexts.BaseContext]:
         return self._context
 
-    @context.setter
-    def context(self, context: contexts.BaseContext) -> None:
-        """Set the new context for populator.
-
-        :param context: Base Context object
+    def set_context(self, context: tp.Optional[contexts.BaseContext]) -> None:
+        """
+        :param context: Relaxtion and Polarization context
         :return:
         """
-        self._context = context
-        self._init_context_meta()
+        if context is not None and not isinstance(context, nn.Module):
+            raise TypeError(f"context must be an nn.Module or None, got {type(context)}")
 
+        if self._context is not None:
+            del self._modules["_context"]
+
+        self._context = context
+        if context is not None:
+            self.add_module("_context", context)
+
+        self._init_context_meta()
 
     def _initial_populations(
             self, energies: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor,
@@ -225,6 +235,7 @@ class BaseTimeDepPopulator(BasePopulator):
 
         :return: intensity of transitions due to population difference
         """
+        self.context.close_context()
         if self.difference_out:
             return time_intensities - time_intensities[0].unsqueeze(0)
         else:

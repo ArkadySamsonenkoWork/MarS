@@ -3,7 +3,7 @@ import typing as tp
 import torch
 import torch.nn as nn
 
-from . import spin_system
+from . import spin_model
 
 ### The energy computation is not effective due to the usage of common interface for population computation
 ### It should be rebuild without expand operation
@@ -159,7 +159,7 @@ class ResFreq(nn.Module):
         self.locator = Locator(output_full_eigenvector, spin_system_dim, device, dtype=dtype)
         self.device = device
 
-    def forward(self, sample: spin_system.BaseSample,
+    def forward(self, sample: spin_model.BaseSample,
                  resonance_field: torch.Tensor,
                  freq_low: torch.Tensor, freq_high: torch.Tensor, F: torch.Tensor, Gz: torch.Tensor) ->\
             tuple[

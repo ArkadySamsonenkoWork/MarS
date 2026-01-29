@@ -9,7 +9,7 @@ import scipy
 
 
 from . import particles
-from .spin_system import BaseSample, SpinSystem, Interaction, MultiOrientedSample
+from .spin_model import BaseSample, SpinSystem, Interaction, MultiOrientedSample
 from .spectra_manager import BaseSpectra, StationarySpectra
 
 
@@ -263,7 +263,6 @@ class EasySpinSaverSampleDict:
                                      ):
 
         zfs_flag = False
-
         num_electrons = len(electrons)
         J_tensor = np.zeros(int(num_electrons * (num_electrons - 1) / 2), dtype=np.float64)
         dipole_tensor = np.zeros((int(num_electrons * (num_electrons - 1) / 2), 3), dtype=np.float64)
@@ -280,7 +279,6 @@ class EasySpinSaverSampleDict:
                 coupling_dict[(el_idx_1, el_idx_2)] = interaction
             else:
                 zero_field[(el_idx_1, el_idx_2)] = interaction
-
         position_zfs = 0
         position_dip_dip = 0
         for el_idx_1 in range(num_electrons):
@@ -302,23 +300,25 @@ class EasySpinSaverSampleDict:
                     zfs_flag = True
                     interaction = zero_field[(el_idx_1, el_idx_2)]
 
+
                     tensor = self._convert_tensor(interaction.components)
                     frame = self._convert_tensor(interaction.frame)
 
                     strain = interaction.strain
                     strain = self._convert_tensor(strain) if strain is not None else [0, 0]
 
-                    D = tensor[0]
-                    E = tensor[1]
+                    D = 3 * tensor[-1] / 2
+                    E = abs((tensor[0] - tensor[1]) / 2)
 
                     zfs_array[position_zfs] = np.array([D, E])
                     zfs_frame[position_zfs] = frame
 
-                    D_str = 3 * strain[-1] / 2
-                    E_str = abs(((strain[0] - strain[1]) / 2))
+                    D_str = strain[0]
+                    E_str = strain[1]
 
                     zfz_strain[position_zfs] = np.array([D_str, E_str])
 
+                if el_idx_1 == el_idx_2:
                     position_zfs += 1
 
         out_dict = {}
@@ -509,7 +509,7 @@ class SampleLoader:
         spin_system = self._deserialize_spin_system(sample_dict['spin_system'], torch_format=True)
 
         sample = MultiOrientedSample(
-            spin_system=spin_system,
+            base_spin_system=spin_system,
             gauss=sample_dict['gauss'],
             lorentz=sample_dict['lorentz'],
             ham_strain=sample_dict['ham_strain']
@@ -520,7 +520,7 @@ class SampleLoader:
         spin_system = self._deserialize_spin_system(sample_dict['spin_system'], torch_format=False)
 
         sample = MultiOrientedSample(
-            spin_system=spin_system,
+            base_spin_system=spin_system,
             gauss=torch.tensor(sample_dict['gauss'], dtype=torch.float32),
             lorentz=torch.tensor(sample_dict['lorentz'], dtype=torch.float32),
             ham_strain=sample_dict['ham_strain']
@@ -556,7 +556,7 @@ class SampleLoader:
             ham_strain = None
 
         sample = MultiOrientedSample(
-            spin_system=spin_system,
+            base_spin_system=spin_system,
             gauss=gauss,
             lorentz=lorentz,
             ham_strain=ham_strain
