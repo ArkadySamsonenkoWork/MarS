@@ -8,7 +8,7 @@ Examples
 
 **1. Simple triplet system (S = 1) with axial zero-field splitting**
 
-Define a single electron with spin 1 and a D-tensor aligned with the lab frame:
+Model a single electron with spin 1 and a D-tensor aligned with the lab frame:
 
 .. code-block:: python
 
@@ -41,7 +41,7 @@ The total Hilbert space dimension is 4, and the dipolar term is added via scalar
 
 **3. Electron coupled to a nucleus (hyperfine interaction)**
 
-Simulate a nitroxide radical with isotropic hyperfine interaction with 14N nucleus (I = 1):
+Model a nitroxide radical with isotropic hyperfine interaction with 14N nucleus (I = 1):
 
 .. code-block:: python
 
@@ -112,17 +112,51 @@ In MarS, all operators and vectors are initially defined in the product basis of
   - **Shape**: ``(spin_dim,)``
   - **Example**: Same system as above → ``[1.0, 0.0, 0.0, -1.0]``.
 
+Applying Frame Rotations
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Spin systems in MarS can be rotated as a whole relative to laboratory frame using the :meth:`mars.spin_model.SpinSystem.apply_rotation` method.
+
+.. code-block:: python
+
+   import torch
+   from mars import spin_model
+
+   # Define a spin system (e.g., nitroxide radical)
+   g_el = spin_model.Interaction([2.006, 2.006, 2.002])
+   A_tensor = spin_model.Interaction([20.0e6, 20.0e6, 80.0e6])
+   system = spin_model.SpinSystem(
+       electrons=[1/2],
+       g_tensors=[g_el],
+       nuclei=["14N"],
+       electron_nuclei=[(0, 0, A_tensor)]
+   )
+
+   # Define a rotation matrix (e.g., 90° around y-axis)
+   R = torch.tensor([[0., 0., 1.],
+                     [0., 1., 0.],
+                     [-1., 0., 0.]])
+
+   # Apply rotation to all interaction tensors
+   system.apply_rotation(R)
+
+This operation updates the internal representation of all interaction tensors (g, hyperfine, dipolar, etc.) by left-multiplying their components with the provided rotation matrix:
+
+.. math::
+
+   \mathbf{T}_{\text{new}} = \mathbf{R} \cdot \mathbf{T}_{\text{old}}
+
 Concatenating Spin Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MarS provides functionality to combine multiple independent spin systems into a single composite system using the direct sum construction.
-This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation suitable for specific effective models.
+This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation for specific effective models.
 
 Use concatenation only in scenarios such as:
 
 -Modeling an electron that may occupy distinct spin environments (e.g., two triplet states with slightly different zero-field splitting or dipolar couplings).
 
--Simulating polarized or time-resolved spectra where coherence or population transfer between otherwise isolated manifolds must be tracked.
+-Simulating polarized or time-resolved spectra where coherence or population transfer between otherwise isolated manifolds must be considered
 
 Mathematical Formulation
 ^^^^^^^^^^^^^^^^^^^^^^^^

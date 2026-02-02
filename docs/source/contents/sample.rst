@@ -1,7 +1,7 @@
 Sample Representation
 =====================
 
-In EPR modeling, a *sample* extends a base spin system with broadening mechanisms (Gaussian/Lorentzian), unresolved strain, and-critically for powders-orientational averaging.
+In EPR modeling, a *sample* extends a base spin system with broadening mechanisms (Gaussian/Lorentzian), unresolved strain, for powders-orientational averaging.
 
 
 Examples
@@ -9,7 +9,7 @@ Examples
 
 **1. Powder spectrum of a triplet with axial ZFS**
 
-Simulate a frozen solution of a diradical with D = 0.35 GHz, E = 0, using a default orientation mesh:
+Simulate a frozen solution of a diradical with D = 0.35 GHz, E = 0, using a default mesh:
 
 .. code-block:: python
 
@@ -27,7 +27,7 @@ The total broadening of each spectral line is constructed from four components:
 2. **Inhomogeneous Gaussian broadening**, which is applied after the spectrum is constructed.  
    More information about final spectrum postprocessing can be found in :class:`mars.spectra_manager.spectra_manager.PostSpectraProcessing`.
 3. **Residual spectrum broadening** caused by unresolved interactions. This is specified by a parameter ``ham_strain`` and can be anisotropic.
-4. **Broadening caused by the presence of a Hamiltonian parameter distribution**. This is specified during :class:`mars.spin_model.Interaction` creation.
+4. **Broadening caused by the presence of a Hamiltonian parameter distribution**. This parameters is specified during :class:`mars.spin_model.Interaction` creation.
 
 All widths are specified as full width at half maximum (FWHM).
 
@@ -49,6 +49,8 @@ Add orientation-dependent inhomogeneous broadening due to unresolved hyperfine s
 
 **3. Custom orientation mesh**
 
+In MarS it is possible to modify mesh to increse resolution of increase speed. Also it is possible to set a custom mesh (see :ref:`orientational_mesh`)
+
 .. code-block:: python
 
    # Use only 80 orientations instead of default ~ 200
@@ -61,8 +63,8 @@ Add orientation-dependent inhomogeneous broadening due to unresolved hyperfine s
 
 **4. Sample spin system orientation**
 
-In some cases, it's convenient to rotate not just one interaction, but all interactions at once (the entire spin system).
-This doesn't change the final spectrum of the sample, but it does change the eigenvectors in each individual powder orientation.
+In some cases, it's convenient to rotate not just one interaction, but all interactions at once (rotate the entire spin system relative laboratory frame).
+This doesn't change the final spectrum of the sample, but it can be convinient for creation of complex systems.
 
 .. code-block:: python
 
@@ -207,8 +209,6 @@ The following methods allow you to construct and switch between common represent
 
   - **Return**: A tensor of shape ``[..., N, N]``, where :math:`N` is the spin Hilbert space dimension.
 
-.. code-block:: rst
-
 - :meth:`mars.spin_model.MultiOrientedSample.get_zeeman_basis`
   Returns the eigenbasis of the Zeeman operator :math:`\mathbf{G}_z`, corresponding to the infinite magnetic field limit along the laboratory z-axis.
  
@@ -218,7 +218,7 @@ The following methods allow you to construct and switch between common represent
 Concatenating Samples
 ~~~~~~~~~~~~~~~~~~~~~
 
-MarS allows concatenation of multiple :class:`MultiOrientedSample` objects into a single composite samples using the direct sum construction of their spin systems
+MarS allows concatenation of multiple :class:`mars.spin_model.MultiOrientedSample` objects into a single composite samples using the direct sum construction of their spin systems
 
 This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation suitable for specific effective models.
 

@@ -13,7 +13,7 @@ The module implements several approaches to compute the population-dependent con
 * **Stationary spectra**: Population differences computed from thermal equilibrium or context-defined initial states
 * **Kinetic approach**: Time evolution of level populations following rate equations
 * **Rotating wave approximation**: Efficient density matrix evolution for systems meeting specific constraints
-* **Propagator method**: Full quantum evolution without approximations
+* **Propagator method**: Full quantum evolution without approximations on Hamiltonian parameters
 
 All methods support powder averaging for disordered samples through spherical grid integration over molecular orientations (α, β angles).
 
@@ -42,7 +42,7 @@ Populations can be initialized in two ways:
 
       n_i \propto \exp(-E_i / k_B T)
 
-2. **Context-defined**: Explicitly specified populations, automatically transformed to the field-dependent eigenbasis. (see class:`mars.population.context.Context`)
+2. **Context-defined**: Explicitly specified populations, automatically transformed to the field-dependent eigenbasis. (see :ref:`context-general-information` and :class:`mars.population.context.Context`)
 
 Time-Dependent Evolution
 ~~~~~~~~~~~~~~~~~~~~~~~~~

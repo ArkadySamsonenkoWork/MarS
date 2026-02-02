@@ -1,7 +1,7 @@
 Crystal Mesh: CrystalMesh
 =========================
 
-The :class:`mars.mesher.CrystalMesh` class represents oriented samples.
+The :class:`mars.mesher.general_mesh.CrystalMesh` class represents oriented samples.
 Instead of averaging over orientations, it evaluates the spectrum along one or more fixed
 crystallographic directions specified by Euler angles.
 

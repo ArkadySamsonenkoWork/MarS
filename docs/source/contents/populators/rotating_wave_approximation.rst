@@ -6,7 +6,7 @@ Rotating Wave Approximation
 Overview
 --------
 
-The :class:`mars.population.stationary.StationaryPopulator` computes time-dependent EPR signals using the full density matrix formalism under the Rotating Wave Approximation (RWA).
+The :class:`mars.population.populators.density_population.RWADensityPopulator` computes time-dependent EPR signals using the full density matrix formalism under the Rotating Wave Approximation (RWA).
 This approach efficiently models coherent evolution and relaxation when specific physical constraints are satisfied. This is default method for :class:`mars.spectra_manager.spectra_manager.DensityTimeSpectra`
 
 Theory
@@ -56,8 +56,8 @@ In the rotating frame, the effective Hamiltonian becomes time-independent and fo
 where:
 
 * **F**: Zero-field Hamiltonian (exchange, dipolar, zero-field splitting)
-* **B_0**: Static magnetic field
-* **B_1**: Microwave field amplitude
+* **B0**: Static magnetic field
+* **B1**: Microwave field amplitude
 * **w**: Spectrometer frequency
 
 Constraints and Limitations
@@ -74,7 +74,7 @@ The Zeeman operators must be proportional to the spin operators:
 
    G_x = g_x\mu_B S_x, \quad G_y = g_y\mu_B S_y, \quad G_z = g_z\mu_B S_z.
 
-To compute RWA, by default, MarS modifies G_x, G_y, G_z the Zeeman operators :math:`G_x`, :math:`G_y`, and :math:`G_z` so that they approximately commute with the total spin projection operators :math:`S_x`, :math:`S_y`, and :math:`S_z`, respectively:
+To compute RWA, by default, MarS modifies the Zeeman operators :math:`G_x`, :math:`G_y`, and :math:`G_z` so that they approximately commute with the total spin projection operators :math:`S_x`, :math:`S_y`, and :math:`S_z`, respectively:
 
 .. math::
 
@@ -118,7 +118,6 @@ The rotating frame transformation exp(iωS_z t) must leave F invariant. If F doe
 This is automatically satisfied for:
 
 * Isotropic exchange interactions
-* Axial zero-field splitting with quantization axis along z
 
 This is violated for:
 
@@ -128,7 +127,7 @@ This is violated for:
 Relaxation Superoperator Structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The relaxation superoperator R_{ijkl} (coupling density matrix elements ρ_{ij} and ρ_{kl}) must satisfy:
+The relaxation superoperator $R_{ijkl}$ (coupling density matrix elements $ρ_{ij}$ and $ρ_{kl}$) must satisfy:
 
 .. math::
 
@@ -145,14 +144,12 @@ This constraint arises because the rotating frame transformation requires R to c
 
 * Coherence-population coupling: mixing off-diagonal and diagonal density matrix elements with i - j ≠ k - l
 
-**Why this occurs**: The RWA assumes that coherences oscillating at different frequencies do not mix with populations. Relaxation mechanisms that couple states with different energy differences violate this secular approximation.
 
 Powder Averaging
 ----------------
 
 For disordered samples, spectra are averaged over molecular orientations (α, β).
-Since the RWA assumes an isotropic g-factor, the γ Euler angle does not affect resonance frequencies
-
+Since the RWA assumes an close-to-isotropic g-factor, the γ Euler angle does not affect resonance frequencies
 
 Applicability
 -------------
@@ -160,7 +157,7 @@ Applicability
 The RWA is suitable for:
 
 * Organic radicals with isotropic g-factors
-* Triplet states with axial zero-field splitting aligned with the field
+* Triplet states with small axial zero-field splitting aligned with the field
 * Systems where coherence-population coupling is negligible
 
 The RWA should **not** be used for:

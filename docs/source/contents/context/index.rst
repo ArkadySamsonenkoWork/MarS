@@ -1,3 +1,5 @@
+.. _context-general-information:
+
 Relaxation Context
 ==================
 
@@ -6,6 +8,13 @@ It encapsulates the physical model of how spin systems evolve after initial exci
 
 Overview
 --------
+
+.. image:: /_static/context/context_structure.png
+   :width: 70%
+   :alt: The general strucrture of MarS contexts
+   :align: center
+
+
 
 A Context object can specify:
 

@@ -36,19 +36,16 @@ The input matrix of free transition probabilities, denoted ``free_probs``, may b
    This mode is appropriate when the user provides raw or unstructured rates and wishes MarS to enforce physical symmetry before thermal scaling.
 
 2. **Asymmetric mode** (``symmetry_probs=False``):  
-   No symmetrization is performed. The input is interpreted as containing the **backward** rates :math:`w_{ji}` directly. Forward rates are derived via detailed balance:
+   No symmetrization is performed. The input is interpreted as containing the *backward* rates :math:`w_{ji}` directly. Forward rates are derived via detailed balance:
 
    .. math::
 
       w_{ij} = w_{ji} \cdot \exp\left(\frac{E_j - E_i}{k_B T}\right)
 
-   This mode is useful when the user already has a physically meaningful asymmetric rate structure (e.g., from microscopic modeling).
-
-
 Boltzmann Correction
 ~~~~~~~~~~~~~~~~~~~~
-
-For each pair of energy levels i and j with energy difference :math:`\Delta E_{ij} = E_i - E_j`, the corrected transition rates are:
+Since the symmetry mode is more convenient for discussion, we will use it in the following.
+Under this mode for each pair of energy levels i and j with energy difference :math:`\Delta E_{ij} = E_i - E_j`, the corrected transition rates are:
 
 .. math::
 
@@ -84,7 +81,7 @@ The full kinetic matrix K is constructed as:
 
 where:
 
-- **W\*** is the matrix of Boltzmann-corrected free transitions
+- **W** is the matrix of Boltzmann-corrected free transitions
 - **D** is the matrix of driven transitions (no Boltzmann correction)
 - **O** is the vector of outgoing loss rates (e.g., phosphorescence)
 
@@ -92,13 +89,13 @@ The diagonal elements of W\* and D are set to enforce probability conservation:
 
 .. math::
 
-   W^*_{ii} = -\sum_{j \neq i} W^*_{ji}, \quad D_{ii} = -\sum_{j \neq i} D_{ji}
+   W_{ii} = -\sum_{j \neq i} W_{ji}, \quad D_{ii} = -\sum_{j \neq i} D_{ji}
 
 Thus the total kinetic matrix has:
 
 .. math::
 
-   K_{ii} = -\sum_{j \neq i} (W^*_{ji} + D_{ji}) - O_i
+   K_{ii} = -\sum_{j \neq i} (W_{ji} + D_{ji}) - O_i
 
 This ensures that in the absence of losses (O = 0), the column sums are zero and total population is conserved.
 

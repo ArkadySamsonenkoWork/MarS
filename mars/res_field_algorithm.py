@@ -1810,11 +1810,3 @@ class ResField(nn.Module):
         out = self._combine_resonance_data(dtype=resonance_frequency.dtype,
                                            device=Gz.device, batches=batches, resonance_frequency=resonance_frequency)
         return out
-
-
-
-
-
-
-
-

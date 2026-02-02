@@ -50,7 +50,6 @@ class ThetaLine:
                     range(self.latent_points - 1)]
 
 
-
 class RBFInterpolator:
     def __init__(self,
                  interpolating_indexes: list[int],

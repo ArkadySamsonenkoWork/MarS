@@ -16,7 +16,7 @@ Unlike :class:`TruncTimeSpectra`, this class computes the **full eigensystem** a
 Key Capabilities
 ----------------
 
-- Support for arbitrary initial populations via :class:`Context` (defined elsewhere).
+- Support for arbitrary initial populations via :class:`mars.population.context.Context`.
 - Time-dependent spectra as 2D arrays (field × time).
 - Compatible with all interaction types and sample configurations.
 

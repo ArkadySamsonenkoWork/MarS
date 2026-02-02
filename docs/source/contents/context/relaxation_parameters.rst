@@ -10,10 +10,10 @@ Initial States
 
 Two mutually exclusive ways exist to specify the initial quantum state of a spin system:
 
-1.**init_populations** (Initial populations): A real-valued vector of length N specifying the probability of occupying each energy level in the working basis.
+1. **init_populations** (Initial populations): A real-valued vector of length N specifying the probability of occupying each energy level in the working basis.
 This corresponds to a diagonal density matrix and assumes no initial coherences.
 
-2.**init_desnity** (Initial density matrix): A full complex-valued N×N density matrix that includes both populations (diagonal) and coherences (off-diagonal).
+2. **init_desnity** (Initial density matrix): A full complex-valued N×N density matrix that includes both populations (diagonal) and coherences (off-diagonal).
 
 If init_density is required for a computation but not provided, it is automatically constructed as a diagonal matrix from init_populations (if available).
 
@@ -37,8 +37,8 @@ Each mechanism serves a specific physical purpose and transforms differently und
 Out Probabilities (out_probs)
 ------------------------------
 
-.. image:: _static/context/out_probs.png
-   :width: 100%
+.. image:: /_static/context/out_probs.png
+   :width: 70%
    :alt: Out probabilities diagram
    :align: center
 
@@ -73,8 +73,8 @@ A diagonal vector where element :math:`o_i` represents the loss rate from level 
    )
 
 **Transformation Rule**
-
-Under basis transformation with matrix :math:`U`:
+For the most cases the parameters are set in some specific basis. If we transformation matrix from coordinates in old basis to coordinates in a new basis as :math:`U`,
+then under basis transformation with matrix :math:`U`:
 
 .. math::
 
@@ -85,8 +85,8 @@ where :math:`|U|^2` denotes element-wise squaring of the transformation matrix.
 Free Probabilities (free_probs)
 --------------------------------
 
-.. image:: _static/context/free_probs.png
-   :width: 100%
+.. image:: /_static/context/free_probs.png
+   :width: 70%
    :alt: Free probabilities diagram
    :align: center
 
@@ -147,13 +147,13 @@ Under basis transformation:
 
 .. math::
 
-   W' = (|U|^2)^T \cdot W \cdot |U|^2
+   W' = |U|^2 \cdot W \cdot (|U|^2)^T
 
 Driven Probabilities (driven_probs)
 ------------------------------------
 
-.. image:: _static/context/driven_probs.png
-   :width: 100%
+.. image:: /_static/context/driven_probs.png
+   :width: 70%
    :alt: Driven probabilities diagram
    :align: center
 
@@ -163,9 +163,7 @@ Driven probabilities describe stimulated transitions that do NOT obey detailed b
 
 **Mathematical Form**
 
-A matrix :math:`D` where :math:`d_{ij}` is the stimulated rate from :math:`|j\rangle` to :math:`|i\rangle`.
-
-*Not modified* by detailed balance.
+A matrix :math:`D` where :math:`d_{ij}` is the stimulated rate from :math:`|j\rangle` to :math:`|i\rangle`. This matrix is not modified by detailed balance.
 
 **Example: Selective Microwave Excitation**
 
@@ -199,13 +197,13 @@ Same as free probabilities:
 
 .. math::
 
-   D' = (|U|^2)^T \cdot D \cdot |U|
+   D' = |U|^2 \cdot D \cdot (|U|^2)^T
 
 Dephasing (dephasing)
 ---------------------
 
-.. image:: _static/context/dephasing.png
-   :width: 100%
+.. image:: /_static/context/dephasing.png
+   :width: 70%
    :alt: Dephasing diagram
    :align: center
 
@@ -215,9 +213,7 @@ Dephasing causes loss of coherence without changing populations. This term is us
 
 **Mathematical Form**
 
-A vector :math:`\boldsymbol{\gamma}` where :math:`\gamma_i` is the dephasing rate for level :math:`|i\rangle`.
-
-*Only relevant* for density matrix calculations.
+A vector :math:`\boldsymbol{\gamma}` where :math:`\gamma_i` is the dephasing rate for level :math:`|i\rangle`. This vector is only relevant for density matrix calculations.
 
 **Example: T₂ Relaxation in Density Matrix Dynamics**
 
@@ -251,15 +247,14 @@ For off-diagonal density matrix elements :math:`\rho_{ij}` (where :math:`i \neq 
    \frac{d\rho_{ij}}{dt} = \cdots - \frac{\gamma_i + \gamma_j}{2} \rho_{ij}
 
 
-Combined Example
------------------
-
-A realistic triplet state with all relaxation mechanisms:
+Example
+--------
+Let's consider a triplet state with several realxation mechanisms:
 
 .. code-block:: python
 
    import torch
-   from mars import spin_model. population
+   from mars import spin_model, population
    
    # Create triplet system
    g_tensor = spin_model.Interaction(2.004, dtype=torch.float64)
@@ -292,7 +287,7 @@ A realistic triplet state with all relaxation mechanisms:
    ])  # s^-1
    
    # Dephasing rates
-   dephasing = torch.tensor([6e3, 9e3, 11e3])  # s^-1
+   dephasing = torch.tensor([6e5, 6e5, 6e5])  # s^-1
    
    # Combine in ZFS basis for populations, eigen for transitions
    context_zfs = population.Context(

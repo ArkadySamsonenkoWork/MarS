@@ -44,7 +44,6 @@ When constructing an :class:`mars.spin_model.Interaction` or :class:`mars.spin_m
 * A sequence ``[α, β, γ]`` (in radians),
 * A 3×3 rotation matrix (``torch.Tensor``).
 
-Similarly, when initializing a :class:`mars.spin_model.SpinSystem`, you can specify the orientation of the entire spin system relative to the lab frame using the same formats.
 
 Example:
 
@@ -76,7 +75,7 @@ For an entire spin system:
 
 .. code-block:: python
 
-   base_spin_system.apply_rotation(rotation_matrix) # Rotate all interactions in the system
+   base_spin_system.apply_rotation(rotation_matrix) # Rotate spin system relative to the laboratory frame
 
 Orientation in Sample Construction
 ----------------------------------

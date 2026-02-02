@@ -14,7 +14,6 @@ An interaction tensor **T** is defined by its principal values :math:`(T_x, T_y,
 
 where :math:`\mathbf{R}` is the rotation matrix derived from the specified Euler angles (ZYZ' convention).
 
-
 Construction
 ------------
 
@@ -41,6 +40,17 @@ Addition and Interaction Summation
 ----------------------------------
 
 Two :class:`mars.spin_model.Interaction` and :class:`mars.spin_model.DEInteraction`  instances can be added using the ``+`` operator. The result is a new interaction that represents the sum of their second-rank tensors in the laboratory frame.
+
+.. code-block:: python
+
+   # Isotropic (scalar)
+   J = Interaction(1e9)  # 1 GHz isotropic exchange
+
+   # dipolar interaction:
+   dipolar = DEInteraction([-30e6, -40e6, 70e6])  # MHz
+
+   # total interaction as sum of interactions
+   total = J + dipolar
 
 Frame handling
 ~~~~~~~~~~~~~~

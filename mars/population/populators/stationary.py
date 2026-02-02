@@ -7,7 +7,7 @@ from .. import contexts
 
 
 class StationaryPopulator(core.BasePopulator):
-    """Omputes the population-dependent part of the transition intensity for
+    """COmputes the population-dependent part of the transition intensity for
     stationary (CW) EPR spectra.
 
     The population difference between upper and lower resonant levels determines the net absorption

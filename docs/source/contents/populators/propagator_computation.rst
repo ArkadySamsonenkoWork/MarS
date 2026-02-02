@@ -14,8 +14,21 @@ Theory
 
 Evolution Propagator
 ~~~~~~~~~~~~~~~~~~~~
+The core algorithm is based on the approach introduced in [Appl Magn Reson 55, 1553–1567 (2024)].
 
-The density matrix at time t is related to its initial value through the propagator:
+The time evolution of the spin density matrix :math:`\hat{\rho}(t)` is governed by the Liouville equation:
+
+.. math::
+
+   \frac{\partial\hat{\rho}(t)}{\partial t} = (-i\hat{H}(t) + \hat{R})\hat{rho}(t)
+
+where :math:`\hat{\mathcal{L}}(t)` is the Liouvillian superoperator that includes the Hamiltonian and relaxation
+
+To solve this equation, we introduce the **propagator** :math:`\hat{U}(t, 0)`, which maps the initial density matrix to the density matrix at time t:
+
+.. math::
+
+   \hat{\rho}(t) = \hat{U}(t, 0)\hat{\rho}(0)
 
 .. math::
 
@@ -27,15 +40,13 @@ where the propagator satisfies:
 
    \frac{d\hat{G}(t, 0)}{dt} = (-i\hat{H}(t) + \hat{R})\hat{G}(t, 0)
 
-with initial condition G(0, 0) = I (identity superoperator).
-
-In Liouville space, the Hamiltonian superoperator is:
+with initial condition G(0, 0) = I (identity superoperator) and Hamiltonian $\hat{H}$ is in Liouville space which is:
 
 .. math::
 
    \hat{H} = H \otimes I - I \otimes H
 
-where H is the spin Hamiltonian in Hilbert space and I is the identity matrix.
+where H is the spin Hamiltonian in Hilbert space and I is the identity matrix. 
 
 Floquet Theory for Periodic Hamiltonians
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -76,7 +87,7 @@ Computational Implementation
 ----------------------------
 
 Efficient Propagator Calculation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Rather than storing the full propagator G(τ, 0) for all τ ∈ [0, T], only two quantities are computed during integration over one period:
 
@@ -90,7 +101,7 @@ Rather than storing the full propagator G(τ, 0) for all τ ∈ [0, T], only two
 These are sufficient to compute the detected signal at any time t.
 
 Matrix Power via Diagonalization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To compute [G(T, 0)]^k efficiently, the propagator is diagonalized once:
 
@@ -111,7 +122,8 @@ This avoids repeated matrix multiplications and scales linearly with k rather th
 Time Discretization
 ~~~~~~~~~~~~~~~~~~~
 
-Since the microwave period T ~ 0.1 ns is much shorter than typical detection timescales (hundreds of nanoseconds or longer), time points are rounded to the nearest integer multiple of T. This introduces negligible error while greatly simplifying calculations.
+Since the microwave period T ~ 0.1 ns is much shorter than typical detection timescales (hundreds of nanoseconds or longer), time points are rounded to the nearest integer multiple of T.
+This introduces negligible error while greatly simplifying calculations.
 
 Relaxation Parameter Constraints
 ---------------------------------

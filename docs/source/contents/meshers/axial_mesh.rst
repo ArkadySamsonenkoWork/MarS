@@ -1,7 +1,7 @@
 Axial Mesh: AxialMeshNeighbour
 ==============================
 
-The :class:`mars.mesher.AxialMeshNeighbour` class is optimized for systems with axial (cylindrical)
+The :class:`mars.mesher.axial_neigbour.AxialMeshNeighbour` class is optimized for systems with axial (cylindrical)
 symmetry, where physical observables depend only on the polar angle θ and are invariant under
 azimuthal rotation (φ).
 
@@ -30,5 +30,5 @@ interactions (e.g., axial g-tensors and D-tensors with aligned frames).
 Mathematical Notes
 ------------------
 
-Integration weight for a segment [θ_i, θ_{i+1}] is proportional to  
-2π(cos θ_i − cos θ_{i+1}), corresponding to the surface area of a spherical zone.
+Integration weight for a segment $[θ_i, θ_{i+1}]$ is proportional to  
+$2\pi(cos θ_i − cos θ_{i+1})$, corresponding to the surface area of a spherical zone.

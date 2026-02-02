@@ -34,6 +34,14 @@ mars.constants module
    :undoc-members:
    :show-inheritance:
 
+mars.multiplication module
+--------------------------
+
+.. automodule:: mars.multiplication
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mars.res\_field\_algorithm module
 ---------------------------------
 
@@ -82,8 +90,8 @@ mars.spectral\_integration module
    :undoc-members:
    :show-inheritance:
 
-mars.spin\_system module
-------------------------
+mars.spin\_model module
+-----------------------
 
 .. automodule:: mars.spin_model
    :members:

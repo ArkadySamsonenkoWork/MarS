@@ -17,14 +17,14 @@ These models are implemented through dedicated *populator* classes.
 Factorization vs. Non-Factorization
 -----------------------------------
 
-- **Factorizing calculators** (:class:`StationaryIntensityCalculator`, :class:`TimeIntensityCalculator`, :class:`WaveIntensityCalculator`) assume the spectral intensity for a transition :math:`i \leftrightarrow j` can be written as:
+- **Factorizing calculators** (:class:`mars.spectra_manager.spectra_manager.StationaryIntensityCalculator`, :class:`mars.spectra_manager.spectra_manager.TimeIntensityCalculator`, :class:`mars.spectra_manager.wave_calculator.WaveIntensityCalculator`) assume the spectral intensity for a transition :math:`i \leftrightarrow j` can be written as:
 
   .. math::
      I_{ij} = \underbrace{(p_j - p_i)}_{\text{population difference}} \times \underbrace{|M_{ij}|^2}_{\text{transition matrix element}}.
 
   This approach is valid when coherence between states can be neglected (e.g., in incoherent or high-temperature limits).
 
-- **Non-factorizing calculators** (:class:`TimeDensityCalculator`) compute the observable signal directly from the full density matrix without separating populations and coherences:
+- **Non-factorizing calculators** (:class:`mars.spectra_manager.spectra_manager.TimeDensityCalculator`) compute the observable signal directly from the full density matrix without separating populations and coherences:
 
   .. math::
      I(t) \propto \mathrm{Tr}\!\left( \hat{G}_\perp \, \hat{\rho}(t) \right),
@@ -42,10 +42,10 @@ At temperature :math:`T`, the equilibrium population of energy level :math:`k` i
 where :math:`E_k` is the eigenenergy of level :math:`k`, :math:`k_B` is Boltzmann’s constant, and :math:`Z` is the partition function.
 
 This model is used by:
-- :class:`StationaryPopulator`
-- :class:`StationaryIntensityCalculator`
+- :class:`mars.population.populators.stationary.StationaryPopulator`
+- :class:`mars.spectra_manager.spectra_manager.StationaryIntensityCalculator`
 
-It serves as the default for continuous-wave (CW) EPR simulations unless overridden by a custom initial state in a :class:`Context`.
+It serves as the default for continuous-wave (CW) EPR simulations unless overridden by a custom initial state in a :class:`mars.population.contexts.Context` (see details in :ref:`context-general-information`).
 
 Time-Dependent Kinetics (Rate Equation Approach)
 ------------------------------------------------
@@ -57,7 +57,7 @@ When spin relaxation is treated classically (i.e., ignoring quantum coherences),
 
 where:
 - :math:`k_{ij}` is the probabilities of transition from level :math:`i` to :math:`j`,
-- :math:`o_i` represents irreversible loss (e.g., phosphorescence from triplet sublevels),
+- :math:`o_i` represents irreversible loss (e.g., phosphorescence from triplet sublevels)
 
 
 Density Matrix Formalism
@@ -77,7 +77,8 @@ In MarS, :math:`\hat{\mathcal{R}}` can include:
 The observable EPR signal is then computed as:
 
 .. math::
-   I(t) \propto \mathrm{Re}\left[ \mathrm{Tr}\!\left( \hat{G}_\perp \, \hat{\rho}(t) \right) \right].
+
+   I(t) \propto \mathrm{Tr}\!\left( \hat{G}_\perp \, \hat{\rho}(t) \right)
 
 Two computational strategies are supported:
 
@@ -88,7 +89,6 @@ Two computational strategies are supported:
 2. **Full Propagator Method**  
    Solves the periodic time-dependent problem exactly over one microwave cycle and constructs the long-time evolution via Floquet-like theory.Implemented in:
    - :class:`mars.population.populators.density_population.PropagatorDensityPopulator`
-
 
 Summary of Populators
 ----------------------

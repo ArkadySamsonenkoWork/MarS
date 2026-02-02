@@ -4,7 +4,7 @@ Stationary Spectra Population
 Overview
 --------
 
-The class:`mars.population.stationary.StationaryPopulator` computes the population-dependent contribution to transition intensities for continuous-wave (CW) EPR spectroscopy.
+The :class:`mars.population.stationary.StationaryPopulator` computes the population-dependent contribution to transition intensities for continuous-wave (CW) EPR spectroscopy.
 This populator calculates the population difference between upper and lower resonant levels, which determines the net absorption or emission intensity.
 
 Theory
@@ -35,7 +35,8 @@ where E_i are the eigenenergies of the spin Hamiltonian in the applied magnetic 
 Context-Defined Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a Context object provides initial populations (e.g., triplet sublevel polarization following photoexcitation), these populations are used instead of thermal values. The Context-defined populations are typically specified in a molecular basis (such as the zero-field splitting basis) and must be transformed to the field-dependent eigenbasis.
+When a Context object (see :ref:`context-general-information`) provides initial populations (e.g., triplet sublevel polarization following photoexcitation), these populations are used instead of thermal values.
+The Context-defined populations can be specified in any molecular basis (such as the zero-field splitting basis or xyz basis) and will be transformed to the field-dependent eigenbasis.
 
 Basis Transformation
 ~~~~~~~~~~~~~~~~~~~~

@@ -1,6 +1,14 @@
 mars.population package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   mars.population.populators
+
 Submodules
 ----------
 

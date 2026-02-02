@@ -3,14 +3,20 @@
 EPR Spectrum Construction
 =========================
 
-The construction of an EPR spectrum in MarS follows a sequence of well-defined computational steps:
+.. image:: /_static/mars_structure.png
+   :width: 100%
+   :alt: addition context
+   :align: center
+
+
+The construction of an EPR spectrum in MarS follows a sequence of computational steps:
 
 1. **Define spin particles**  
-   The spin system consists of quantum particles-electrons and magnetic nuclei-each specified by its spin quantum number and intrinsic magnetic parameters.
+   The spin system consists of particles: electrons and nuclei - each specified by its spin quantum number and intrinsic magnetic parameters.
 
 2. **Specify interactions**  
    Interactions (e.g., hyperfine, zero-field splitting, nuclear-nuclear couplings) are defined using the :class:`mars.spin_model.Interaction` class.
-   See :ref:`interaction_in_mars` for details.
+   (See :ref:`interaction_in_mars` for details).
 
 3. **Assemble the spin system and sample**  
    Particles and interactions are combined into a :class:`mars.spin_model.SpinSystem`.
@@ -41,40 +47,50 @@ The construction of an EPR spectrum in MarS follows a sequence of well-defined c
    MarS offers three algorithms:
 
    5.1. **Resonance-field search** (:class:`mars.res_field_algorithm.ResField`)  
-        Solves :math:`\hbar \omega = E_i(B_{ij}) - E_j(B_{ij})` for resonance fields :math:`B_{ij}` at fixed frequency.  
-        This is a batched, GPU-accelerated implementation of the method used in EasySpin [doi:10.1016/j.jmr.2005.08.013], default for solid-state simulations.
+        This method solves :math:`\hbar \omega = E_i(B_{ij}) - E_j(B_{ij})` for resonance fields :math:`B_{ij}` at fixed frequency.  
+        This is a batched, GPU-accelerated implementation of the method used in EasySpin [doi:10.1016/j.jmr.2005.08.013]. In MarS this method is default for solid-state simulations.
 
    5.2. **Secular approximation** (:class:`mars.secular_approximation.ResSecular`)  
-        Applies a two-step approximation to the spin Hamiltonian:
+        This method applies a two-step approximation to the spin Hamiltonian:
         
         1. Zeeman term projection: Modifies :math:`G_x, G_y, G_z` to zero matrix elements where the corresponding total spin projection (:math:`S_x, S_y, S_z`) has magnitude below threshold. Enforces :math:`[G_\alpha, S_\alpha] \approx 0`.
         
         2. Zero-field term projection: Modifies :math:`F` to zero elements connecting states with different Zeeman energies (:math:`|(G_z)_{ii} - (G_z)_{jj}| > \varepsilon`), enforcing :math:`[F, G_z] \approx 0`.
         
-        Used by default in :class:`mars.spectra_manager.DensityTimeSpectra` for time-resolved EPR.
+        This method is udsed by default in :class:`mars.spectra_manager.spectra_manager.DensityTimeSpectra` for time-resolved EPR.
    
-    5.3. **Resonance-frequency search** (:class:`mars.res_freq_algorithm.ResFreq`)  
-        Finds resonant frequencies in a given interval at fixed magnetic field.
+   5.3. **Resonance-frequency search** (:class:`mars.res_freq_algorithm.ResFreq`)  
+        This method finds resonant frequencies in a given interval at fixed magnetic field. It requires only one matrix eigenvalues and eigenvectors computation
 
 6. **Compute transition intensities**  
    Intensities are computed by :class:`mars.spectra_manager.spectra_manager.BaseIntensityCalculator`.
 
-   Assuming the quantization axis aligns with the magnetic field direction (e.g., :math:`\mathbf{B} \parallel z`), the intensity of a transition between eigenstates :math:`|i\rangle` and :math:`|j\rangle` is:
+   Assuming the quantization axis aligns with the magnetic field direction (e.g., :math:`\mathbf{B} \parallel z`), the intensity of a transition in stationart EPR spectroscopy between eigenstates :math:`|i\rangle` and :math:`|j\rangle` is:
 
    .. math::
-      I_{ij} \propto \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)
+
+      I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 (p_j - p_i)
 
    where the population of state *k* for the equilibrium case is:
 
    .. math::
+
       p_k = \frac{e^{-E_k / k_B T}}{Z}, \quad Z = \sum_k e^{-E_k / k_B T} 
 
    In the crystal case, :math:`I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 \cdot (p_j - p_i)`.
 
+   In disordered (powder) systems, the signal must be averaged over all molecular orientations.
+   This is typically done by sampling three Euler angles (:math:\alpha,\beta,\gamma) that define the rotation from the molecular frame to the lab frame.
+   However, due to cylindrical symmetry of the microwave magnetic field around :math:\mathbf{B}_0, the final averaging over the third Euler angle (:math:\gamma) can be performed analytically, reducing computational cost:
+   
+   .. math::
+      I_{ij} \propto \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)
+
+
    In **time-resolved** or **non-equilibrium** simulations (e.g., photoexcited states), populations :math:`p_i(t)` are not thermal and are managed via Context tool: see :class:`mars.population.contexts.Context`.
 
    For density matrix-based time dependant methods, the signal is computed directly as :math:`\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))`,
-   where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection method and computation method)
+   where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection computation method)
 
 7. **Account for line broadening**  
    The total Gaussian linewidth is computed as the square root of the sum of squares of all independent broadening contributions:
@@ -93,7 +109,7 @@ The construction of an EPR spectrum in MarS follows a sequence of well-defined c
      - in Hz for zero-field splitting parameters (D/E),
 
 8. **Field-sweep Jacobian correction**  
-   When converting from frequency-domain to field-swept spectra, intensities are scaled by :math:`|d\nu/dB|` to preserve spectral weight, consistent with standard EPR theory and EasySpin.
+   When converting from frequency-domain to field-swept spectra, intensities are scaled by :math:`|d\nu/dB|` to preserve spectral weight, consistent with standard EPR theory.
 
 9. **Powder averaging with operation parallelism**  
    For powder samples, all matrix operations act on a batched tensor that combines orientation and sample dimensions. This enables full GPU parallelism across orientations without explicit loops.

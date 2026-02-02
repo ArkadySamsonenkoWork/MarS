@@ -412,7 +412,11 @@ class EvolutionPopulationSolver(EvolutionSolver):
         eig_vals, eig_vecs = torch.linalg.eig(M)
         indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
 
-        intermediate = (torch.linalg.inv(eig_vecs) @ initial_populations.unsqueeze(-1).to(eig_vecs.dtype)).squeeze(-1)
+        intermediate = torch.linalg.solve(
+            eig_vecs,
+            initial_populations.unsqueeze(-1).to(eig_vecs.dtype)
+        ).squeeze(-1)
+
         dims_to_add = M.dim() - 1
         reshape_dims = [len(time)] + [1] * dims_to_add
         time_reshaped = time.reshape(reshape_dims)
@@ -519,7 +523,10 @@ class EvolutionRWASolver(EvolutionSolver):
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
 
-        intermediate = (torch.linalg.inv(eig_vecs) @ initial_density.unsqueeze(-1).to(eig_vecs.dtype)).squeeze(-1)
+        intermediate = torch.linalg.solve(
+            eig_vecs,
+            initial_density.unsqueeze(-1).to(eig_vecs.dtype)
+        ).squeeze(-1)
 
         dims_to_add = M.dim() - 1
         reshape_dims = [len(time)] + [1] * dims_to_add
@@ -689,7 +696,3 @@ class EvolutionPropagatorSolver(EvolutionSolver):
     @staticmethod
     def exponential_solver(*args, **kwargs):
         raise NotImplementedError
-
-
-
-

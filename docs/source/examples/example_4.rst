@@ -1,5 +1,5 @@
 Advance Fitting Procedures
-==============================
+==========================
 
 .. toctree::
    :maxdepth: 1

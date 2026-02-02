@@ -21,6 +21,6 @@ Extensibility
 -------------
 
 To implement a new creator:
-- Subclass :class:`BaseSpectra`
+- Subclass :class:`mars.spectra_manager.spectra_manager.BaseSpectra`
 - Override `_init_spectra_processor` to select integration strategy
 - Optionally override `_postcompute_batch_data` for custom dynamics

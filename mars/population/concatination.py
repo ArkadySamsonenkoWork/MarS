@@ -3,7 +3,7 @@ import warnings
 
 import torch
 
-from .contexts import Context, SummedContext, KroneckerContext, BaseContext
+from .contexts import Context, SummedContext
 
 
 def _normalize_to_components(
@@ -369,7 +369,23 @@ def _concat_homogeneous_contexts(
 
     dims = [ctx.spin_system_dim for ctx in contexts]
     total_dim = sum(dims)
-    def _get_batch_shapes(values, param_name, matrix=False):
+    def _get_batch_shapes(values: tp.List[tp.Optional[torch.Tensor]], param_name: str, matrix=False):
+        """Extract and validate batch shapes from a list of parameter values.
+
+        Checks for unsupported callable parameters and collects batch dimensions
+        from all non-None tensors. For matrices, batch shape excludes the last two
+        dimensions (rows/columns); for vectors, excludes the last dimension.
+
+        :param values: List of parameter values (tensors or None) from contexts.
+        :param param_name: Name of the parameter (for error messages).
+        :param matrix: If True, treats values as matrices (shape [..., M, N]);
+                       otherwise as vectors (shape [..., D]).
+        :return: List of batch shapes (torch.Size) from non-None values.
+                 Returns [torch.Size([])] if all values are None.
+
+        Raises:
+            TypeError: If any non-None value is callable (time-dependent parameter).
+        """
         if any(callable(v) for v in values if v is not None):
             raise TypeError(f"Callable {param_name} not supported in concatenation")
 
@@ -382,7 +398,18 @@ def _concat_homogeneous_contexts(
                     batch_shapes.append(v.shape[:-1])
         return batch_shapes or [torch.Size([])]
 
-    def _process_vectors(attr_name):
+    def _process_vectors(attr_name: str):
+        """Construct block-concatenated vector by stacking context vectors along system dimension.
+
+        Handles parameters like init_populations, out_probs, and dephasing.
+        Missing values (None) are filled with zeros in their respective blocks.
+        Batch dimensions are broadcasted across all non-None inputs.
+
+        :param attr_name: Name of the vector attribute to extract from each context
+                          (e.g., 'init_populations', 'out_probs').
+        :return: Concatenated tensor of shape [..., total_dim] where total_dim = sum(dims),
+                 or None if all contexts have None for this attribute.
+        """
         values = [getattr(ctx, attr_name) for ctx in contexts]
         batch_shapes = _get_batch_shapes(values, attr_name)
 
@@ -405,6 +432,25 @@ def _concat_homogeneous_contexts(
         return composite
 
     def _process_matrices(attr_name, use_identity_for_none=False):
+        """Construct block-diagonal matrix by placing context matrices on the diagonal.
+
+        Handles square matrix parameters (free_probs, driven_probs, basis).
+        Missing values are filled with zeros unless use_identity_for_none=True
+        (used for basis where identity is physically meaningful).
+
+        :param attr_name: Name of the matrix attribute to extract (e.g., 'basis', 'free_probs').
+        :param use_identity_for_none: If True, replaces None values with identity matrices
+                                      (required for basis transformations); otherwise uses zeros.
+        :return: Block-diagonal tensor of shape [..., total_dim, total_dim],
+                 or None if all contexts have None for this attribute.
+
+        Block structure:
+            [ M₁  0  0 ... ]
+            [ 0  M₂  0 ... ]
+            [ 0   0 M₃ ... ]
+            [...         ]
+        where Mᵢ is the matrix from context i (or identity/zero if missing).
+        """
         values = [getattr(ctx, attr_name) for ctx in contexts]
         batch_shapes = _get_batch_shapes(values, attr_name, matrix=True)
 
@@ -439,6 +485,19 @@ def _concat_homogeneous_contexts(
         return composite
 
     def _process_density():
+        """Construct block-diagonal initial density matrix from context density matrices.
+
+        Unlike real-valued probabilities, density matrices are complex-valued.
+        Missing density matrices are treated as zero blocks (no coherence/population).
+
+        :return: Block-diagonal density matrix of shape [..., total_dim, total_dim]
+                 with complex dtype (complex64 for float32, complex128 for float64),
+                 or None if all contexts have None for init_density.
+
+        Note:
+            The resulting density matrix represents a statistical mixture of independent
+            subsystems with no initial coherence between different spin systems.
+        """
         densities = [ctx.init_density for ctx in contexts]
         batch_shapes = []
 
@@ -481,7 +540,7 @@ def _concat_homogeneous_contexts(
         driven_probs=_process_matrices("driven_probs"),
         out_probs=_process_vectors("out_probs"),
         dephasing=_process_vectors("dephasing"),
-        relaxation_superop=None,
+        relaxation_superop=_process_matrices("driven_probs"),
         profile=None,
         time_dimension=time_dimension,
         dtype=dtype,

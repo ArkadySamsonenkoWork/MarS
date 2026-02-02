@@ -337,7 +337,6 @@ class BaseProcessing(nn.Module, ABC):
                 f"Use one of the {[value for value in OutputSpectraMode]}"
             )
 
-
     @abstractmethod
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator], harmonic: int,
                                  chunk_size: int, device: torch.device, dtype: torch.dtype):

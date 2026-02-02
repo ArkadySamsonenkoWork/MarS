@@ -89,7 +89,14 @@ All objectives inherit from :class:`mars.optimization.objectives.BaseObjectiveFu
 Fitting with Optuna Samplers
 ----------------------------
 
-Optuna offers several samplers suitable for different stages of optimization.
+MarS supports two optimization libraries for parameter fitting: *Optuna* and *Nevergrad*. While both are powerful, they differ in design philosophy and ease of use:
+
+- **Optuna** provides a smaller but well curated set of samplers that are easy to configure and highly effective for most spectroscopic fitting tasks.
+
+- **Nevergrad** offers a much broader collection of optimization algorithms - from gradient-free methods to evolutionary and population-based strategies,
+making it highly flexible but also more challenging to navigate without prior experience.
+
+Optuna samplers (e.g., ``TPESampler``, ``CmaEsSampler``, ``NSGAIISampler``) offers several samplers suitable for different stages of optimization.
 
 **Tree-structured Parzen Estimator (TPE)**
 
@@ -168,17 +175,30 @@ This starts a local web server (typically at http://localhost:8080) where you ca
 Fitting with Nevergrad
 ----------------------
 
-Nevergrad provides gradient-free optimizers such as COBYLA:
+`Nevergrad <https://github.com/facebookresearch/nevergrad>` is a gradient-free optimization library. It provides a unified interface to more than 100 derivative-free optimization algorithms, including evolutionary strategies (e.g., CMA-ES), Bayesian optimization variants, particle swarm methods, and classical direct search techniques like COBYLA and Powell.
+
+Example: using the COBYLA optimizer (a constrained optimization algorithm based on linear approximations):
 
 .. code-block:: python
 
     result_cobyla = fitter.fit(
         backend="ng",
-        budget=300,
+        budget=300,          # maximum number of function evaluations
         optimizer_name="Cobyla"
     )
 
-The full list of available optimizers is accessible via ``SpectrumFitter.__available_optimizers__["nevergrad"]``.
+The full list of optimizers available through Nevergrad in MarS can be inspected at runtime:
+
+.. code-block:: python
+
+    print(SpectrumFitter.__available_optimizers__["nevergrad"])
+
+This includes popular choices such as:
+- ``"CMA"`` (Covariance Matrix Adaptation Evolution Strategy) — robust for continuous, non-convex problems,
+- ``"DE"`` (Differential Evolution) — effective for multimodal landscapes,
+- ``"PSO"`` (Particle Swarm Optimization),
+- ``"OnePlusOne"`` — simple yet surprisingly effective for low-dimensional problems,
+- and many more.
 
 Weighted Multi-Spectrum Fitting
 -------------------------------

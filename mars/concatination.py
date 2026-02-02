@@ -59,3 +59,5 @@ def concat(mars_items: mars_items_types) -> mars_item_type:
         return spin_model.concat_multioriented_samples(mars_items)
     elif isinstance(ref_item, population.BaseContext):
         return population.concat_contexts(mars_items)
+    else:
+        raise NotImplementedError("MarS concat works only for spin systems, samples, contexts")

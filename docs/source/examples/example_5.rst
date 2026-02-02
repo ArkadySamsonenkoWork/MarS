@@ -1,5 +1,5 @@
 Spectra Polarization and Time Resolved
-==============================
+======================================
 
 .. toctree::
    :maxdepth: 1

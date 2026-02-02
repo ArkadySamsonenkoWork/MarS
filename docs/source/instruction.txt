@@ -1,0 +1,3 @@
+From project root:
+
+sphinx-apidoc -o docs/source/api mars

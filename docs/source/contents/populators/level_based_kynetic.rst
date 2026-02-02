@@ -4,8 +4,8 @@ Level-Based Kinetic Approach
 Overview
 --------
 
-The class:`mars.population.stationary.LevelBasedPopulator` class implements time-resolved EPR signal modeling using the kinetic (population-based) relaxation paradigm.
-This approach tracks only the diagonal elements of the density matrix—the populations of energy levels - and models their evolution through rate equations.
+The :class:`mars.population.level_population.LevelBasedPopulator` class implements time-resolved EPR signal modeling using the kinetic (population-based) relaxation paradigm.
+This approach computes evolution of only the diagonal elements of the density matrix - the populations of energy levels and models their evolution through rate equations.
 
 Theory
 ------
@@ -28,13 +28,13 @@ The kinetic matrix incorporates three types of processes:
 
 .. math::
 
-   K = W + D - O
+   K = W + D - \text{diag}(O)
 
 where:
 
-* **W**: Spontaneous (free) transition rates, modified to satisfy detailed balance
-* **D**: Driven (induced) transition rates from external perturbations
-* **O**: Population loss rates (e.g., phosphorescence decay from triplet states)
+* **W**: Spontaneous (free) transition probabilities modified to satisfy detailed balance
+* **D**: Driven (induced) transition probabilities from external perturbations
+* **\text{diag}(O)**: Population loss probabilities (e.g., phosphorescence decay from triplet states)
 
 Signal Intensity
 ~~~~~~~~~~~~~~~~
@@ -60,7 +60,7 @@ Populations defined in a molecular basis are transformed to the field-dependent 
 Relaxation Mechanisms
 ~~~~~~~~~~~~~~~~~~~~~
 
-The Context object encodes physical relaxation processes:
+The Context object (see :ref:`relaxation_parameters` for more inforamtion) encodes physical relaxation processes:
 
 * **Losses (O)**: Depopulation without transitions to other spin states (e.g. low singlet state)
 * **Free transitions (W)**: Spontaneous transitions satisfying detailed balance at temperature T
@@ -75,7 +75,8 @@ To carry out a detailed balance, "Mars" forces (see :ref:`detailed_balance`):
 Time-Dependent Relaxation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The MarS library supports relaxation parameters that depend on time, enabling modeling of systems where macroscopic properties (e.g., temperature) change during evolution. In this case, K becomes K(t).
+The MarS library supports relaxation parameters that depend on time, enabling modeling of systems where macroscopic properties (e.g., temperature) change during evolution.
+In this case, K becomes K(t).
 
 Numerical Solutions
 -------------------
@@ -96,6 +97,8 @@ This is computed efficiently via matrix diagonalization:
    \exp(Kt) = S \exp(Jt) S^{-1}
 
 where J is the diagonal eigenvalue matrix of K and S contains its eigenvectors.
+In this approach it is needed to compute diagonal of exp(Jt) which has the shape [N] (not [N, N] as it was in the case of computation matrix exponential).
+Moreover, in this approach via batch computation the creator of matrices with the shape [t, ..., N, N] is not needed anymore.
 
 Quasi-Stationary Solution
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,16 +117,13 @@ Adaptive ODE Integration
 For the general case where K = K(n, t), the equation is solved using adaptive Runge-Kutta methods (via ``torchdiffeq``). This provides automatic time-step control but is computationally more expensive.
 
 
-
 The solver is automatically selected based on the Context:
 * **Stationary**: K constant → matrix exponential
 * **Time-dependent**: K(t) → adaptive ODE solver by default
-
-
 
 Limitations
 -----------
 
 This approach:
 * Treats only populations (diagonal density matrix elements)
-For systems where coherences are important, use the density matrix approaches (RWA or propagator methods).
+For systems where coherences are important, use the density matrix approaches (RWA or propagator computation method).

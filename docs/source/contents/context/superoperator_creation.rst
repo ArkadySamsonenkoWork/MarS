@@ -6,7 +6,7 @@ Lindblad Superoperator Construction
 MarS uses the *Lindblad master equation* formalism to construct physically valid relaxation superoperators from user-defined parameters.
 This approach guarantees that the density matrix remains positive semi-definite and trace-preserving (if outgoing probabilities equal to zero) during time evolution.
 
-.. image:: _static/context/lindblad_overview.png
+.. image:: /_static/context/lindblad_overview.png
    :width: 100%
    :alt: Lindblad formalism overview
    :align: center

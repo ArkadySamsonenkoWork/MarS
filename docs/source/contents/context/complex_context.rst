@@ -26,7 +26,7 @@ Operations automatically handle:
 Addition
 --------
 
-.. image:: _static/context/summed_context.png
+.. image:: /_static/context/summed_context.png
    :width: 100%
    :alt: addition context
    :align: center
@@ -259,23 +259,25 @@ Properties of Addition
 Kronecker-Multiplication
 ------------------------
 
-.. image:: _static/context/kronecker_multiplication.png
+.. image:: /_static/context/kronecker_multiplication.png
    :width: 100%
    :alt: Kronecker multiplication context
    :align: center
 
-The multiplication operator (``@``) constructs a composite quantum system from two (or more) independent subsystems. This is essential for modeling weakly coupled or non-interacting spin systems.
+The multiplication operator (``@``) constructs a composite system from two (or more) independent subsystems.
 
-For the multiplication the :class:`mars.population.contexts.KroneckerContext` is used. In the general for speed up it can be instantiated directly
+For the multiplication the "mars.multiply" (:func:`mars.multiplication.multiply`) is used.
+Also it can be done via specific function :func:`mars.population.context.multiply_contexts()`
+In the general for speed up it is better instantiate it directly
 
 .. code-block:: python
 
-   mul_context = population.KroneckerContext(contexts=[context_1, context_2, context_N])  # The same as context_1 @ context_2 @ context_N, but more efficiently
+   mul_context = mars.multiply([context_1, context_2, context_N])  # The same as context_1 @ context_2 @ context_N, but more efficiently
 
 Mathematical Formulation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-For **population dynamics**, the composite system is formed via tensor products:
+For population dynamics, the composite system is formed via tensor products:
 
 .. math::
 
@@ -285,7 +287,7 @@ For **population dynamics**, the composite system is formed via tensor products:
 
    K_{\text{total}} = K^{(1)} \otimes \mathbb{I}^{(2)} + \mathbb{I}^{(1)} \otimes K^{(2)}
 
-For **density matrix dynamics**:
+For density matrix dynamics:
 
 .. math::
 
@@ -297,20 +299,55 @@ For **density matrix dynamics**:
 
 where :math:`\mathbb{I}` and :math:`\hat{\mathbb{I}}` are identity operators in Hilbert and Liouville space, respectively.
 
-**Implementation:** MarS uses Clebsch-Gordan-like coefficients to handle these transformations. This is quite more efficiently than the direct mathematical expressions. Key functions:
+.. note::
+   
+   Vectorization requires permutation: When working with superoperators in Liouville space,
+   the vectorization of a Kronecker product does not factorize directly:
+   
+   .. math::
+   
+      \operatorname{vec}(\rho_1 \otimes \rho_2) \neq \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2)
+   
+   Instead, a commutation (permutation) matrix :math:`\Pi` reconciles the ordering:
+   
+   .. math::
+   
+      \operatorname{vec}(\rho_1 \otimes \rho_2) = \Pi \bigl[ \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2) \bigr]
+   
+   To perform transformation between v
+
+
+Implementation Strategy
+^^^^^^^^^^^^^^^^^^^^^^^
+
+MarS uses Clebsch-Gordan coefficients to construct the :class:`mars.population.contexts.KroneckerContext`
+object, which handles all basis transformations consistently. For relaxation, superoperators are first generated for each subsystem in its native intra-basis ("zfs", "xyz", "zeeman", ...),
+and only then are these superoperators composed in the multiplied Hilbert space.
+
+While populations, initial states,
+outgoing probabilities, and density matrices admit unambiguous Kronecker-product transformations between bases,
+transition probability matrices (``free_probs``, ``driven_probs``) require special considiration due to their
+dependence on both initial and final state overlaps. The exploration for these transformations is shown in the :ref:`basis_transformation`. 
+
+Key functions:
 
 - :func:`mars.population.transform.compute_clebsch_gordan_probabilities` - Compute transformation coefficients
 - :func:`mars.population.transform.transform_kronecker_populations` - Transform populations
-- :func:`mars.population.transform.transform_kronecker_matrix` - Transform rate matrices  
-- :func:`mars.population.transform.transform_kronecker_density` - Transform density matrices
+- :func:`mars.population.transform.transform_kronecker_rate_matrix` - Transform probabilities matrices
+- :func:`mars.population.transform.transform_kronecker_rate_vector` - Transform probabilities vector 
+- :func:`mars.population.transform.transform_kronecker_operator` - Transform Hilbert operators (density matrices)
 - :func:`mars.population.transform.transform_kronecker_superoperator` - Transform superoperators
+- :func:`mars.population.transform.reshape_vectorized_kronecker_to_tensor_product` - Convert Kronecker-ordered vectorized states to tensor-product ordering
+- :func:`mars.population.transform.reshape_vectorized_tensor_product_to_kronecker` - Convert tensor-product-ordered vectorized states to Kronecker ordering
+- :func:`mars.population.transform.reshape_superoperator_kronecker_to_tensor_basis` - Convert superoperators between Kronecker and tensor-product bases
+- :func:`mars.population.transform.reshape_superoperator_tensor_to_kronecker_basis` - Convert superoperators between tensor-product and Kronecker bases
 
 .. code-block:: python
 
    from mars.population.transform import (
        compute_clebsch_gordan_probabilities,
        transform_kronecker_populations,
-       transform_kronecker_matrix
+       transform_kronecker_rate_matrix
    )
    
    # Example: Two subsystems with bases basis_1 and basis_2
@@ -332,8 +369,54 @@ where :math:`\mathbb{I}` and :math:`\hat{\mathbb{I}}` are identity operators in 
    # Transform rate matrices
    K1 = torch.zeros(3, 3)  # Rates for system 1
    K2 = torch.zeros(2, 2)  # Rates for system 2
-   K_total = transform_kronecker_matrix([K1, K2], coeffs)
+   K_total = transform_kronecker_rate_matrix([K1, K2], coeffs)
    # Shape: [..., 6, 6]
+
+
+Transformation Rules
+^^^^^^^^^^^^^^^^^^^^
+
+**Populations** (init_populations): Kronecker product :math:`\text{n}_1 \otimes \text{n}_2 \otimes \cdots`
+
+**Density matrices** (init_density): Kronecker product :math:`\rho_1 \otimes \rho_2 \otimes \cdots`
+
+**Diagonal operators** (out_probs, dephasing): Sum of local terms :math:`v_1 \otimes I + I \otimes v_2 + \cdots`
+
+**Matrices** (free_probs, driven_probs, supeoperators): Sum of local operators :math:`K_1 \otimes I + I \otimes K_2 + \cdots`
+
+.. note::
+
+   For all context parameters (e.g., populations, density matrices, rate/probability matrices, etc.) involved in Kronecker multiplication:
+   
+   - If **all** operands are ``None``, the resulting parameter in the multiplied context is ``None``.
+   - If **some** operands are ``None``, the ``None`` entries are replaced by zero-valued arrays of compatible shape.
+     Consequently, for populations and density matrices, the total state of the composite system becomes zero (since the Kronecker product with a zero tensor is zero).
+
+Examples
+--------
+
+.. code-block:: python
+
+   import torch
+   from mars.population import Context
+   
+   ctx1 = Context(
+       sample=sample,
+       basis="zeeman",
+       init_populations=torch.tensor([0.6, 0.4]),
+       free_probs=torch.tensor([[0.0, 0.1], [0.1, 0.0]]),
+       dtype=torch.float64
+   )
+   
+   ctx2 = Context(
+       sample=sample,
+       basis="zeeman",
+       init_populations=torch.tensor([0.5, 0.5]),
+       free_probs=torch.tensor([[0.0, 0.05], [0.05, 0.0]]),
+       dtype=torch.float64
+   )
+   
+   composite = ctx1 @ ctx2  # Dimension: 4
 
 Combining Multiplication and Addition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -412,12 +495,12 @@ This rule is applied automatically when evaluating expressions like:
 
    (context_A + context_B) @ context_C
 
-The resulting object is a :class:`SummedContext` containing two :class:`KroneckerContext` terms.
+The resulting object is a :class:`mars.population.contexts.SummedContext` containing two :class:`mars.population.contexts.Context` terms.
 
 Concatenation
 --------------
 
-.. image:: _static/context/concat_context.png
+.. image:: /_static/context/concat_context.png
    :width: 100%
    :alt: Concatenation of contexts
    :align: center
@@ -549,8 +632,6 @@ We add this as a separate context defined in the eigenbasis of the combined syst
    
    # Full context: concatenated triplets + slow inter-conformer relaxation
    context_full = context_concat + context_exchange
-
-This construction correctly separates **fast intra-triplet dynamics** (handled by concatenation) from **slow inter-triplet relaxation** (added via summation).
 
 Properties of Concatenation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

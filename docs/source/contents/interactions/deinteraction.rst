@@ -20,9 +20,8 @@ and uses the standard transformation:
    D_y &= -\frac{D}{3} - E, \\
    D_z &= \frac{2D}{3}.
 
-For the cases when distribution of D and C parameters are zeros ('strain' is absente), DEInteraction can be written via simple interaction (:class:`mars.spin system.Interaction`)
-This distinction is critical when modeling **strain**: in :class:`DEInteraction`, strain is applied to :math:`D` and :math:`E` (not to :math:`D_x, D_y, D_z`), preserving the traceless nature and physical meaning of the distribution.
-
+For the cases when distribution of D and E parameters are zeros ('strain' is absente), DEInteraction can be written via simple interaction (:class:`mars.spin_model.Interaction`)
+This distinction is critical when modeling **strain**: in :class:`DEInteraction`, strain is applied to :math:`D` and :math:`E`  (not to :math:`D_x, D_y, D_z`), preserving the traceless nature of the distribution.
 
 Construction
 ------------

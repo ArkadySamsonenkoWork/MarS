@@ -35,11 +35,11 @@ Welcome to MarS!
    :maxdepth: 2
    :caption: API Reference
 
-   mars
+   api/mars
 
 .. toctree::
    :maxdepth: 2
-   :caption: Examples
+   :caption: Tutorial Examples
 
    examples/example_1
    examples/example_2
@@ -47,6 +47,8 @@ Welcome to MarS!
    examples/example_4
    examples/example_5
    examples/example_6
+   examples/example_7
+   examples/example_8
 
 
 .. toctree::

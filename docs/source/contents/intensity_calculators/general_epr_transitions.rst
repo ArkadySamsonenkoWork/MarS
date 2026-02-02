@@ -23,8 +23,6 @@ For a transition :math:`|i\rangle \to |j\rangle`, the *magnetic transition dipol
 
 This complex vector fully characterizes the transition coupling to electromagnetic radiation. Its magnitude determines transition strength; its direction and phase encode polarization and rotational sense.
 
-Note: This concept is **only meaningful in incoherent regimes**. In density matrix formalism in MarS, transitions are not described by isolated matrix elements but by the full evolution of :math:`\rho(t)`.
-
 Standard Resonator Geometry
 ---------------------------
 
@@ -55,7 +53,8 @@ Following Nehrkorn *et al.* [PRL 114, 010801 (2015)], for arbitrary polarization
   .. math::
      D^\pm = D^{\text{un}} \pm 2\, \mathbf{n}_k^\top \left( \mathrm{Im}\,\boldsymbol{\mu}_{ij} \times \mathrm{Re}\,\boldsymbol{\mu}_{ij} \right).
 
-These expressions are used by :class:`WaveIntensityCalculator`. The **population difference** multiplies :math:`D` as a separate prefactor, preserving the two-factor structure **as long as coherences are neglected**.
+These expressions are used by :class:`mars.spectra_manager.wave_calculator.WaveIntensityCalculator`.
+The population difference multiplies :math:`D` as a separate prefactor, preserving the two-factor structure as long as coherences are neglected.
 
 Powder Averaging
 ----------------
@@ -67,7 +66,7 @@ For disordered samples, angular integration yields closed forms involving :math:
 
 Usage Examples
 
-Example 1: Unpolarized radiation in a powder sample (Voigt geometry)
+Example: Unpolarized radiation in a powder sample (Voigt geometry)
 --------------------------------------------------------------------
 
 .. code-block:: python

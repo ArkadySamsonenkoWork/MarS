@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import math
 import warnings
 import itertools
+import functools
 
 import torch
 from torch import nn
@@ -238,29 +239,295 @@ def _group_components_by_position(
     return result_groups
 
 
-def multiply_contexts(contexts: tp.List[tp.Union[Context, SummedContext]]) -> tp.Union[KroneckerContext, SummedContext]:
-    """Perform kronecker multiplication of multiple contexts
-    (either Context or SummedContext objects) into a single Composite context.
+def multiply_contexts(contexts: tp.List[tp.Union[Context, SummedContext, KroneckerContext]]) ->\
+        tp.Union[KroneckerContext, SummedContext]:
+    """
+    This function models a system consisting of multiple interacting or non-interacting
+    subsystems (e.g., electron-nuclear spin systems). Each subsystem
+    is described by its own context, and the composite system follows quantum mechanical
+    tensor product rules.
 
-    Creates a new context where:
-    - Hilbert space dimension is the product of individual system dimensions
-    - Parameters of populations and densitities are combined via kronecker product.
-       Kynetic parameters are combined via K1 x I + I x K2
+    Key physical principles:
+    1. State space: The Hilbert space of the composite system is the tensor product of
+       subsystem Hilbert spaces: H = H₁ ⊗ H₂ ⊗ ... ⊗ Hₙ
+    2. Initial state: The initial density matrix is the tensor product of subsystem states:
+       ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ
+    3. Dynamics: Each subsystem evolves according to its own Hamiltonian and relaxation
+       operators, which are embedded into the composite space using tensor products with
+       identity operators: K = K1 ⊗ I + I ⊗ K2
+
+    Transformation rules:
+    - Basis transformations use Clebsch-Gordan coefficients to map between product bases
+      and coupled bases
+    - Initial populations are transformed using tensor products of transformation matrices
+    - Relaxation superoperators are transformed using Kronecker products of basis
+      transformation matrices
+
+    Composite contexts can be created using the @ operator:
+        composite_context = context1 @ context2 @ context3
+
+    Warning!
+    -Composite context only determined for not-None basis (eigen).
+      If it is not Eigen, please considet other types of basis
     - Callables (time-dependent parameters) are not supported
 
-    Physical interpretation:
-    The resulting context describes multiple spin-centers with their own relaxation mechanism
-
     :return:
-        A single KroneckerContext object or the summ of KroneckerContext
+        A single Context object or the summ of Contexts
     """
     component_lists, num_with_population, num_with_density, spin_system_dim, device, dtype =\
         _normalize_to_components(contexts)
     padded_component_lists = _group_components_by_position(
         component_lists, num_with_population, num_with_density, spin_system_dim, device, dtype
     )
-    results = [KroneckerContext(group) for group in padded_component_lists]
+    results = [_multiply_homogeneous_contexts(group) for group in padded_component_lists]
     return results[0] if len(results) == 1 else SummedContext(results)
+
+
+def _multiply_homogeneous_contexts_to_context(contexts: tp.Sequence[Context]) -> Context:
+    """ Build the tensor-product (Kronecker) composition of multiple homogeneous `Contexts.
+
+    This Function is not used for the manual code!!. It doesn't work correct for superoperators transformation
+    if free_probs or drive_probs are set
+
+    This function returns a new Context describing the composite system that is the
+    tensor product of the provided `contexts`. Behavior / rules follow the same
+    conventions used in your concatenation function but adapted to tensor-product:
+
+    - Hilbert space dimension is the product of individual system dimensions.
+
+    - init_populations are combined with Kronecker product.
+      If ALL values are None -> resulting parameter is None. If ANY is None,
+      The output is ZERO tensor of the corresponding dimension.
+
+    -`out_probs` / `dephasing`: combined as sum of **diagonal** local operators
+        `sum_i I ⊗ ... ⊗ diag(v_i) ⊗ ... ⊗ I` (i.e. vector x I + I x vector interpreted as diag).
+        If ALL values are None -> resulting parameter is None. If ANY is -None, missing
+          vectors are replaced with zero vectors of the corresponding dimension.
+
+    - Square matrices (free_probs, driven_probs) are combined into a sum of local operators:
+        K_total = sum_i (I ⊗ ... ⊗ K_i ⊗ ... ⊗ I)
+      If ALL values are None -> resulting parameter is None. If ANY is non-None, missing
+      matrices are replaced with zero matrices of the corresponding dimension.
+
+    - Initial densities (init_density) combine by Kronecker product (complex dtype).
+      If ALL densities are None -> resulting init_density is None. If ANY is non-None,
+      missing ones are treated as zero matrices (so the total density may end up zero).
+
+    - Callables (time-dependent parameters) are NOT supported and will raise TypeError.
+
+    - Batch shapes are broadcast; all non-None parameters must be broadcast-compatible.
+
+    - Requires that all contexts share the same device/dtype.
+
+    :param contexts:
+        contexts: List of Context objects to concatenate.
+
+    :return:
+        New Context object representing the direct-sum system.
+
+    Raises:
+        ValueError: If contexts list is empty or contains incompatible dtypes/devices
+        TypeError: If any parameter is callable (time-dependent)
+    """
+    dtype = contexts[0].dtype
+    device = contexts[0].device
+    time_dimension = contexts[0].time_dimension
+
+    flag = any([context.eigen_basis_flag for context in contexts])
+    if flag:
+        raise NotImplementedError(
+            "Multiplication of contexts does not support contexts that use the 'eigen' basis (or a None basis). "
+            "This is because the resulting behavior would be ambiguous or ill-defined."
+            "Please specify a defined physical basis such as 'zfs', 'multiplet', 'product',"
+            "or another supported option."
+        )
+
+    dims = [ctx.spin_system_dim for ctx in contexts]
+    total_dim = functools.reduce(lambda x, y: x * y, dims)
+    n = len(contexts)
+
+    def _check_callables(values: tp.List, param_name: str):
+        """Check if any value is callable and raise TypeError if so."""
+        if any(callable(v) for v in values if v is not None):
+            raise TypeError(f"Callable {param_name} not supported in tensor product")
+
+    def _get_common_batch_shape(values: tp.List[tp.Optional[torch.Tensor]], is_matrix: bool = False) -> torch.Size:
+        """Extract and broadcast batch shapes from non-None values."""
+        batch_shapes = []
+        for v in values:
+            if v is not None:
+                shape = v.shape[:-2] if is_matrix else v.shape[:-1]
+                batch_shapes.append(shape)
+        return torch.Size(torch.broadcast_shapes(*batch_shapes)) if batch_shapes else torch.Size([])
+
+    def _process_init_populations():
+        """Combine init_populations via Kronecker product."""
+        values = [ctx.init_populations for ctx in contexts]
+        _check_callables(values, "init_populations")
+
+        if all(v is None for v in values):
+            return None
+        if any(v is None for v in values):
+            batch_shape = _get_common_batch_shape(values, is_matrix=False)
+            return torch.zeros(batch_shape + (total_dim,), dtype=dtype, device=device)
+
+        batch_shape = _get_common_batch_shape(values, is_matrix=False)
+        operators = []
+        for i, val in enumerate(values):
+            expanded = val.expand(batch_shape + (dims[i],))
+            operators.append(expanded)
+        return transform.batched_multi_kron([v.unsqueeze(-1) for v in operators]).squeeze(-1)
+
+    def _process_diagonal_vectors(attr_name: str):
+        """Combine diagonal vectors (out_probs, dephasing) using batched_sum_kron_diagonal."""
+        values = [getattr(ctx, attr_name) for ctx in contexts]
+        _check_callables(values, attr_name)
+
+        if all(v is None for v in values):
+            return None
+
+        batch_shape = _get_common_batch_shape(values, is_matrix=False)
+        operators = []
+        for i, val in enumerate(values):
+            if val is not None:
+                expanded = val.expand(batch_shape + (dims[i],))
+            else:
+                expanded = torch.zeros(batch_shape + (dims[i],), dtype=dtype, device=device)
+            operators.append(expanded)
+
+        return transform.batched_sum_kron_diagonal(operators)
+
+    def _process_matrices(attr_name: str):
+        """Combine matrices using batched_sum_kron."""
+        values = [getattr(ctx, attr_name) for ctx in contexts]
+        _check_callables(values, attr_name)
+
+        if all(v is None for v in values):
+            return None
+
+        batch_shape = _get_common_batch_shape(values, is_matrix=True)
+
+        operators = []
+        for i, val in enumerate(values):
+            expanded = val.expand(batch_shape + (dims[i], dims[i]))
+            operators.append(expanded)
+        return transform.batched_sum_kron(operators)
+
+    def _process_basis():
+        """Combine bases via Kronecker product."""
+        bases = [ctx.basis for ctx in contexts]
+        _check_callables(bases, "basis")
+
+        has_any_basis = any(b is not None for b in bases)
+        if not has_any_basis:
+            return None
+        batch_shape = _get_common_batch_shape(bases, is_matrix=True)
+        basis_dtype = next((b.dtype for b in bases if b is not None), dtype)
+        operators = []
+        for i, basis in enumerate(bases):
+            if basis is not None:
+                expanded = basis.expand(batch_shape + (dims[i], dims[i]))
+            else:
+                expanded = torch.eye(dims[i], dtype=basis_dtype, device=device).expand(batch_shape + (dims[i], dims[i]))
+            operators.append(expanded)
+
+        return transform.batched_multi_kron(operators)
+
+    def _process_init_density():
+        """Combine init_density via Kronecker product."""
+        densities = [ctx.init_density for ctx in contexts]
+        _check_callables(densities, "init_density")
+
+        if all(d is None for d in densities):
+            return None
+        if any(d is None for d in densities):
+            batch_shape = _get_common_batch_shape(densities, is_matrix=True)
+            complex_dtype = torch.complex64 if dtype == torch.float32 else torch.complex128
+            return torch.zeros(batch_shape + (total_dim,), dtype=complex_dtype, device=device)
+        operators = []
+        batch_shape = _get_common_batch_shape(densities, is_matrix=True)
+        for i, dens in enumerate(densities):
+            expanded = dens.expand(batch_shape + (dims[i], dims[i]))
+            operators.append(expanded)
+        return transform.batched_multi_kron(operators)
+
+    return Context(
+        basis=_process_basis(),
+        init_populations=_process_init_populations(),
+        init_density=_process_init_density(),
+        free_probs=_process_matrices("free_probs"),
+        driven_probs=_process_matrices("driven_probs"),
+        out_probs=_process_diagonal_vectors("out_probs"),
+        dephasing=_process_diagonal_vectors("dephasing"),
+        relaxation_superop=_process_matrices("driven_probs"),
+        profile=None,
+        time_dimension=time_dimension,
+        dtype=dtype,
+        device=device
+    )
+
+
+def _multiply_homogeneous_contexts(
+    contexts: tp.Sequence[Context],
+) -> KroneckerContext:
+    """ Build the tensor-product (Kronecker) composition of multiple homogeneous `Contexts.
+
+    This function returns a new KroneckerContext describing the composite system that is the
+    tensor product of the provided `contexts`. Behavior / rules follow the same
+    conventions used in your concatenation function but adapted to tensor-product:
+
+    - Hilbert space dimension is the product of individual system dimensions.
+
+    - init_populations are combined with Kronecker product.
+      If ALL values are None -> resulting parameter is None. If ANY is None,
+      The output is ZERO tensor of the corresponding dimension.
+
+    -`out_probs` : combined as sum of **diagonal** local operators
+        `sum_i I ⊗ ... ⊗ diag(v_i) ⊗ ... ⊗ I` (i.e. vector x I + I x vector interpreted as diag).
+        If ALL values are None -> resulting parameter is None. If ANY is -None, missing
+          vectors are replaced with zero vectors of the corresponding dimension.
+
+    - Square matrices (free_probs, driven_probs) are combined into a sum of local operators:
+        K_total = sum_i (I ⊗ ... ⊗ K_i ⊗ ... ⊗ I)
+      If ALL values are None -> resulting parameter is None. If ANY is non-None, missing
+      matrices are replaced with zero matrices of the corresponding dimension.
+
+    - Initial densities (init_density) combine by Kronecker product (complex dtype).
+      If ALL densities are None -> resulting init_density is None. If ANY is non-None,
+      missing ones are treated as zero matrices (so the total density may end up zero).
+
+    - Initial densities (init_density) combine by Kronecker product (complex dtype).
+      If ALL densities are None -> resulting init_density is None. If ANY is non-None,
+      missing ones are treated as zero matrices (so the total density may end up zero).
+
+    - superoperators are combined into a sum of local super operators:
+        K_total = sum_i (I ⊗ ... ⊗ K_i ⊗ ... ⊗ I)
+
+    - Callables (time-dependent parameters) are supported.
+
+    - Batch shapes are broadcast; all non-None parameters must be broadcast-compatible.
+
+    - Requires that all contexts share the same device/dtype.
+
+    :param contexts:
+        contexts: List of Context objects to concatenate.
+
+    :return:
+        New KroneckerContext object representing the direct-sum system.
+
+    Raises:
+        ValueError: If contexts list is empty or contains incompatible dtypes/devices
+        TypeError: If any parameter is callable (time-dependent)
+    """
+    flag = any([context.eigen_basis_flag for context in contexts])
+    if flag:
+        raise NotImplementedError(
+            "Multiplication of contexts does not support contexts that use the 'eigen' basis (or a None basis). "
+            "This is because the resulting behavior would be ambiguous or ill-defined."
+            "Please specify a defined physical basis such as 'zfs', 'multiplet', 'product',"
+            "or another supported option."
+        )
+    return KroneckerContext(contexts)
 
 
 class BaseContext(nn.Module, ABC):
@@ -869,7 +1136,8 @@ class Context(TransformedContext):
             out_probs: tp.Optional[
                 tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
-            dephasing: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
+            dephasing: tp.Optional[
+                tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
             relaxation_superop: tp.Optional[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]] = None,
 
             profile: tp.Optional[tp.Callable[[torch.Tensor], torch.Tensor]] = None,
@@ -908,7 +1176,7 @@ class Context(TransformedContext):
 
         :param init_density: torch.Tensor, optional.
             Initial density of the spin system. Shape [..., N, N]
-            If provided then init_populations will be ignored for density required computations,
+            If provided then init_populations will be ignored for computations,
             however for the most cases it is better to set only one among init_populations / init_density
 
         :param free_probs:   torch.Tensor or callable or None, optional
@@ -956,9 +1224,9 @@ class Context(TransformedContext):
             Default -3 to match the code broadcasting conventions.
         """
         super().__init__(time_dimension=time_dimension, dtype=dtype, device=device)
-        self.transformation_basis_coeff = None
-        self.transformation_basis = None
-        self.transformation_superop_coeff = None
+        self.transformation_probabilities = None
+        self.transformation_unitary = None
+        self.transformation_liouville = None
 
         self.init_populations = self._set_init_populations(init_populations, init_density, dtype, device)
         init_density_real, init_density_imag = self._set_init_density(init_density)
@@ -974,7 +1242,8 @@ class Context(TransformedContext):
         self.free_probs = free_probs
         self.driven_probs = driven_probs
 
-        self.dephasing = self._set_init_dephasing(dephasing, relaxation_superop)
+        dephasing = self._get_init_dephasing(dephasing, relaxation_superop, device=device, dtype=dtype)
+        self.register_buffer("dephasing", dephasing)
         self._default_free_superop = None
         self._default_driven_superop = relaxation_superop
 
@@ -1136,9 +1405,9 @@ class Context(TransformedContext):
         """
         Reset Context cach parameters: basis coefficients
         """
-        self.transformation_basis_coeff = None
-        self.transformation_basis = None
-        self.transformation_superop_coeff = None
+        self.transformation_probabilities = None
+        self.transformation_unitary = None
+        self.transformation_liouville = None
 
     @property
     def init_density(self) -> tp.Optional[torch.Tensor]:
@@ -1175,49 +1444,55 @@ class Context(TransformedContext):
             elif init_populations is not None:
                 return torch.tensor(init_populations, dtype=dtype, device=device)
         else:
-            return None
+            return init_populations
 
-    def _set_init_dephasing(self,
-                             dephasing: tp.Optional[torch.Tensor],
-                             relaxation_superop: tp.Optional[torch.Tensor])\
+    def _get_init_dephasing(self,
+                        dephasing: tp.Optional[
+                            tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]
+                        ],
+                        relaxation_superop: tp.Optional[torch.Tensor], dtype: torch.dtype, device: torch.device)\
             -> tp.Optional[tp.Union[tp.Callable[[torch.Tensor], torch.Tensor], torch.Tensor]]:
         if relaxation_superop is None:
+            if isinstance(dephasing, torch.Tensor) or dephasing is None:
+                pass
+            else:
+                dephasing = torch.tensor(dephasing, device=device, dtype=dtype)
             return dephasing
         else:
             return None
 
-    def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
-        """Compute and cache basis transformation coefficients for the initial
+    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]):
+        """Compute and cache basis transformation probabilities for the initial
         population and all other real values tranformations."""
-        if self.transformation_basis_coeff is not None:
-            return self.transformation_basis_coeff
+        if self.transformation_probabilities is not None:
+            return self.transformation_probabilities
         else:
-            self.transformation_basis_coeff = transform.get_transformation_coeffs(
+            self.transformation_probabilities = transform.get_transformation_probabilities(
                 self.basis, full_system_vectors
             )
-            return self.transformation_basis_coeff
+            return self.transformation_probabilities
 
-    def _compute_transformation_density_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute and cache basis transformation coefficients for the density
         matrix transformation."""
-        if self.transformation_basis is not None:
-            return self.transformation_basis
+        if self.transformation_unitary is not None:
+            return self.transformation_unitary
         else:
-            self.transformation_basis = transform.basis_transformation(
+            self.transformation_unitary = transform.basis_transformation(
                 self.basis, full_system_vectors
             )
-            return self.transformation_basis
+            return self.transformation_unitary
 
-    def _compute_transformation_superop_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_liouville(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute and cache basis transformation coefficients for the
         superoperator transformation."""
-        if self.transformation_superop_coeff is not None:
-            return self.transformation_superop_coeff
+        if self.transformation_liouville is not None:
+            return self.transformation_liouville
         else:
-            self.transformation_superop_coeff = transform.compute_liouville_basis_transformation(
+            self.transformation_liouville = transform.compute_liouville_basis_transformation(
                 self.basis, full_system_vectors
             )
-            return self.transformation_superop_coeff
+            return self.transformation_liouville
 
     def _transformed_skip(
             self, system_data: tp.Optional[torch.Tensor],
@@ -1231,8 +1506,8 @@ class Context(TransformedContext):
         if vector is None:
             return None
         else:
-            coeffs = self._compute_transformation_basis_coeff(full_system_vectors)
-            return transform.transform_vector_to_new_basis(vector, coeffs)
+            probabilities = self._compute_transformation_probabilities(full_system_vectors)
+            return transform.transform_state_weights_to_new_basis(vector, probabilities)
 
     def _transformed_population_basis(
             self, vector: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
@@ -1247,8 +1522,8 @@ class Context(TransformedContext):
         if matrix is None:
             return None
         else:
-            coeffs = self._compute_transformation_basis_coeff(full_system_vectors)
-            return transform.transform_matrix_to_new_basis(matrix, coeffs)
+            probabilities = self._compute_transformation_probabilities(full_system_vectors)
+            return transform.transform_rate_matrix_to_new_basis(matrix, probabilities)
 
     def _transformed_density_basis(
             self, density_matrix: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
@@ -1257,8 +1532,8 @@ class Context(TransformedContext):
         if density_matrix is None:
             return None
         else:
-            coeffs = self._compute_transformation_density_coeff(full_system_vectors)
-            return transform.transform_density(density_matrix, coeffs)
+            coeffs = self._compute_transformation_unitary(full_system_vectors)
+            return transform.transform_operator_to_new_basis(density_matrix, coeffs)
 
     def _transformed_superop_basis(
             self, relaxation_superop: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
@@ -1267,8 +1542,8 @@ class Context(TransformedContext):
         if relaxation_superop is None:
             return None
         else:
-            coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
-            return transform.transform_liouville_superop(transform_to_complex(relaxation_superop), coeffs)
+            coeffs = self._compute_transformation_liouville(full_system_vectors)
+            return transform.transform_superop_to_new_basis(transform_to_complex(relaxation_superop), coeffs)
 
     def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_model.MultiOrientedSample]):
         """Factory method to create basis from string identifier."""
@@ -1366,11 +1641,11 @@ class Context(TransformedContext):
         as-is.
         :return: Initial populations with shape [...N]
         """
-        if self.init_populations is not None:
-            populations = self.transformed_populations(self.init_populations, full_system_vectors)
-        elif self._init_density_real is not None:
+        if self._init_density_real is not None:
             density = self.get_transformed_init_density(full_system_vectors)
             populations = torch.diagonal(density.real, dim1=-2, dim2=-1)
+        elif self.init_populations is not None:
+            populations = self.transformed_populations(self.init_populations, full_system_vectors)
         else:
             return None
 
@@ -1415,14 +1690,16 @@ class Context(TransformedContext):
         else:
             return SummedContext([self, other])
 
-    def __matmul__(self, other: BaseContext) -> KroneckerContext:
+    def __matmul__(self, other: BaseContext) -> tp.Union[KroneckerContext, SummedContext]:
         """"""
         if isinstance(other, SummedContext):
-            raise NotImplementedError("multiplication with SummedContext is not implemented.")
+            return multiply_contexts([[self], other])
+        elif isinstance(other, Context):
+            return _multiply_homogeneous_contexts([self, other])
         elif isinstance(other, KroneckerContext):
-            KroneckerContext([self, *other.component_contexts], time_dimension=self.time_dimension)
+            return _multiply_homogeneous_contexts([self, *other.component_contexts])
         else:
-            return KroneckerContext([self, other], time_dimension=self.time_dimension)
+            raise NotImplementedError("Only Context can be multiplied on a context")
 
 
 class KroneckerContext(TransformedContext):
@@ -1474,20 +1751,12 @@ class KroneckerContext(TransformedContext):
         """
         super().__init__(time_dimension=time_dimension)
         self.component_contexts = nn.ModuleList(contexts)
-        self.transformation_basis_coeff = None
-        self.transformation_superop_coeff = None
+
+        self.transformation_probabilities = None
+        self.transformation_unitary = None
+
         self._setup_prob_getters()
         self._setup_transformers()
-
-    def _check_eigen_basis(self, contexts: list[Context]):
-        flag = any([context.eigen_basis_flag for context in contexts])
-        if flag:
-            raise NotImplementedError(
-                "KroneckerContext does not support contexts that use the 'eigen' basis (or a None basis). "
-                "This is because the resulting behavior would be ambiguous or ill-defined."
-                "Please specify a defined physical basis such as 'zfs', 'multiplet', 'product',"
-                "or another supported option."
-            )
 
     @property
     def basis(self) -> tp.Optional[torch.Tensor]:
@@ -1584,8 +1853,8 @@ class KroneckerContext(TransformedContext):
         """
         Reset Context cach parameters: basis coefficients
         """
-        self.transformation_basis_coeff = None
-        self.transformation_superop_coeff = None
+        self.transformation_probabilities = None
+        self.transformation_unitary = None
         for ctx in self.component_contexts:
             ctx.close_context()
 
@@ -1593,7 +1862,7 @@ class KroneckerContext(TransformedContext):
         """This is just entire context. Let's set its len as 1"""
         return 1
 
-    def _compute_transformation_basis_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute Clebsch-Gordan transformation coefficients for composite
         system.
 
@@ -1608,23 +1877,23 @@ class KroneckerContext(TransformedContext):
 
         These coefficients are cached after computation to avoid redundant calculations.
         """
-        if self.transformation_basis_coeff is not None:
-            return self.transformation_basis_coeff
+        if self.transformation_probabilities is not None:
+            return self.transformation_probabilities
         else:
-            basises = [context.basis for context in self.component_contexts]
-            self.transformation_basis_coeff = transform.compute_clebsch_gordan_probabilities(
-                full_system_vectors, basises
+            bases = [context.basis for context in self.component_contexts]
+            self.transformation_probabilities = transform.compute_clebsch_gordan_probabilities(
+                full_system_vectors, bases
             )
-            return self.transformation_basis_coeff
+            return self.transformation_probabilities
 
-    def _compute_transformation_superop_coeff(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]):
         """Compute and cache superoperator transformation coefficients."""
-        if self.transformation_superop_coeff is not None:
-            return self.transformation_superop_coeff
+        if self.transformation_unitary is not None:
+            return self.transformation_unitary
         else:
-            basises = [context.basis for context in self.component_contexts]
-            self.transformation_superop_coeff = transform.compute_clebsch_gordan_coeffs(full_system_vectors, basises)
-            return self.transformation_superop_coeff
+            bases = [context.basis for context in self.component_contexts]
+            self.transformation_unitary = transform.compute_clebsch_gordan_coeffs(full_system_vectors, bases)
+            return self.transformation_unitary
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         for context in self.component_contexts:
@@ -1710,7 +1979,7 @@ class KroneckerContext(TransformedContext):
         if vector_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_basis_coeff(full_system_vectors)
+            coeffs = self._compute_transformation_probabilities(full_system_vectors)
             return transform.transform_kronecker_populations(vector_lst, coeffs)
 
     def _transformed_vector_basis(
@@ -1720,8 +1989,8 @@ class KroneckerContext(TransformedContext):
         if vector_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_basis_coeff(full_system_vectors)
-            return transform.transform_kronecker_vectors(vector_lst, coeffs)
+            coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            return transform.transform_kronecker_rate_vector(vector_lst, coeffs)
 
     def _transformed_matrix_basis(
             self, matrix_lst: tp.Optional[list[torch.Tensor]], full_system_vectors: tp.Optional[torch.Tensor]
@@ -1730,8 +1999,8 @@ class KroneckerContext(TransformedContext):
         if matrix_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_basis_coeff(full_system_vectors)
-            return transform.transform_kronecker_matrix(matrix_lst, coeffs)
+            coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            return transform.transform_kronecker_rate_matrix(matrix_lst, coeffs)
 
     def _transformed_density_basis(
             self, density_matrix_lst: tp.Optional[list[torch.Tensor]], full_system_vectors: tp.Optional[torch.Tensor]
@@ -1740,8 +2009,8 @@ class KroneckerContext(TransformedContext):
         if density_matrix_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
-            return transform.transform_kronecker_density(density_matrix_lst, coeffs)
+            coeffs = self._compute_transformation_unitary(full_system_vectors)
+            return transform.transform_kronecker_operator(density_matrix_lst, coeffs)
 
     def _transformed_superop_basis(
             self, relaxation_superop_lst: tp.Optional[list[torch.Tensor]],
@@ -1751,7 +2020,8 @@ class KroneckerContext(TransformedContext):
         if relaxation_superop_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_superop_coeff(full_system_vectors)
+            coeffs = self._compute_transformation_unitary(full_system_vectors)
+            relaxation_superop_lst = [transform_to_complex(operator) for operator in relaxation_superop_lst]
             return transform.transform_kronecker_superoperator(relaxation_superop_lst, coeffs)
 
     def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False):
@@ -1788,8 +2058,8 @@ class KroneckerContext(TransformedContext):
             context.init_populations for context in self.component_contexts if context.init_populations is not None
         ]
         if populations:
-            _transformation_basis_coeff = self._compute_transformation_basis_coeff(full_system_vectors)
-            return transform.transform_kronecker_populations(populations, _transformation_basis_coeff)
+            probabilities = self._compute_transformation_probabilities(full_system_vectors)
+            return transform.transform_kronecker_populations(populations, probabilities)
         else:
             return None
 
@@ -1830,8 +2100,8 @@ class KroneckerContext(TransformedContext):
                 return None
         if not component_densities:
             return None
-        _transformation_basis_coeff = self._compute_transformation_superop_coeff(full_system_vectors)
-        return transform.transform_kronecker_density(component_densities, _transformation_basis_coeff)
+        coeff = self._compute_transformation_unitary(full_system_vectors)
+        return transform.transform_kronecker_operator(component_densities, coeff)
 
     def __add__(self, other: BaseContext) -> SummedContext:
         """"""
@@ -1845,9 +2115,9 @@ class KroneckerContext(TransformedContext):
         if isinstance(other, SummedContext):
             return multiply_contexts([self, other])
         elif isinstance(other, KroneckerContext):
-            KroneckerContext([*self.component_contexts, *other.component_contexts], time_dimension=self.time_dimension)
+            _multiply_homogeneous_contexts([*self.component_contexts, *other.component_contexts])
         else:
-            return KroneckerContext([*self.component_contexts, other], time_dimension=self.time_dimension)
+            return _multiply_homogeneous_contexts([*self.component_contexts, other])
 
 
 class SummedContext(BaseContext):
@@ -1940,6 +2210,7 @@ class SummedContext(BaseContext):
         :return: The number of contexts with defined initial basis
         """
         return self._num_contexts_with_basis
+
 
     @property
     def num_contexts_with_populations(self) -> int:
@@ -2217,13 +2488,13 @@ class SummedContext(BaseContext):
                 result = probs if result is None else result + probs
         return result
 
-    def __add__(self, other: BaseContext):
+    def __add__(self, other: tp.Union[Context, KroneckerContext, SummedContext]) -> SummedContext:
         """"""
         if isinstance(other, SummedContext):
             return SummedContext(list(self.component_contexts) + list(other.component_contexts))
         else:
             return SummedContext(list(self.component_contexts) + [other])
 
-    def __matmul__(self, other: BaseContext):
+    def __matmul__(self, other: tp.Union[Context, SummedContext]) -> tp.Union[SummedContext, Context]:
         """"""
         return multiply_contexts([self, other])

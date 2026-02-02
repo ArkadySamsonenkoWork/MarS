@@ -123,32 +123,36 @@ These are scalar quantities associated with individual states and transform via 
 
 where :math:`|U|^2` denotes element-wise squaring of the transformation matrix.
 
-**Implementation:** Uses :func:`mars.population.transform.get_transformation_coeffs` and :func:`mars.population.transform.transform_vector_to_new_basis`:
+**Implementation:** Uses :func:`mars.population.transform.get_transformation_probabilities`
+and :func:`mars.population.transform.transform_state_weights_to_new_basis`:
 
 .. code-block:: python
 
    from mars.population.transform import (
-       get_transformation_coeffs,
-       transform_vector_to_new_basis
+       get_transformation_probabilities,
+       transform_state_weights_to_new_basis
    )
    
    # Get |U|^2 coefficients
-   coeffs = get_transformation_coeffs(basis_old, basis_new)
+   probabilities = get_transformation_probabilities(basis_old, basis_new)
    # Shape: [..., N, N] with elements |⟨new_i|old_j⟩|²
    
    # Transform populations
    populations_old = torch.tensor([0.5, 0.3, 0.2])
-   populations_new = transform_vector_to_new_basis(populations_old, coeffs)
+   populations_new = transform_state_weights_to_new_basis(populations_old, probabilities)
    
    # Transform out probabilities
    out_probs_old = torch.tensor([100.0, 50.0, 75.0])
-   out_probs_new = transform_vector_to_new_basis(out_probs_old, coeffs)
+   out_probs_new = transform_state_weights_to_new_basis(out_probs_old, probabilities)
 
 **Physical interpretation:** If state :math:`|i'\rangle` in the new basis is a superposition :math:`|i'\rangle = \sum_k U^{*}_{ik} |k\rangle`,
 then its population is the sum of populations with :math:`|U^{*}_{ik}|^2` which is equal to :math:`|U_{ik}|^2`.
 
-**Note** If you set the initial density as parameter of Context, then the denisty will be tranformed under desnity transforamtion rule (see futher),
-then the real part of transformed diagonal will be used as initial population if it is needed
+
+.. note::
+
+   If you set the initial density as parameter of Context, then the denisty will be tranformed under desnity transforamtion rule (see futher),
+   then the real part of transformed diagonal will be used as initial population if it is needed
 
 Transition Probabilities (Free and Driven)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,11 +184,11 @@ and identically for driven transitions:
 - **Free transition probabilities** describe spontaneous relaxation processes (e.g., spin-lattice relaxation).
 - **Driven transition probabilities** model field-induced transitions (e.g., microwave-driven mixing).
 
-**Implementation:** Uses :func:`mars.population.transform.transform_matrix_to_new_basis`:
+**Implementation:** Uses :func:`mars.population.transform.transform_rate_matrix_to_new_basis`:
 
 .. code-block:: python
 
-   from mars.population.transform import transform_matrix_to_new_basis
+   from mars.population.transform import transform_rate_matrix_to_new_basis
    # Transition probabilities between singlet state and triplet sublevels
    W_old = torch.tensor([
        [0.0,    1000.0,   1000.0, 1000.0],
@@ -194,8 +198,8 @@ and identically for driven transitions:
    ])
    
    # Transform to new basis
-   W_new = transform_matrix_to_new_basis(W_old, coeffs)
-   # Applies: coeffs @ W_old @ coeffs.T
+   W_new = transform_rate_matrix_to_new_basis(W_old, probabilities)
+   # Applies: probabilities @ W_old @ probabilities.T
 
 Density Matrix
 ^^^^^^^^^^^^^^
@@ -206,30 +210,88 @@ For full density matrix calculations:
 
    \hat{\rho}' = U \hat{\rho} U^\dagger
 
-or in Liouville space:
+or transforms of vectorized density matrix in Liouville space:
 
 .. math::
 
-   |\rho'\rangle\rangle = (U \otimes U^*) |\rho\rangle\rangle
+   |\rho'\rangle\rangle = (U \otimes U^*) |\rho\rangle\rangle:
 
-**Implementation:** Uses :func:`mars.population.transform.compute_density_basis_transformation` and :func:`mars.population.transform.transform_density`:
+where :math:`\otimes` denotes the Kronecker product and :math:`U^*` is the element-wise complex conjugate of :math:`U`.
+
+**Implementation:** Uses :func:`mars.population.transform.transform_operator_to_new_basis`:
 
 .. code-block:: python
 
    from mars.population.transform import (
-       compute_density_basis_transformation,
-       transform_density
+       transform_operator_to_new_basis
    )
    
    # Get transformation matrix (complex, not squared)
-   U = compute_density_basis_transformation(basis_old, basis_new)
+   U = basis_transformation(basis_old, basis_new)
    # This is just: basis_new.conj().T @ basis_old
    
    # Transform density matrix
    rho_old = torch.tensor([[0.6, 0.1+0.2j],
                            [0.1-0.2j, 0.4]])
-   rho_new = transform_density(rho_old, U)
+   rho_new = transform_operator_to_new_basis(rho_old, U)
    # Applies: U @ rho_old @ U.conj().T
+
+
+Example usage
+-------------
+
+Compute the Liouville-space transformation between eigenbases of two spin Hamiltonians and apply it to a relaxation superoperator:
+
+.. code-block:: python
+
+   import torch
+   from mars.population.transform import (
+       basis_transformation,
+       compute_liouville_basis_transformation,
+   )
+
+   basis_old = torch.tensor([
+       [1.0, 0.0],
+       [0.0, 1.0]
+   ], dtype=torch.complex64)
+
+   basis_new = torch.tensor([
+       [1.0,  1.0],
+       [1.0, -1.0]
+   ], dtype=torch.complex64) / torch.sqrt(torch.tensor(2.0))
+
+   # 1. Get Hilbert-space transformation (for operators like ρ)
+   U = basis_transformation(basis_old, basis_new)
+   # Equivalent to: U = basis_new.conj().T @ basis_old
+
+   # 2. Get Liouville-space transformation (for vectorized ρ or superoperators)
+   T = compute_liouville_basis_transformation(basis_old, basis_new)
+   # Returns: kron(U, U.conj()) with shape (4, 4) for K=2
+
+   # 3. Transform a density matrix (Hilbert space)
+   rho_old = torch.tensor([[0.6, 0.1+0.2j],
+                           [0.1-0.2j, 0.4]], dtype=torch.complex64)
+   rho_new = U @ rho_old @ U.conj().T
+
+   # 4. Transform via vectorization (Liouville space) – equivalent result
+   rho_old_vec = rho_old.flatten()          # Row-major: [0.6, 0.1+0.2j, 0.1-0.2j, 0.4]
+   rho_new_vec = T @ rho_old_vec
+   assert torch.allclose(rho_new_vec.reshape(2, 2), rho_new)
+
+.. note::
+
+   - For the transformation of operators from Hilbert space to Liouville space, MarS uses **row-major** (C-order) vectorization.
+     This corresponds to flattening the density matrix by stacking its rows sequentially—the default behavior in NumPy and PyTorch.
+     For example, in a 2×2 system, the vectorized density matrix appears as:
+     ``[ρ₀₀, ρ₀₁, ρ₁₀, ρ₁₁]``.
+
+   - The transformation matrix for the vectorized density matrix, :math:`T = U \otimes U^*`, is unitary whenever :math:`U` is unitary.
+
+Notes
+-----
+
+* The function assumes row-major (C-order) vectorization, consistent with PyTorch/NumPy ``.flatten()``.
+* The returned for vectorized density matrix transformation :math:`T=U \otimes U^*` is unitary when :math:`U` is unitary.
 
 Relaxation Superoperator
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -240,13 +302,13 @@ The relaxation superoperator transforms in Liouville space:
 
    \hat{\mathcal{R}}' = (U \otimes U^*) \hat{\mathcal{R}} (U^\dagger \otimes U^T)
 
-**Implementation:** Uses :func:`mars.population.transform.compute_liouville_basis_transformation` and :func:`mars.population.transform.transform_liouville_superop`:
+**Implementation:** Uses :func:`mars.population.transform.compute_liouville_basis_transformation` and :func:`mars.population.transform.transform_superop_to_new_basis`:
 
 .. code-block:: python
 
    from mars.population.transform import (
        compute_liouville_basis_transformation,
-       transform_liouville_superop
+       transform_superop_to_new_basis
    )
    
    # Get Liouville space transformation
@@ -256,8 +318,181 @@ The relaxation superoperator transforms in Liouville space:
    
    # Transform superoperator
    R_old = relaxation_superop  # Shape: [..., N², N²]
-   R_new = transform_liouville_superop(R_old, T_liouville)
+   R_new = transform_superop_to_new_basis(R_old, T_liouville)
    # Applies: T @ R_old @ T.conj().T
+
+Basis Transformation in Multiplied Contexts
+-------------------------------------------
+
+When constructing composite systems via Kronecker multiplication, each subsystem is typically defined in its own "intra-basis" (e.g., molecular frame, ZFS basis, zeeman basis).
+Consider two subsystems with initial bases :math:`V^{(1)}_{\text{old}}` and :math:`V^{(2)}_{\text{old}}`. If the subsystems interact weakly, the composite eigenbasis may still decompose as:
+
+.. math::
+
+   V_{\text{new}} = V^{(1)}_{\text{new}} \otimes V^{(2)}_{\text{new}}
+
+where the individual transformations are:
+
+.. math::
+
+   U_1 = (V^{(1)}_{\text{new}})^\dagger V^{(1)}_{\text{old}}, \quad
+   U_2 = (V^{(2)}_{\text{new}})^\dagger V^{(2)}_{\text{old}}
+	
+
+Density Composition
+^^^^^^^^^^^^^^^^^^^
+
+For density matrices, the composite transformation follows the unitary rule:
+
+.. math::
+
+   \rho_{\text{total}} \rightarrow (U_1 \otimes U_2) \, \rho_{\text{total}} \, (U_1 \otimes U_2)^\dagger
+
+Superoperator Composition
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For relaxation superoperators in Liouville space, two sequential operations are required:
+
+1. Permutation of the Kronecker-sum structure to reconcile vectorization ordering. The identity
+
+   .. math::
+   
+      \operatorname{vec}(\rho_1 \otimes \rho_2) \neq \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2)
+   
+   necessitates a commutation matrix :math:`\Pi` such that
+   
+   .. math::
+   
+      \operatorname{vec}(\rho_1 \otimes \rho_2) = \Pi \bigl[ \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2) \bigr]
+   
+   This permutation must be applied to the composite superoperator *before* basis transformation:
+   
+   .. math::
+   
+      \hat{\mathcal{R}}_{\text{initial}} = \Pi \,
+      \bigl[ \hat{\mathcal{R}}^{(1)} \otimes \hat{\mathbb{I}}^{(2)} + \hat{\mathbb{I}}^{(1)} \otimes \hat{\mathcal{R}}^{(2)} \bigr] \,
+      \Pi^\top
+
+2. Joint basis transformation using the composite unitary matrix. After permutation, the superoperator transforms as:
+   
+   .. math::
+   
+      \hat{\mathcal{R}}_{\text{total}} \rightarrow
+      \bigl[(U_1 \otimes U_2) \otimes (U_1^* \otimes U_2^*)\bigr] \;
+      \hat{\mathcal{R}}_{\text{initial}} \;
+      \bigl[(U_1^\dagger \otimes U_2^\dagger) \otimes (U_1^T \otimes U_2^T)\bigr]
+   
+   The transformation matrix
+   
+   .. math::
+   
+      T = (U_1 \otimes U_2) \otimes (U_1^* \otimes U_2^*)
+   
+   applies a joint change of basis to the vectorized composite state.
+
+Population Composition
+^^^^^^^^^^^^^^^^^^^^^^
+
+Populations and transition probabilities transform differently.
+They follow probability rules rather than amplitude rules. For a population vector :math:`\mathbf{n}`:
+
+.. math::
+
+   \mathbf{n} \rightarrow |U|^2 \mathbf{n}, \quad
+
+Importantly, for Kronecker products the element-wise squaring distributes exactly:
+
+.. math::
+
+   |U_1 \otimes U_2|^2 = |U_1|^2 \otimes |U_2|^2
+
+Furthermore, for any unitary matrix :math:`U`, the probability matrix :math:`|U|^2` satisfies:
+
+.. math::
+
+   |U|^2 \, \mathbf{1} = \mathbf{1}
+
+where :math:`\mathbf{1}` is the vector of ones. This holds because unitary matrices have orthonormal rows (:math:`\sum_j |U_{ij}|^2 = 1` for all :math:`i`), so each row of :math:`|U|^2` sums to unity.
+
+Therefore populations and outgoing probabilities can be transformed separately in each subsystem and then combined via Kronecker product. The transformation is separable:
+
+.. math::
+
+   \mathbf{n}_{\text{new}} = (|U_1|^2 \mathbf{n}^{(1)}) \otimes (|U_2|^2 \mathbf{n}^{(2)}) = (|U_1 \otimes U_2|^2 (\mathbf{n}^{(1)} \otimes \mathbf{n}^{(2)})
+
+.. math::
+
+   \boldsymbol{\Gamma}_{\text{new}} = (|U_1|^2 \boldsymbol{\Gamma}^{(1)}) \otimes \mathbf{1}^{(2)} + \mathbf{1}^{(1)} \otimes (|U_2|^2 \boldsymbol{\Gamma}^{(2)}) = (|U_1 \otimes U_2|^2 (\boldsymbol{\Gamma}^{(1)} \otimes \mathbf{1}^{(2)} + \mathbf{1}^{(1)} \otimes \boldsymbol{\Gamma}^{(2)})
+
+
+Transition Probabilities Compositions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+However, for transition probability matrices the situation is more subtle.
+The full transformation of the Kronecker-sum structure does not factorize cleanly:
+
+.. math::
+
+   \begin{aligned}
+   &|U_1 \otimes U_2|^2 \, (K_1 \otimes \mathbb{I}_2 + \mathbb{I}_1 \otimes K_2) \, |U_1 \otimes U_2|^2{}^\top \\
+   &= (|U_1|^2 \otimes |U_2|^2) (K_1 \otimes \mathbb{I}_2) (|U_1|^2{}^\top \otimes |U_2|^2{}^\top) + (|U_1|^2 \otimes |U_2|^2) (\mathbb{I}_1 \otimes K_2) (|U_1|^2{}^\top \otimes |U_2|^2{}^\top) \\
+   &= (|U_1|^2 K_1 |U_1|^2{}^\top) \otimes (|U_2|^2 |U_2|^2{}^\top) + (|U_1|^2 |U_1|^2{}^\top) \otimes (|U_2|^2 K_2 |U_2|^2{}^\top)
+   \end{aligned}
+
+Since :math:`|U|^2` is a doubly probability matrix (not unitary), we generally have :math:`|U|^2 |U|^2{}^\top \neq \mathbb{I}`. Therefore:
+
+.. math::
+
+   (|U_1|^2 K_1 |U_1|^2{}^\top) \otimes (|U_2|^2 |U_2|^2{}^\top) \neq (|U_1|^2 K_1 |U_1|^2{}^\top) \otimes \mathbb{I}_2
+
+This non-factorization means that transforming transition probabilities separately and then forming the Kronecker sum does not generally yield the same result
+as forming the Kronecker sum first and then transforming the composite operator.
+
+Nevertheless, MarS consistently interprets transition probabilities as probabilities for "state-to-state processes":
+a transition from initial state :math:`|j\rangle` to final state :math:`|i\rangle` occurs with probability weight determined by both the initial-state overlap :math:`|U_{\beta j}|^2` and the final-state overlap :math:`|U_{\alpha i}|^2`.
+
+Consequently, the MarS transformation for the composite system applies the joint probability rule to the full operator:
+
+.. math::
+
+   K'_{\text{total}} = |U_1 \otimes U_2|^2 \, \bigl(K_1 \otimes \mathbb{I}_2 + \mathbb{I}_1 \otimes K_2\bigr) \, |U_1 \otimes U_2|^2{}^\top
+
+This transformation rule implies that even for two physically independent relaxation processes, the relaxation operator of the multiplied system differs from the Kronecker sum of independently transformed subsystem operators.
+The bilinear dependence on both initial and final state overlaps couples the transformations, making the composite relaxation non-separable under basis change.
+
+
+Here we highlight that such complexity and ambiguity of interpretation arises only for "free_probs" and "driven_probs" attributes. For the remaining parameters (including superoperators), the transformation is determined unambiguously.
+
+For composite systems, MarS implements the dedicated :class:`mars.population.contexts.KroneckerContext`.
+This class computes exact transformation coefficients between the product basis of subsystems and the true composite eigenbasis.
+
+Let :math:`|\alpha\rangle` denote an eigenstate of the full composite Hamiltonian, expanded in the product basis of subsystems:
+
+.. math::
+
+   |\alpha\rangle = \sum_{i,j} c^{(\alpha)}_{ij} \; |i\rangle \otimes |j\rangle
+
+where the expansion coefficients are given by:
+
+.. math::
+
+   c^{(\alpha)}_{ij} = \langle\alpha|\bigl(|i\rangle \otimes |j\rangle\bigr) = U\bigl[\alpha,\; \text{index}(i,j)\bigr]
+
+with the full transformation matrix:
+
+.. math::
+
+   U = V_{\text{new}}^\dagger \bigl(V^{(1)}_{\text{old}} \otimes V^{(2)}_{\text{old}}\bigr)
+
+The squared magnitudes :math:`|c^{(\alpha)}_{ij}|^2` represent Clebsch-Gordan probability coefficients—the probability that composite eigenstate :math:`|\alpha\rangle` contains the product-state component :math:`|i\rangle \otimes |j\rangle`. Transition probabilities then transform according to the joint-probability rule:
+
+.. math::
+
+   W'_{\alpha\beta} = \sum_{i,j,k,l} |c^{(\alpha)}_{ij}|^2 \; W_{(ij),(kl)} \; |c^{(\beta)}_{kl}|^2
+
+preserving the interpretation of :math:`W_{ij}` as the probability for transitions from initial state :math:`j` to final state :math:`i`.
+
+The :class:`mars.population.contexts.KroneckerContext` automatically computes these coefficients from the composite contexts.
 
 Context Transformation Interface
 ----------------------------------

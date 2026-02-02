@@ -36,7 +36,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     meaning the Zeeman operators are proportional to spin operators:
        Gx = gx * mu_B * Sx, Gy = gy * mu_B * Sy, Gz = gz * mu_B * Sz.,
     3. The static part of the Hamiltonian (denoted F) must commute with Gz (i.e., [F, Gz] = 0).
-    4. The relaxation superoperator Rijkl-which couples matrix elements rho_ij
+    4. The relaxation superoperator Rijkl-which couples matrix elements ρ_ij
     and rho_kl - is only non-zero when i - j equals k - l.
        This covers two processes:
        - Population transfer between energy levels (i = j, k = l), including pure decay (i = j = k = l).

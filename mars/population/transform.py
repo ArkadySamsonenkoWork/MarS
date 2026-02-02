@@ -1,20 +1,32 @@
 import math
+import typing as tp
+import functools
 
 import torch
 
 
-def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.Tensor:
+def basis_transformation(basis_old: torch.Tensor, basis_new: torch.Tensor) -> torch.Tensor:
     """
-    :param basis_1: The basis function.
+    Given two orthonormal bases represented as matrices whose columns are basis vectors,
+    this function returns the unitary matrix :math:`U` such that for any vector `v`:
+
+        v_in_basis_2 = U @ v_in_basis_1
+
+    The transformation is computed as:
+        U = basis_new^† @ basis_old
+
+    where :math:`^\dagger` denotes the conjugate transpose (Hermitian adjoint).
+
+    :param basis_old: The basis function.
 
     The shape is [..., K, K], where K is spin dimension size.
     The column eigenvectors[:,i] is the eigenvector corresponding to the eigenvalue eigenvalues[i].
 
-    :param basis_2: The basis function. The shape is [..., K, K], where K is spin dimension size.
+    :param basis_new: The basis function. The shape is [..., K, K], where K is spin dimension size.
     The column eigenvectors[:,i] is the eigenvector corresponding to the eigenvalue eigenvalues[i].
 
     :return: A transformation matrix of shape [..., K, K] that transforms
-            vectors from the `basis_1` coordinate system to the `basis_2` coordinate system.
+            vectors from the `basis_old` coordinate system to the `basis_new` coordinate system.
 
     torch.Tensor
         A tensor of shape [..., K, K] containing the squared absolute values of the
@@ -27,7 +39,7 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
 
         ┌───────────────────────────────────────────┐
         │                                           │
-        │     basis_1 states →                      │
+        │     basis_old states →                      │
         │    ┌─────────────┬─────────────┐          │
         │    │             │             │          │
         │    │ ⟨b2₀|b1₀⟩   │ ⟨b2₀|b1₁⟩   │          │
@@ -49,11 +61,23 @@ def basis_transformation(basis_1: torch.Tensor, basis_2: torch.Tensor) -> torch.
         └───────────────────────────────────────────┘
 
     ...
+    Mathematical Formulation:
+    -------------------------
+    U = basis_new^† @ basis_old
+
+    where ^† denotes conjugate transpose. For any state vector |ψ⟩:
+        |ψ⟩₂ = U |ψ⟩₁
+
+    Notes:
+    ------
+    - Both bases must be orthonormal (columns form unitary matrices)
+    - U is unitary: U^† U = I
+
     """
-    return torch.matmul(basis_2.conj().transpose(-1, -2), basis_1)
+    return torch.matmul(basis_new.conj().transpose(-1, -2), basis_old)
 
 
-def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
+def get_transformation_probabilities(basis_old: torch.Tensor, basis_new: torch.Tensor):
     """Calculate the squared absolute values of transformation coefficients
     between two bases.
 
@@ -61,13 +85,16 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
     The output values represent |⟨basis_2_i|basis_1_j⟩|², which are the squared magnitudes
     of probability amplitudes in quantum mechanics.
 
+    The transformation is computed as:
+        U = |basis_new^† @ basis_old|^2
+
     :param basis_old: (b1) torch.Tensor
         The first basis tensor with shape [..., K, K], where K is the spin dimension size.
-        Each column basis_1[:,j] represents an eigenvector in the first basis.
+        Each column basis_old[:,j] represents an eigenvector in the first basis.
 
     :param basis_new: (b2) torch.Tensor
         The second basis tensor with shape [..., K, K], where K is the spin dimension size.
-        Each column basis_2[:,i] represents an eigenvector in the second basis.
+        Each column basis_new[:,i] represents an eigenvector in the second basis.
 
     :return: torch.Tensor
         A tensor of shape [..., K, K] containing the squared absolute values of the
@@ -80,13 +107,13 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
 
         ┌───────────────────────────────────────────┐
         │                                           │
-        │     basis_1 states →                      │
+        │     basis_old states →                    │
         │    ┌─────────────┬─────────────┐          │
         │    │             │             │          │
-        │    │ |⟨b2₀|b1₀⟩|² │ |⟨b2₀|b1₁⟩|² │          │
+        │    │ |⟨b2₀|b1₀⟩|² │ |⟨b2₀|b1₁⟩|² │        │
         │ b  │             │             │          │
         │ a  │             │             │          │
-        │ s  │ |⟨b2₁|b1₀⟩|² │ |⟨b2₁|b1₁⟩|² │          │
+        │ s  │ |⟨b2₁|b1₀⟩|² │ |⟨b2₁|b1₁⟩|² │        │
         │ i  │             │             │          │
         │ s  │             │             │          │
         │ _  └─────────────┴─────────────┘          │
@@ -94,275 +121,27 @@ def get_transformation_coeffs(basis_old: torch.Tensor, basis_new: torch.Tensor):
         │                                           │
         │ s  Element [i, j] represents the          │
         │ t  probability of finding the system      │
-        │ a  in state i of basis_2 when it was      │
-        │ t  prepared in state j of basis_1.        │
+        │ a  in state i of basis_new when it was    │
+        │ t  prepared in state j of basis_old.      │
         │ e                                         │
         │ s                                         │
         │ ↓                                         │
         └───────────────────────────────────────────┘
-
     ...
-    """
+    Mathematical Formulation:
+    -------------------------
+    P[i, j] = |⟨basis_new[:, i] | basis_old[:, j]⟩|² = |U[i, j]|²
 
+    where U = basis_new^† @ basis_old is the unitary transformation matrix.
+
+    Notes:
+    ------
+    - These coefficients apply ONLY to incoherent quantities (populations, rate matrices)
+    - DO NOT use for coherent operators (Hamiltonians, density matrices) — use full complex U instead
+    - Values satisfy Σ_i P[i, j] = 1 (columns sum to unity)
+    """
     transforms = basis_transformation(basis_old, basis_new)
     return transforms.abs().square()
-
-
-def transform_matrix_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """Transform transition rates from matrix form to new basis set.
-
-    K(b_new_1 -> b_new_2) = |⟨b_new_1|b_old_1⟩|² * |⟨b_new_2|b_old_2⟩|² * K(b_old_1 -> b_old_2)
-
-    WARNING: This transformation applies only when initial transition levels (i, j)
-    do not transform into identical levels.
-    If transitions exist between levels K1 <-> K2 and they transform into identical levels
-    (N = a*K1 + b*K2), correlation terms arise between levels that pure relaxation rates
-    cannot describe correctly.
-
-    :param initial_rates: Transition rates matrix. Shape [..., K, K]. Diagonal elements must be zero
-    :param coeffs: Transformation coefficients (see get_transformation_coeffs). Shape [..., K, K]
-    :return: Transformed rate matrix
-    """
-    return coeffs @ initial_rates @ coeffs.transpose(-1, -2)
-
-
-def transform_vector_to_new_basis(initial_rates: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """Transform a vector from old basis to new basis using transformation
-    coefficients.
-
-    Applies the transformation: v_new[i] = Σ_j |⟨new_i|old_j⟩|² * v_old[j]
-
-    This can be used to transform:
-    - Population vectors (state occupancies)
-    - Outward transition rates
-    - Any other quantities that transform linearly with basis overlap probabilities
-
-    :param initial_rates: Values in the old basis. Shape [..., K]
-    :param coeffs: Transformation coefficients |⟨new|old⟩|². Shape [..., K, K]
-    :return: Transformed values in the new basis. Shape [..., K]
-    """
-    return torch.matmul(coeffs, initial_rates)
-
-
-def transform_diagonal_rates(kinetic_diag_matrix: torch.Tensor, coeffs: torch.Tensor) -> torch.Tensor:
-    """Transform diagonal kinetic rates to new basis.
-
-    This is equivalent to transform_vector_to_new_basis but named specifically
-    for kinetic rate transformations for clarity.
-
-    :param kinetic_diag_matrix: Diagonal kinetic rates in old basis. Shape [..., K]
-    :param coeffs: Transformation coefficients |⟨new|old⟩|². Shape [..., K, K]
-    :return: Transformed kinetic rates in new basis. Shape [..., K]
-    """
-    return torch.matmul(coeffs, kinetic_diag_matrix)
-
-
-def compute_clebsch_gordan_coeffs(
-        target_basis: torch.Tensor,
-        basis_list: list[torch.Tensor]
-) -> torch.Tensor:
-    """Compute Clebsch-Gordan-like coefficients for expressing a coupled basis
-    as.
-
-    a Kronecker product of uncoupled bases.
-
-    For n uncoupled bases with dimensions [k1, k2, ..., kn], computes coefficients C
-    that express each coupled basis state as a linear combination of tensor products:
-
-    |coupled_m⟩ = Σ_{i1,...,in} C[i1, i2, ..., in, m] |uncoupled_1_{i1}⟩ ⊗ ... ⊗ |uncoupled_n_{in}⟩
-
-    where ⊗ denotes the tensor (Kronecker) product.
-
-    Example:
-        For two spin-1/2 systems (uncoupled), computing coefficients for the
-        total angular momentum eigenstates (coupled basis).
-
-    :param target_basis: Coupled basis vector. Shape: [..., K, K] where K = k1*k2*...*kn
-    :param basis_list: List of uncoupled basis tensors.
-                             Each has shape [..., k_i, k_i]
-    :return: Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
-    """
-    dims = [basis.shape[-1] for basis in basis_list]
-    kron_basis = basis_list[0]
-    for basis in basis_list[1:]:
-        kron_basis = torch.einsum('...ij,...kl->...kjil', kron_basis, basis)
-        kron_shape = list(kron_basis.shape[:-4]) + [
-            kron_basis.shape[-4] * kron_basis.shape[-3],
-            kron_basis.shape[-2] * kron_basis.shape[-1]
-        ]
-        kron_basis = kron_basis.reshape(*kron_shape)
-    C_flat = torch.matmul(kron_basis.conj().transpose(-1, -2), target_basis)
-    C_reshaped = C_flat.reshape(*C_flat.shape[:-2], *dims, C_flat.shape[-1])
-    return C_reshaped
-
-
-def compute_clebsch_gordan_probabilities(
-        target_basis: torch.Tensor,
-        basis_list: list[torch.Tensor]
-) -> torch.Tensor:
-    """Compute squared absolute values of Clebsch-Gordan coefficients.
-
-    These represent the probabilities |C[i1, i2, ..., in, m]|² that a coupled
-    state m is composed of the tensor product of uncoupled states (i1, i2, ..., in).
-
-    :param target_basis: Coupled basis vectors. Shape: [..., K, K] where K = k1*k2*...*kn
-    :param basis_list: List of uncoupled basis tensors.
-                                  Each has shape [..., k_i, k_i]
-    :return: Squared Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
-    """
-    return compute_clebsch_gordan_coeffs(target_basis, basis_list).abs().square()
-
-
-def transform_kronecker_populations(
-        populations_list: list[torch.Tensor],
-        coeffs: torch.Tensor,
-) -> torch.Tensor:
-    """Transform populations from uncoupled (product) basis to coupled basis
-    using.
-
-    Clebsch-Gordan coefficients.
-
-    Computes the population of each coupled state as:
-    n_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * n_uncoupled_1[i1] * ... * n_uncoupled_n[in]
-
-    This implements the quantum mechanical rule that populations of uncoupled subsystems
-    multiply, weighted by the squared Clebsch-Gordan coefficients.
-
-    Example:
-    :param populations_list: List of population vectors for each uncoupled system.
-                            Each has shape [..., k_i]
-    :param coeffs: Squared Clebsch-Gordan coefficients |C|².
-                      Shape: [..., k1, k2, ..., kn, K]
-    :return: Populations in coupled basis. Shape: [..., K]
-    """
-    n_bases = len(populations_list)
-    batch_shape_popul = populations_list[0].shape[:- 1]
-    outer_product = populations_list[0]
-
-    for i in range(1, n_bases):
-        outer_product = outer_product.unsqueeze(-1)
-        scalars_expanded = populations_list[i].reshape(*batch_shape_popul, *(1,) * i, -1)
-        outer_product = outer_product * scalars_expanded
-
-    expanded_outer = outer_product.unsqueeze(-1)
-    weighted = coeffs * expanded_outer
-    sum_dims = tuple(range(-n_bases - 1, -1))
-    result = weighted.sum(dim=sum_dims)
-    return result
-
-
-def transform_kronecker_vectors(
-        vector_list: list[torch.Tensor],
-        coeffs: torch.Tensor,
-) -> torch.Tensor:
-    """Transform populations from uncoupled (product) basis to coupled basis
-    using.
-
-    Clebsch-Gordan coefficients.
-
-    Computes the population of each coupled state as:
-    R_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * (K1[i1] + K2[i2] + ... + Kn[in])
-
-    This implements the quantum mechanical rule that populations of uncoupled subsystems
-    multiply, weighted by the squared Clebsch-Gordan coefficients.
-
-    Example:
-    :param coeffs: Squared Clebsch-Gordan coefficients |C|².
-                      Shape: [..., k1, k2, ..., kn, K]
-    :param vector_list: List of population vectors for each uncoupled system.
-                            Each has shape [..., k_i]
-    :return: Populations in coupled basis. Shape: [..., K]
-    """
-    n_bases = len(vector_list)
-    batch_shape = vector_list[0].shape[:- 1]
-    k_dims = coeffs.shape[-n_bases-1:-1]
-
-    outer_product = torch.zeros(*batch_shape, *k_dims, device=coeffs.device, dtype=coeffs.dtype)
-    for i in range(0, n_bases):
-        scalars = vector_list[i]
-        view_shape = [1] * (len(batch_shape) + n_bases)
-        view_shape[len(batch_shape) + i] = scalars.shape[-1]
-        vec_expanded = scalars.reshape(*batch_shape, *view_shape[len(batch_shape):])
-        outer_product = outer_product + vec_expanded
-
-    weighted = coeffs * outer_product.unsqueeze(-1)
-    sum_dims = tuple(-(i + 2) for i in range(n_bases))
-    out = weighted.sum(dim=sum_dims)
-    return out
-
-
-def transform_kronecker_matrix(
-        matrices: list[torch.Tensor],
-        coeffs: torch.Tensor,
-) -> torch.Tensor:
-    """Transform rate matrices from uncoupled (product) basis to coupled basis
-    using.
-
-    Clebsch-Gordan coefficients.
-
-    For rate matrices R1, R2, ..., Rn in uncoupled bases, computes the rate matrix
-    in the coupled basis by:
-    1. Forming the Kronecker product  (R1 ⊗ I2 ⊗ ... ⊗ In + I1 ⊗ R2 ⊗ ... ⊗ In + ... + I1 ⊗ ... ⊗ Rn)
-    2. Transforming via: R_coupled = U† R U
-    where U is built from Clebsch-Gordan coefficients.
-
-    For two matrices it will be:
-    W_coupled[m, n] = Σ_{i1,...,in}{j1,...,jn} |C[i1, ..., in, m]|² |C[j1, ..., jn, n]|² * (W[i1, j1] + W[i2, j2] + ...)
-
-    This preserves the tensor product structure of independent relaxation processes
-    while expressing them in the coupled basis.
-
-    WARNING: This transformation applies only when initial transition levels (i, j)
-    do not transform into identical levels.
-    If transitions exist between levels K1 <-> K2 and they transform into identical levels
-    (N = a*K1 + b*K2), correlation terms arise between levels that pure relaxation rates
-    cannot describe correctly.
-
-    :param matrices: List of rate matrices for each uncoupled system.
-                          Each has shape [..., k_i, k_i]
-    :param coeffs: Squared Clebsch-Gordan coefficients |C|².
-                      Shape: [..., k1, k2, ..., kn, K]
-    :return: Rate matrix in coupled basis. Shape: [..., K, K]
-    """
-    n = len(matrices)
-    batch_shape = matrices[0].shape[:-2]
-    k_dims = coeffs.shape[-n - 1:-1]
-    K = coeffs.shape[-1]
-    total_dim = int(torch.prod(torch.tensor(k_dims)))
-    U = coeffs.reshape(*coeffs.shape[:-n-1], total_dim, K)
-
-    expanded_shape = list(batch_shape) + list(k_dims) + list(k_dims)
-    R_expanded = torch.zeros(expanded_shape, device=matrices[0].device, dtype=matrices[0].dtype)
-
-    for i, mat in enumerate(matrices):
-        view_shape = [1] * (len(batch_shape) + 2 * n)
-        view_shape[:len(batch_shape)] = list(batch_shape)
-        view_shape[len(batch_shape) + i] = k_dims[i]
-        view_shape[len(batch_shape) + n + i] = k_dims[i]
-
-        mat_expanded = mat.reshape(view_shape)
-        R_expanded = R_expanded + mat_expanded
-
-    R_uncoupled = R_expanded.reshape(*batch_shape, total_dim, total_dim)
-    return U.conj().transpose(-1, -2) @ R_uncoupled @ U
-
-
-def batched_kron(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    """Batched Kronecker product.
-
-    Computes the Kronecker product for batched matrices.
-
-    :param a: torch.Tensor of shape [..., M, N]
-    :param b: torch.Tensor of shape [..., P, Q]
-    :return: torch.Tensor of shape [..., M*P, N*Q]
-    """
-    *batch_dims, M, N = a.shape
-    *_, P, Q = b.shape
-
-    a_expanded = a[..., :, None, :, None]
-    b_expanded = b[..., None, :, None, :]
-    result = a_expanded * b_expanded
-    return result.reshape(*batch_dims, M * P, N * Q)
 
 
 def compute_liouville_basis_transformation(basis_old: torch.Tensor, basis_new: torch.Tensor):
@@ -388,66 +167,79 @@ def compute_liouville_basis_transformation(basis_old: torch.Tensor, basis_new: t
     .. code-block:: text
         :class: no-copybutton
 
-        ┌───────────────────────────────────────────────────────┐
-        │                                                       │
-        │  Old Liouville basis states →                         │
-        │  ┌─────────────┬─────────────┬─────────────┬─────────┐ │
-        │  │⟨b₂₀b₂₀|b₁₀b₁₀⟩ ...       │⟨b₂₀b₂₀|b₁₁b₁₁⟩ ...      │ │
-        │  │ ...         │ ...         │ ...         │ ...     │ │
-        │L │⟨b₂₀b₂₁|b₁₀b₁₀⟩ ...       │⟨b₂₀b₂₁|b₁₁b₁₁⟩ ...      │ │
-        │i │ ...         │ ...         │ ...         │ ...     │ │
-        │o │⟨b₂₁b₂₀|b₁₀b₁₀⟩ ...       │⟨b₂₁b₂₀|b₁₁b₁₁⟩ ...      │ │
-        │u │ ...         │ ...         │ ...         │ ...     │ │
-        │v │⟨b₂₁b₂₁|b₁₀b₁₀⟩ ...       │⟨b₂₁b₂₁|b₁₁b₁₁⟩ ...      │ │
-        │i └─────────────┴─────────────┴─────────────┴─────────┘ │
-        │l                                                         │
-        │l                                                         │
-        │e                                                         │
+        ┌───────────────────────────────────────────────────────  ┐
+        │                                                         │
+        │  Old Liouville basis states →                           │
+        │  ┌─────────────┬─────────────┬─────────────┬─────────┐  │
+        │  │⟨b₂₀b₂₀|b₁₀b₁₀⟩ ...       │⟨b₂₀b₂₀|b₁₁b₁₁⟩ ...     │  │
+        │  │ ...         │ ...         │ ...         │ ...     │  │
+        │L │⟨b₂₀b₂₁|b₁₀b₁₀⟩ ...       │⟨b₂₀b₂₁|b₁₁b₁₁⟩ ...     │  │
+        │i │ ...         │ ...         │ ...         │ ...     │  │
+        │o │⟨b₂₁b₂₀|b₁₀b₁₀⟩ ...       │⟨b₂₁b₂₀|b₁₁b₁₁⟩ ...     │  │
+        │u │ ...         │ ...         │ ...         │ ...     │  │
+        │v │⟨b₂₁b₂₁|b₁₀b₁₀⟩ ...       │⟨b₂₁b₂₁|b₁₁b₁₁⟩ ...     │  │
+        │i └─────────────┴─────────────┴─────────────┴─────────┘  │
+        │l                                                        │
+        │l                                                        │
+        │e                                                        │
         │  New Liouville basis states ↓                           │
         └─────────────────────────────────────────────────────────┘
 
-    The transformation follows:
-        ``R_new = T_switch @ R_old @ T_switch.conj().transpose(-1, -2)``
-    where ``T_switch = kron(basis_new.conj(), basis_new) @ kron(basis_old.conj(), basis_old).H``
+    Let ``U = basis_new.conj().transpose(-1, -2) @ basis_old`` be the unitary that
+    transforms coordinantes from basis_old to basis_new: ``v_in_basis_2 = U @ v_in_basis_1``.
+
+    Then:
+      - **Vectorized operators** (e.g., density matrices flattened via row stacking)
+        transform as:
+            vec(R_new) = kron(U, U.conj()) @ vec(R_old), where U.conj() is U* - complex conjugate
+
+      - **Superoperators** (matrices acting on vectorized operators, such as relaxation
+        generators L) transform by similarity:
+            L_new = kron(U, U.conj()) @ L_old @ kron(U, U.conj()).conj().transpose(-1, -2)
+
+    Thus, the returned ``T_switch`` equals ``kron(U, U.conj())``, and it is the
+    fundamental building block for both operator and superoperator basis changes.
+
+    Mathematical Formulation:
+    -------------------------
+    Let the unitary basis transformation be defined as:
+
+        U = basis_new^† @ basis_old,
+
+    where ^† denotes conj().transpose() or conjugate transpose. This maps the coordinate of vectors as |ψ⟩₂ = U |ψ⟩₁.
+
+    For a density matrix ρ, the transformation is:
+
+        ρ₂ = U ρ₁ U^†
+
+    When ρ is vectorized using **row-major ordering** (as in `vec` function),
+    the vectorized form transforms linearly as:
+
+        |ρ₂⟩⟩ = T |ρ₁⟩⟩,   where   T = U ⊗ U*,
+
+    and ⊗ denotes the Kronecker product, while U* is the element-wise complex conjugate of U.
+
+    Consequently, any superoperator L acting in Liouville space (e.g., a Liouvillian L
+    such that d|ρ⟩⟩/dt = L |ρ⟩⟩) transforms under a similarity transformation:
+
+        L = T L T^†.
+
+    The function returns T = U ⊗ U*, which serves as the transformation
+    operator for vectorized quantum states and superoperators under the given basis change.
+
+    Notes:
+    ------
+    - The returned T is unitary if U is unitary (which holds when both bases are orthonormal).
+    - This formulation assumes row-major vectorization (C-order flattening), consistent with
+     `vec(ρ)` implementation.
     """
-    U = basis_new.conj().transpose(-1, -2) @ basis_old
+    U = basis_transformation(basis_old, basis_new)
     T_switch = batched_kron(U, U.conj())
     return T_switch
 
 
-def compute_density_basis_transformation(basis_old: torch.Tensor, basis_new: torch.Tensor):
-    """Compute the transformation matrix for density matrices between two
-    quantum bases.
-
-    This function calculates the unitary matrix that converts density matrices from an old basis
-    to a new basis. The transformation preserves quantum state properties under basis change.
-
-    :param basis_old : torch.Tensor
-        Original basis vectors. Shape: [..., K, K] where K is the Hilbert space dimension.
-        Columns represent eigenvectors of the old basis.
-
-    :param basis_new : torch.Tensor
-        Target basis vectors. Shape: [..., K, K] where K is the Hilbert space dimension.
-        Columns represent eigenvectors of the new basis.
-
-    :return:
-    torch.Tensor
-        Transformation matrix for density matrices. Shape: [..., K, K]
-
-        Element [i,j] represents the complex amplitude ⟨new_i|old_j⟩.
-        For visualization, see the diagram in `basis_transformation` docstring.
-
-    Notes:
-    ------
-    This is equivalent to the standard basis transformation matrix U where:
-        ρ_new = U @ ρ_old @ U†
-    with U = basis_new.conj().transpose(-1, -2) @ basis_old
-    """
-    return basis_new.conj().transpose(-1, -2) @ basis_old
-
-
-def transform_density(density_old: torch.Tensor, coeffs: torch.Tensor):
-    """Transform a density matrix to a new  basis.
+def transform_operator_to_new_basis(density_old: torch.Tensor, coeffs: torch.Tensor):
+    """Transform a Hilbert operator (density matrix) to a new  basis.
 
     Applies a unitary transformation to a density matrix using precomputed transformation coefficients.
 
@@ -457,7 +249,7 @@ def transform_density(density_old: torch.Tensor, coeffs: torch.Tensor):
 
     :param coeffs : torch.Tensor
         Precomputed basis transformation matrix. Shape: [..., K, K]
-        Typically from `compute_density_basis_transformation`.
+        Typically from `basis_transformation`. It is equel to new_basis.conj().transpose() @ old_basis
 
     :return:
     torch.Tensor
@@ -476,7 +268,65 @@ def transform_density(density_old: torch.Tensor, coeffs: torch.Tensor):
     return coeffs @ density_old @ coeffs.conj().transpose(-1, -2)
 
 
-def transform_liouville_superop(
+def transform_rate_matrix_to_new_basis(initial_rates: torch.Tensor, probabilities: torch.Tensor) -> torch.Tensor:
+    """Transform transition rates from matrix form to new basis set.
+
+    K(b_new_1 -> b_new_2) = |⟨b_new_1|b_old_1⟩|² * |⟨b_new_2|b_old_2⟩|² * K(b_old_1 -> b_old_2)
+
+    WARNING: This transformation applies only when initial transition levels (i, j)
+    do not transform into identical levels.
+    If transitions exist between levels K1 <-> K2 and they transform into identical levels
+    (N = a*K1 + b*K2), correlation terms arise between levels that pure relaxation rates
+    cannot describe correctly.
+
+    :param initial_rates: Transition rates matrix. Shape [..., K, K]. Diagonal elements must be zero
+    :param probabilities: Transformation coefficients (see get_transformation_probabilities). Shape [..., K, K]
+    :return: Transformed rate matrix
+
+    Mathematical Formulation:
+    -------------------------
+    R_new = |U|^2 @ R_old @ |U^†|^2
+
+    R_new[i, j] =  Σ_{m,n} |⟨i|n⟩|² R_old[n, m] |⟨j|m⟩|²
+                = probabilities @ R_old @ probabilities.transpose()
+
+    Notes:
+    ------
+    This applies ONLY to incoherent rate matrices (populations/relaxation).
+    DO NOT use for coherent operators (Hamiltonians, density matrices) — use:
+        H_new = U @ H_old @ U^†   (with full complex U, not |U|²)
+    """
+    return probabilities @ initial_rates @ probabilities.transpose(-1, -2)
+
+
+def transform_state_weights_to_new_basis(initial_rates: torch.Tensor, probabilities: torch.Tensor) -> torch.Tensor:
+    """Transform a state_weights (populations, loss) from old basis to new basis using transformation
+    coefficients.
+
+    Applies the transformation: v_new[i] = Σ_j |⟨new_i|old_j⟩|² * v_old[j]
+
+    This can be used to transform:
+    - Population vectors (state occupancies)
+    - Outward transition rates
+    - Any other quantities that transform linearly with basis overlap probabilities
+
+    :param initial_rates: Values in the old basis. Shape [..., K]
+    :param probabilities: Transformation probabilities |⟨new|old⟩|². Shape [..., K, K]
+    :return: Transformed values in the new basis. Shape [..., K]
+
+    Mathematical Formulation:
+    -------------------------
+    v_new[i] = Σ_j |⟨i|j⟩|² v_old[j] = probabilities @ v_old
+
+    Notes:
+    ------
+    - Valid for populations, state occupancies, and other incoherent quantities
+    - Preserves total sum: Σ_i v_new[i] = Σ_j v_old[j]
+    """
+    return torch.matmul(probabilities, initial_rates)
+
+
+def transform_superop_to_new_basis(
     superoperator_old: torch.Tensor,
     liouville_transformation: torch.Tensor
 ) -> torch.Tensor:
@@ -490,6 +340,7 @@ def transform_liouville_superop(
 
     :param liouville_transformation : torch.Tensor
         Precomputed Liouville-space transformation matrix. Shape: [..., K², K²]
+        from "compute_liouville_basis_transformation", for example
 
     :return: torch.Tensor
         Superoperator in new Liouville basis. Shape: [..., K², K²]
@@ -502,11 +353,11 @@ def transform_liouville_superop(
     return liouville_transformation @ superoperator_old @ liouville_transformation.conj().transpose(-1, -2)
 
 
-def transform_liouville_superop_diag(
+def transform_superop_diag_to_new_basis(
     superoperator_diag: torch.Tensor,
     liouville_transformation: torch.Tensor
 ) -> torch.Tensor:
-    """Transform a diagonal superoperator to a new quantum basis in Liouville
+    """Transform a diagonal superoperator to a new basis in Liouville
     space.
 
     :param superoperator_diag : torch.Tensor
@@ -520,23 +371,274 @@ def transform_liouville_superop_diag(
     :return: torch.Tensor
         Transformed superoperator in the new Liouville basis.
         Shape: [..., K², K²]
+
+    Mathematical Formulation:
+    -------------------------
+    L_new = T @ diag(lambda) @ T^†
+
+    Notes:
+    ------
+    - More efficient than forming full diagonal matrix first
     """
     return (liouville_transformation * superoperator_diag.unsqueeze(-2))\
         @ liouville_transformation.conj().transpose(-1, -2)
 
 
-def get_coupled_unitary(
+def batched_kron(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """Batched Kronecker product.
+
+    Computes the Kronecker product for batched matrices.
+
+    :param a: torch.Tensor of shape [..., M, N]
+    :param b: torch.Tensor of shape [..., P, Q]
+    :return: torch.Tensor of shape [..., M*P, N*Q]
+    """
+    *batch_dims, M, N = a.shape
+    *_, P, Q = b.shape
+
+    a_expanded = a[..., :, None, :, None]
+    b_expanded = b[..., None, :, None, :]
+    result = a_expanded * b_expanded
+    return result.reshape(*batch_dims, M * P, N * Q)
+
+
+def batched_multi_kron(operators: tp.Sequence[torch.Tensor]) -> torch.Tensor:
+    """Compute Kronecker product of multiple tensors.
+
+    Computes the Kronecker product: rho_1 ⊗ rho_2 ⊗ ... ⊗ rho_n
+
+    The Kronecker product is computed sequentially from left to right:
+    ((rho_1 ⊗ rho_2) ⊗ rho_3) ⊗ ... ⊗ rho_n
+
+    :param operators:
+        torch.tensors: List of torch.Tensor, each of shape [..., n_i, m_i]
+                 All tensors must have compatible batch dimensions.
+                 Each tensor represents a matrix.
+
+    :return:
+        torch.Tensor of shape [..., N, M] where:
+        - N = n_1 * n_2 * ... * n_k (product of all row dimensions)
+        - M = m_1 * m_2 * ... * m_k (product of all column dimensions)
+        - Batch dimensions are broadcast according to standard PyTorch rules
+
+    Raises:
+        ValueError: If tensors list is empty
+
+    Example:
+        >>> rho_1 = torch.randn(10, 2, 2)  # batch of 10, 2x2 matrices
+        >>> rho_2 = torch.randn(10, 3, 3)  # batch of 10, 3x3 matrices
+        >>> rho_3 = torch.randn(10, 2, 2)  # batch of 10, 2x2 matrices
+        >>> result = batched_multi_kron([rho_1, rho_2, rho_3])
+        >>> result.shape
+        torch.Size([10, 12, 12])  # 2*3*2 = 12
+    """
+    return functools.reduce(batched_kron, operators)
+
+
+def batched_sum_kron(
+    operators: tp.Sequence[torch.Tensor],
+) -> torch.Tensor:
+    """
+    Compute the sum of local operators:
+        K_1 ⊗ I ⊗ ... ⊗ I
+      + I ⊗ K_2 ⊗ ... ⊗ I
+      + ...
+      + I ⊗ ... ⊗ I ⊗ K_n
+
+    This constructs operators like total Hamiltonians or relaxation superoperators
+    where each term acts nontrivially on only one subsystem.
+      
+    :param operators:
+        torch.tensors: List of torch.Tensor, each of shape [..., n_i, m_i]
+                 All tensors must have compatible batch dimensions.
+                 Each tensor represents a matrix.
+    :return:
+        torch.Tensor
+            Tensor of shape (..., D, D), where:
+                D = d_1 * d_2 * ... * d_n
+
+    Mathematical Formulation:
+    -------------------------
+    For n subsystems with local operators {Kᵢ} and identity operators {Iⱼ}:
+
+        H_global = Σᵢ (I₁ ⊗ ... ⊗ Iᵢ₋₁ ⊗ Kᵢ ⊗ Iᵢ₊₁ ⊗ ... ⊗ Iₙ)
+
+    Notes:
+    ------
+    - Preserves Hermiticity: if all Kᵢ are Hermitian, H_global is Hermitian
+    """
+
+    device = operators[0].device
+    dtype = operators[0].dtype
+    batch_shape = operators[0].shape[:-2]
+
+    dims = [K.shape[-1] for K in operators]
+    identities = [
+        torch.eye(d, device=device, dtype=dtype).expand(batch_shape + (d, d))
+        for d in dims
+    ]
+
+    n = len(operators)
+    left_ids = [None] * n
+    right_ids = [None] * n
+
+    for i in range(1, n):
+        left_ids[i] = identities[i - 1] if i == 1 else batched_kron(left_ids[i - 1], identities[i - 1])
+
+    for i in range(n - 2, -1, -1):
+        right_ids[i] = identities[i + 1] if i == n - 2 else batched_kron(identities[i + 1], right_ids[i + 1])
+    total = None
+    for i, K in enumerate(operators):
+        term = K
+        if left_ids[i] is not None:
+            term = batched_kron(left_ids[i], term)
+        if right_ids[i] is not None:
+            term = batched_kron(term, right_ids[i])
+
+        total = term if total is None else total + term
+    return total
+
+
+def batched_sum_kron_diagonal(
+        vectors: tp.Sequence[torch.Tensor],
+) -> torch.Tensor:
+    """Compute diagonal of summed operators.
+
+    Computes the diagonal vector of:
+        H = Σᵢ (I ⊗ ... ⊗ diag(vᵢ) ⊗ ... ⊗ I)
+
+    where each term acts nontrivially only on subsystem i. The result is equivalent to:
+        diag(H) = Σᵢ (1 ⊗ ... ⊗ vᵢ ⊗ ... ⊗ 1)
+
+    :param vectors:
+        torch.tensors: List of torch.Tensor, each of shape [..., n_i]
+            All tensors must have compatible batch dimensions.
+            Each tensor represents a matrix.
+
+    :return:
+        torch.Tensor
+            Tensor of shape (...,  D), where:
+            D = d_1 * d_2 * ... * d_n
+
+    Mathematical Formulation:
+    -------------------------
+    For diagonal local operators diag(vᵢ):
+        diag(H_global)[i₁,i₂,...,iₙ] = Σₖ vₖ[iₖ]
+    where the composite index (i₁,i₂,...,iₙ) maps to linear index via row-major ordering.
+
+    This avoids O(D²) memory cost of full matrix construction, using only O(D) storage
+    """
+    batch_shape = vectors[0].shape[:-1]
+    device = vectors[0].device
+    dtype = vectors[0].dtype
+
+    dims = [v.shape[-1] for v in vectors]
+    D = 1
+    for d in dims:
+        D *= d
+
+    n = len(vectors)
+    diag = torch.zeros(batch_shape + (D,), dtype=dtype, device=device)
+    full_shape = batch_shape + tuple(dims)
+
+    for i, v in enumerate(vectors):
+        view_shape = batch_shape + tuple(
+            dims[j] if j == i else 1 for j in range(n)
+        )
+        v_view = v.reshape(view_shape)
+        v_full = v_view.expand(full_shape)
+        diag += v_full.reshape(batch_shape + (D,))
+    return diag
+
+
+def compute_clebsch_gordan_coeffs(
+        target_basis: torch.Tensor,
+        basis_list: list[torch.Tensor]
+) -> torch.Tensor:
+    """ Compute transformation coefficients expressing a target basis as linear combinations
+    of tensor product states from subsystem bases.
+
+    For n old bases with dimensions [k1, k2, ..., kn], computes coefficients C
+    that express each new basis state as a linear combination of tensor products:
+
+    Returns coefficients C where:
+        C[m, i₁, i₂, ..., iₙ] = ⟨target_m | (|i₁⟩ ⊗ |i₂⟩ ⊗ ... ⊗ |iₙ⟩)
+
+    where ⊗ denotes the tensor (Kronecker) product.
+
+    :param target_basis: new basis vector. Shape: [..., K, K] where K = k1*k2*...*kn
+    Columns are orthonormal eigenvectors: target_basis[:, m] = |m⟩_target
+    :param basis_list: List of old basis tensors.
+                             Each has shape [..., k_i, k_i]
+    :return: Transformation coefficients C. Shape: [..., K, k₁, k₂, ..., kₙ]
+             where C[m, i₁, ..., iₙ] = ⟨target_m | product_{i₁,...,iₙ}⟩
+
+    Mathematical Formulation:
+    -------------------------
+    For product basis states |i₁,...,iₙ⟩_prod = |i₁⟩ ⊗ ... ⊗ |iₙ⟩ and target states |m⟩_target:
+
+        |ψ⟩ = Σ_{i₁..iₙ} c_prod[i₁..iₙ] |i₁..iₙ⟩_prod
+             = Σ_m c_target[m] |m⟩_target
+
+    Coordinate transformation:
+        c_target = U @ c_prod   where   U[m, composite_index(i₁..iₙ)] = ⟨m|_target |i₁..iₙ⟩_prod
+
+    Computed via:
+        C_flat  = target_basis.conj().transpose(-1,-2) @ kron_basis
+
+    Notes:
+    ------
+    - Coefficients follow convention in the coordinate transformation as in function (:func:basis_transformation):
+    U transforms coordinates from product → target basis
+    """
+    dims = [basis.shape[-1] for basis in basis_list]
+    kron_basis = batched_multi_kron(basis_list)
+    C_flat = torch.matmul(target_basis.conj().transpose(-1, -2), kron_basis)
+    C_reshaped = C_flat.reshape(*C_flat.shape[:-2], *dims, C_flat.shape[-1])
+    return C_reshaped
+
+
+def compute_clebsch_gordan_probabilities(
+        target_basis: torch.Tensor,
+        basis_list: list[torch.Tensor]
+) -> torch.Tensor:
+    """Compute squared magnitudes of transformation coefficients (probabilities).
+
+    Returns P[m, i₁, ..., iₙ] = |⟨target_m | product_{i₁..iₙ}⟩|²
+
+    :param target_basis: New-system basis vectors. Shape: [..., K, K] where K = k1*k2*...*kn
+    :param basis_list: List of old basis tensors.
+                                  Each has shape [..., k_i, k_i]
+    :return: Squared Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
+
+    Mathematical Formulation:
+    -------------------------
+        P[m, i₁..iₙ] = |U[m, composite_index(i₁..iₙ)]|²
+                     = |⟨target_m | product_{i₁..iₙ}⟩|²
+    """
+    return compute_clebsch_gordan_coeffs(target_basis, basis_list).abs().square()
+
+
+def get_product_to_target_unitary(
         coeffs: torch.Tensor,
         n: int,
 ) -> torch.Tensor:
-    """Compute unitary transformation matrix from uncoupled to coupled basis.
+    """Reshape transformation coefficients into unitary matrix U.
 
-    This is equivalent to reshaping the output of compute_clebsch_gordan_coeffs
-    into a matrix form [..., K, K] where K = k1*k2*...*kn.
+    Converts C[i₁, ..., iₙ] → U[m, composite_index(i₁..iₙ)
 
     :param coeffs: Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
     :param n: number of subsystems
     :return: Unitary transformation matrix U. Shape: [..., K, K]
+
+    Mathematical Formulation:
+    -------------------------
+        U = reshape_and_transpose(coeffs)
+        such that U[m, j] = coeffs[i₁..iₙ, m] where j = composite_index(i₁..iₙ)
+
+    This satisfies convention:
+        c_target = U @ c_product
+        ρ_target = U @ ρ_product @ U†
     """
     batch_shape = coeffs.shape[:-n - 1]
     uncoupled_dims = coeffs.shape[-n - 1:-1]
@@ -545,72 +647,434 @@ def get_coupled_unitary(
     return coeffs.reshape(*batch_shape, total_dim, K)
 
 
-def transform_kronecker_density(
+def transform_kronecker_populations(
+        populations_list: list[torch.Tensor],
+        probabilities: torch.Tensor,
+) -> torch.Tensor:
+    """Transform populations from old (product) basis to new basis
+    using.
+
+    Clebsch-Gordan coefficients.
+
+    Computes the population of each new-system state as:
+    n_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * n_old_1[i1] * ... * n_old_n[in]
+
+    This implements the quantum mechanical rule that populations of subsystems
+    multiply, weighted by the squared Clebsch-Gordan coefficients.
+
+    Example:
+    :param populations_list: List of population vectors for each  subsystem.
+                            Each has shape [..., k_i]
+    :param probabilities: Squared Clebsch-Gordan coefficients |C|².
+                      Shape: [..., k1, k2, ..., kn, K]
+    :return: Populations in new-system basis. Shape: [..., K]
+
+    Mathematical Formulation:
+    -------------------------
+        n_target[m] = Σ_{i₁..iₙ} |U[i₁..iₙ, m]|² · n₁[i₁] · n₂[i₂] · ... · nₙ[iₙ] =\
+           = |U|^2 @ (n₁ ⊗ n₂ ⊗ ... ⊗ nₙ)
+
+    Direct computation equivalent to full basis transformation:
+        n_new = |U|^2 @ (n₁ ⊗ n₂ ⊗ ... ⊗ nₙ)
+    where U = V_new^† @ (V₁ ⊗ V₂ ⊗ ... ⊗ Vₙ) is the composite transformation matrix
+    and |U|^2 denotes element-wise squaring.
+    """
+    return transform_state_weights_to_new_basis(
+        batched_multi_kron([v.unsqueeze(-1) for v in populations_list]).squeeze(-1),
+        get_product_to_target_unitary(probabilities, n=len(populations_list))
+    )
+
+
+def transform_kronecker_rate_vector(
+        vector_list: list[torch.Tensor],
+        probabilities: torch.Tensor,
+) -> torch.Tensor:
+    """Transform rate vector from old (product) basis to new-system basis
+    using.
+
+    Computes the population of each new-system state as:
+    R_coupled[m] = Σ_{i1,...,in} |C[i1, ..., in, m]|² * (K1[i1] + K2[i2] + ... + Kn[in])
+
+    This implements the mechanical rule that rates from old subsystems
+    multiply, weighted by the squared Clebsch-Gordan coefficients.
+
+    Direct computation equivalent to full basis transformation:
+        Γ_new = |U|^2 @ diag(Γ₁ ⊗ 𝟙₂ ⊗ ... + 𝟙₁ ⊗ Γ₂ ⊗ ... + ...)
+    where the diagonal operator in the product basis has Kronecker-sum structure.
+
+    Example:
+    :param probabilities: Squared Clebsch-Gordan coefficients |C|².
+                      Shape: [..., k1, k2, ..., kn, K]
+    :param vector_list: List of population vectors for each  subsystem.
+                            Each has shape [..., k_i]
+    :return: Populations in new-system basis. Shape: [..., K]
+
+    Mathematical Formulation:
+    -------------------------
+        Γ_target[m] = Σ_{i₁..iₙ} |U[m, index(i₁..iₙ)]|² · (Γ₁[i₁] + Γ₂[i₂] + ... + Γₙ[iₙ])
+                   = |U|^2 @ vec(diag(Γ₁) ⊗ 𝟙₂ ⊗ ... + 𝟙₁ ⊗ diag(Γ₂) ⊗ ... + ...)
+
+        Here it is used that  |U|^2  @ 1 = 1, where 1 is vector of ones (not eye matrix)
+    """
+    return transform_state_weights_to_new_basis(
+        batched_sum_kron_diagonal(vector_list),
+        get_product_to_target_unitary(probabilities, n=len(vector_list))
+    )
+
+
+def transform_kronecker_rate_matrix(
+        matrices: list[torch.Tensor],
+        probabilities: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Transform rate matrices using marginal probability mappings.
+
+    Computes: L_new = Σ_i (I ⊗ ... ⊗ (P_i @ K_i @ P_iᵀ) ⊗ ... ⊗ I)
+
+    where P_i[i, m] = Σ_{j≠i} P_joint[..., j₁,..,i,..,jₙ, m]
+    are marginals extracted from the joint probability tensor.
+
+    Works for ANY basis. Automatically satisfies Kronecker structure
+    when the basis factorizes (because P_joint factorizes → marginals exact).
+
+    :param matrices: List of rate matrices [..., k_i, k_i]
+    :param probabilities: Joint probabilities [..., k₁, ..., kₙ, K]
+                          where K = dimension of new basis
+    :return: Transformed rate matrix [..., K, K]
+    """
+
+    return transform_rate_matrix_to_new_basis(
+        batched_sum_kron(matrices),
+        get_product_to_target_unitary(probabilities, n=len(matrices))
+    )
+
+
+def transform_kronecker_operator(
         density_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """Transform density matrices from uncoupled to coupled basis.
+    """Transform Hilbert operators matrices from old subsystem operators to new basis.
 
-    ρ_coupled = U @ (ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ) @ Uᴴ
+    ρ_new = U @ (ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ) @ U^†
 
     :param density_list: Density matrices for subsystems. Each shape: [..., k_i, k_i]
     :param coeffs: Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
-    :return: Density matrix in coupled basis. Shape: [..., K, K]
+    :return: Density matrix in new-system basis. Shape: [..., K, K]
     """
-    unitarty = get_coupled_unitary(coeffs, len(density_list))
-
-    rho_uncoupled = density_list[0]
-    for rho in density_list[1:]:
-        rho_uncoupled = torch.einsum('...ij,...kl->...ikjl', rho_uncoupled, rho)
-        rho_uncoupled = rho_uncoupled.reshape(
-            *rho_uncoupled.shape[:-4],
-            rho_uncoupled.shape[-4] * rho_uncoupled.shape[-3],
-            rho_uncoupled.shape[-2] * rho_uncoupled.shape[-1]
-        )
-    return unitarty @ rho_uncoupled @ unitarty.conj().transpose(-1, -2)
+    unitarty = get_product_to_target_unitary(coeffs, len(density_list))
+    return transform_operator_to_new_basis(
+        batched_multi_kron(density_list), unitarty
+    )
 
 
 def transform_kronecker_superoperator(
         superoperator_list: list[torch.Tensor],
         coeffs: torch.Tensor,
 ) -> torch.Tensor:
-    """Transform superoperators from uncoupled to coupled Liouville basis.
+    """Compute composite superoperator in coupled basis from subsystem superoperators.
 
-    R_coupled = T ⊗ (R1 ⊗ I2 ⊗ ... ⊗ In + I1 ⊗ R2 ⊗ ... ⊗ In + ... + I1 ⊗ ... ⊗ Rn) ⊗ Tᴴ
-    where T = U ⊗ U* (Liouville transformation)
+    Constructs the Kronecker-sum superoperator in local product basis, applies index
+    permutation to reconcile vectorization orderings, then transforms to the coupled basis
+    using Clebsch-Gordan coefficients.
 
-    :param superoperator_list: Superoperators for subsystems. Each shape: [..., k_i², k_i²]
-    :param coeffs: Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
-    :return: Superoperator in coupled Liouville basis. Shape: [..., K², K²]
+    :param superoperator_list: Subsystem superoperators in Liouville space.
+                               Each shape: [..., k_i², k_i²]
+    :param coeffs: Clebsch-Gordan coefficients for basis transformation.
+                   Shape: [..., k₁, k₂, ..., kₙ, K] where K = ∏ᵢ k_i
+    :return: Composite superoperator in coupled Liouville basis. Shape: [..., K², K²]
+
+    Mathematical Formulation:
+    -------------------------
+        Step 1 — Compute Kronecker sum in local bases:
+            L_local = Σᵢ (I₁ ⊗ ... ⊗ Lᵢ ⊗ ... ⊗ Iₙ)
+
+        Step 2 — Perform Permutation for vectorization ordering:
+            L_kron = P · L_local · P^†
+            where P reconciles tensor-product vs. Kronecker vectorization order
+
+        Step 3 — Perform Basis transformation:
+            L_coupled = T · L_kron · T^†
+            where T = U ⊗ U* and U is the product→coupled unitary from coeffs
+
+        This implements the full transformation:
+            vec(ρ_coupled) evolves under L_coupled
+            when vec(ρ₁) ⊗ ... ⊗ vec(ρₙ) evolves under local Lᵢ terms
     """
-    n = len(superoperator_list)
-    batch_shape = superoperator_list[0].shape[:-2]
-    k_dims = coeffs.shape[-n - 1:-1]
-    total_dim = int(torch.prod(torch.tensor(k_dims)))
-
-    unitarty = get_coupled_unitary(coeffs, len(superoperator_list))  # K, K
+    dims = [int(round(superop.shape[-1] ** 0.5)) for superop in superoperator_list]
+    R = reshape_superoperator_tensor_to_kronecker_basis(batched_sum_kron(superoperator_list), subsystem_dims=dims)
+    unitarty = get_product_to_target_unitary(coeffs, len(superoperator_list))  # K, K
     T = batched_kron(unitarty, unitarty.conj())
-    T = T.reshape(
-        *T.shape[:-4],
-        T.shape[-4] * T.shape[-3],
-        T.shape[-2] * T.shape[-1]
-    )  # K^2, K^2
+    return transform_superop_to_new_basis(R, T)
 
-    expanded_shape = list(batch_shape) + [ki ** 2 for ki in k_dims] + [ki ** 2 for ki in k_dims]
-    R_expanded = torch.zeros(expanded_shape, device=superoperator_list[0].device, dtype=superoperator_list[0].dtype)
 
-    for i, superop in enumerate(superoperator_list):
-        ki_sq = k_dims[i] ** 2
-        view_shape = [1] * (len(batch_shape) + 2 * n)
-        view_shape[:len(batch_shape)] = list(batch_shape)
-        view_shape[len(batch_shape) + i] = ki_sq
-        view_shape[len(batch_shape) + n + i] = ki_sq
+def reshape_vectorized_kronecker_to_tensor_product(
+    vec_rho_kron: torch.Tensor,
+    subsystem_dims: tp.List[int]
+) -> torch.Tensor:
+    """Reshape vectorized Kronecker product state to tensor product of vectorized subsystem states.
+    This transformation uses row-major order for vectorization
 
-        superop_expanded = superop.reshape(view_shape)
-        R_expanded = R_expanded + superop_expanded
+    Converts the vectorized form of a composite density matrix expressed as a Kronecker product:
+        vec(ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ)
+    into the tensor product of vectorized subsystem states:
+        vec(ρ₁) ⊗ vec(ρ₂) ⊗ ... ⊗ vec(ρₙ)
 
-    R_uncoupled = R_expanded.reshape(*batch_shape, total_dim ** 2, total_dim ** 2).to(T.dtype)
-    return T @ R_uncoupled @ T.conj().transpose(-1, -2)
+    This transformation reorders indices to group row-column pairs per subsystem rather than
+    grouping all rows followed by all columns.
+
+    :param vec_rho_kron: Vectorized composite density matrix in Kronecker basis.
+                         Shape: [..., D²] where D = ∏ᵢ dᵢ and dᵢ are subsystem dimensions
+    :param subsystem_dims: List of subsystem Hilbert space dimensions [d₁, d₂, ..., dₙ]
+    :return: Vectorized state in tensor product basis.
+             Shape: [..., ∏ᵢ (dᵢ²)] = [..., d₁²·d₂²·...·dₙ²]
+
+    Mathematical Formulation:
+    -------------------------
+    Given composite state ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ with subsystem dimensions {dᵢ}:
+
+    Reshaping reveals subsystem structure:
+        ρ → ρ[i₁,...,iₙ; j₁,...,jₙ]  (row indices iₖ, column indices jₖ)
+
+    Kronecker vectorization orders indices as:
+        vec_kron[index(i₁,...,iₙ,j₁,...,jₙ)] = ρ[i₁,...,iₙ; j₁,...,jₙ]
+        where index = (i₁·d₂·...·dₙ + i₂·d₃·...·dₙ + ... + iₙ)·D +
+                     (j₁·d₂·...·dₙ + j₂·d₃·...·dₙ + ... + jₙ)
+
+    Tensor product vectorization orders indices as:
+        vec_tensor[index'(i₁,j₁,i₂,j₂,...,iₙ,jₙ)] = ρ[i₁,...,iₙ; j₁,...,jₙ]
+        where index' = (i₁·d₁ + j₁)·(d₂²·...·dₙ²) + ... + (iₙ·dₙ + jₙ)
+
+    The transformation is a permutation of vector elements corresponding to index mapping:
+    index' = permute_indices(index)
+    """
+    batch_shape = vec_rho_kron.shape[:-1]
+    n_systems = len(subsystem_dims)
+    total_dim = 1
+    for d in subsystem_dims:
+        total_dim *= d
+
+    x = vec_rho_kron.reshape(*batch_shape, total_dim, total_dim)
+    x = x.reshape(*batch_shape, *subsystem_dims, *subsystem_dims)
+    perm = list(range(len(batch_shape)))
+
+    for i in range(n_systems):
+        perm.append(len(batch_shape) + i)
+        perm.append(len(batch_shape) + n_systems + i)
+
+    x = x.permute(*perm)
+    dims_squared = [d * d for d in subsystem_dims]
+    x = x.reshape(*batch_shape, *dims_squared)
+    return x.reshape(*batch_shape, -1)
+
+
+def reshape_vectorized_tensor_product_to_kronecker(
+        vec_tensor_prod: torch.Tensor,
+        subsystem_dims: tp.List[int]
+) -> torch.Tensor:
+    """Reshape tensor product of vectorized subsystem states to vectorized Kronecker product state.
+    This transformation uses row-major order for vectorization
+
+    Converts the tensor product of vectorized subsystem density matrices:
+        vec(ρ₁) ⊗ vec(ρ₂) ⊗ ... ⊗ vec(ρₙ)
+    into the vectorized form of their Kronecker product:
+        vec(ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ)
+
+    This is the inverse operation of reshape_vectorized_kronecker_to_tensor_product,
+    reordering indices to group all row indices followed by all column indices.
+
+    :param vec_tensor_prod: Vectorized state in tensor product basis.
+                            Shape: [..., ∏ᵢ (dᵢ²)] = [..., d₁²·d₂²·...·dₙ²]
+    :param subsystem_dims: List of subsystem Hilbert space dimensions [d₁, d₂, ..., dₙ]
+    :return: Vectorized composite density matrix in Kronecker basis.
+             Shape: [..., D²] where D = ∏ᵢ dᵢ
+
+    Mathematical Formulation:
+    -------------------------
+    Given subsystem states {ρᵢ} with dimensions {dᵢ}, the tensor product vectorization is:
+        vec_tensor = vec(ρ₁) ⊗ vec(ρ₂) ⊗ ... ⊗ vec(ρₙ)
+
+    Each vec(ρᵢ) has elements vec(ρᵢ)[kᵢ] = ρᵢ[iᵢ, jᵢ] where kᵢ = iᵢ·dᵢ + jᵢ
+
+    The composite state in tensor product basis has elements:
+        vec_tensor[index'(i₁,j₁,i₂,j₂,...,iₙ,jₙ)] = ∏ᵢ ρᵢ[iᵢ, jᵢ]
+
+    The Kronecker product state ρ = ⊗ᵢ ρᵢ has matrix elements:
+        ρ[i₁,...,iₙ; j₁,...,jₙ] = ∏ᵢ ρᵢ[iᵢ, jᵢ]
+
+    Its vectorization in Kronecker basis is:
+        vec_kron[index(i₁,...,iₙ,j₁,...,jₙ)] = ρ[i₁,...,iₙ; j₁,...,jₙ]
+        where index = (i₁·d₂·...·dₙ + ... + iₙ)·D + (j₁·d₂·...·dₙ + ... + jₙ)
+        and D = ∏ᵢ dᵢ
+
+    The transformation applies the inverse index permutation:
+        index = permute_indices⁻¹(index')
+    """
+    batch_shape = vec_tensor_prod.shape[:-1]
+    n_systems = len(subsystem_dims)
+    total_dim = 1
+    for d in subsystem_dims:
+        total_dim *= d
+    dims_squared = [d * d for d in subsystem_dims]
+    x = vec_tensor_prod.reshape(*batch_shape, *dims_squared)
+
+    reshape_dims = []
+    for d in subsystem_dims:
+        reshape_dims.extend([d, d])
+    x = x.reshape(*batch_shape, *reshape_dims)
+
+    perm = list(range(len(batch_shape)))
+    for i in range(n_systems):
+        perm.append(len(batch_shape) + 2 * i)
+    for i in range(n_systems):
+        perm.append(len(batch_shape) + 2 * i + 1)
+
+    x = x.permute(*perm)
+    x = x.reshape(*batch_shape, total_dim, total_dim)
+    return x.reshape(*batch_shape, -1)
+
+
+def reshape_superoperator_kronecker_to_tensor_basis(
+        superop_kron: torch.Tensor,
+        subsystem_dims: tp.List[int]
+) -> torch.Tensor:
+    """Convert superoperator representation from Kronecker basis to tensor product basis.
+    This transformation uses row-major order for vectorization
+
+    Transforms a superoperator L acting on vec(ρ₁ ⊗ ... ⊗ ρₙ) to act on
+    vec(ρ₁) ⊗ ... ⊗ vec(ρₙ) by reordering both input and output indices.
+
+    :param superop_kron: Superoperator in Kronecker basis representation.
+                         Shape: [..., D², D²] where D = ∏ᵢ dᵢ
+    :param subsystem_dims: List of subsystem Hilbert space dimensions [d₁, d₂, ..., dₙ]
+    :return: Superoperator in tensor product basis representation.
+             Shape: [..., ∏ᵢ (dᵢ²), ∏ᵢ (dᵢ²)]
+
+    Mathematical Formulation:
+    -------------------------
+    A superoperator L maps vectorized density matrices:
+        vec(ρ') = L · vec(ρ)
+
+    In Kronecker basis (ρ = ⊗ᵢ ρᵢ):
+
+    In tensor product basis:
+        vec_tensor(ρ) = ⊗ᵢ vec(ρᵢ)
+
+    The basis transformation is implemented via index permutation P:
+        vec_tensor(ρ) = P · vec_kron(ρ)
+
+    Therefore the superoperator transforms as:
+        L_tensor = P · L_kron · P^†
+
+    Where P implements the index mapping:
+        P[index'(i₁,j₁,...,iₙ,jₙ), index(i₁,...,iₙ,j₁,...,jₙ)] = δ_{permuted}
+
+    For Kronecker-sum superoperators (e.g., L = Σᵢ I⊗...⊗Lᵢ⊗...⊗I),
+    """
+    batch_shape = superop_kron.shape[:-2]
+    n_systems = len(subsystem_dims)
+
+    total_dim = 1
+    for d in subsystem_dims:
+        total_dim *= d
+    x = superop_kron.reshape(
+        *batch_shape,
+        *subsystem_dims,
+        *subsystem_dims,
+        *subsystem_dims,
+        *subsystem_dims
+    )
+
+    batch_ndim = len(batch_shape)
+    perm = list(range(batch_ndim))
+    for i in range(n_systems):
+        perm.append(batch_ndim + i)
+        perm.append(batch_ndim + n_systems + i)
+    for i in range(n_systems):
+        perm.append(batch_ndim + 2 * n_systems + i)
+        perm.append(batch_ndim + 3 * n_systems + i)
+
+    x = x.permute(*perm)
+    dims_squared = [d * d for d in subsystem_dims]
+    x = x.reshape(*batch_shape, *dims_squared, *dims_squared)
+    total_sq_dim = 1
+    for d_sq in dims_squared:
+        total_sq_dim *= d_sq
+    return x.reshape(*batch_shape, total_sq_dim, total_sq_dim)
+
+
+def reshape_superoperator_tensor_to_kronecker_basis(
+        superop_tensor: torch.Tensor,
+        subsystem_dims: tp.List[int]
+) -> torch.Tensor:
+    """Convert superoperator representation from tensor product basis to Kronecker basis.
+    This transformation uses row-major order for vectorization
+
+    Transforms a superoperator L acting on vec(ρ₁) ⊗ ... ⊗ vec(ρₙ) to act on
+    vec(ρ₁ ⊗ ... ⊗ ρₙ) by reordering both input and output indices.
+
+    This is the inverse operation of reshape_superoperator_kronecker_to_tensor_basis,
+    required when interfacing with libraries that expect Kronecker-basis representations.
+
+    :param superop_tensor: Superoperator in tensor product basis representation.
+                           Shape: [..., ∏ᵢ (dᵢ²), ∏ᵢ (dᵢ²)]
+    :param subsystem_dims: List of subsystem Hilbert space dimensions [d₁, d₂, ..., dₙ]
+    :return: Superoperator in Kronecker basis representation.
+             Shape: [..., D², D²] where D = ∏ᵢ dᵢ
+
+    Mathematical Formulation:
+    -------------------------
+    Given superoperator in tensor product basis L_tensor:
+        vec_tensor(ρ') = L_tensor · vec_tensor(ρ)
+        where vec_tensor(ρ) = ⊗ᵢ vec(ρᵢ)
+
+    The Kronecker-basis representation satisfies:
+        vec_kron(ρ') = L_kron · vec_kron(ρ)
+        where vec_kron(ρ) = vec(⊗ᵢ ρᵢ)
+
+    With basis transformation matrix P (from Kronecker to tensor basis):
+        vec_tensor(ρ) = P · vec_kron(ρ)
+
+    The inverse transformation is:
+        L_kron = P^† · L_tensor · P
+
+    Where P^† implements the inverse index permutation:
+        P^†[index(i₁,...,iₙ,j₁,...,jₙ), index'(i₁,j₁,...,iₙ,jₙ)] = δ_{inverse_permuted}
+
+    For subsystem-local operations with Kronecker-sum structure in tensor basis:
+        L_tensor = Σᵢ I⊗...⊗Lᵢ⊗...⊗I  (acting on vec(ρᵢ) spaces)
+    the Kronecker-basis representation becomes:
+        L_kron = Σᵢ I⊗...⊗Lᵢ⊗...⊗I  (acting on full Hilbert space)
+    with appropriate reshaping of Lᵢ to superoperator form.
+    """
+    batch_shape = superop_tensor.shape[:-2]
+    n_systems = len(subsystem_dims)
+
+    total_dim = 1
+    dims_squared = []
+    for d in subsystem_dims:
+        total_dim *= d
+        dims_squared.append(d * d)
+
+    x = superop_tensor.reshape(*batch_shape, *dims_squared, *dims_squared)
+    reshape_dims = []
+
+    for d in subsystem_dims:
+        reshape_dims.extend([d, d])
+    x = x.reshape(*batch_shape, *reshape_dims, *reshape_dims)
+    batch_ndim = len(batch_shape)
+    perm = list(range(batch_ndim))
+    for i in range(n_systems):
+        perm.append(batch_ndim + 2 * i)
+    for i in range(n_systems):
+        perm.append(batch_ndim + 2 * i + 1)
+    for i in range(n_systems):
+        perm.append(batch_ndim + 2 * n_systems + 2 * i)
+    for i in range(n_systems):
+        perm.append(batch_ndim + 2 * n_systems + 2 * i + 1)
+
+    x = x.permute(*perm)
+    x = x.reshape(*batch_shape, total_dim, total_dim, total_dim, total_dim)
+    return x.reshape(*batch_shape, total_dim * total_dim, total_dim * total_dim)
 
 
 class Liouvilleator:
@@ -643,8 +1107,8 @@ class Liouvilleator:
         I = torch.eye(d, dtype=operator.dtype, device=operator.device)
         batch_dims = operator.shape[:-2]
 
-        term1 = torch.einsum('...ij,kl->...ikjl', operator, I).reshape(*batch_dims, d * d, d * d)
-        term2 = torch.einsum('kl,...ij->...kilj', I, operator.transpose(-1, -2)).reshape(*batch_dims, d * d, d * d)
+        term1 = torch.einsum("...ij,kl->...ikjl", operator, I).reshape(*batch_dims, d * d, d * d)
+        term2 = torch.einsum("kl,...ij->...kilj", I, operator.transpose(-1, -2)).reshape(*batch_dims, d * d, d * d)
         return term1 - term2
 
     @staticmethod
@@ -653,10 +1117,19 @@ class Liouvilleator:
 
         Example:
             rho = torch.tensor([[0.5, 0.1],
-                                [0.1, 0.5]])
-            return tensor([0.5, 0.1, 0.1, 0.5])
-        :param rho: density matrix in matrix form. The shape is [..., N, N], where N is number of levels
+                                [0.2, 0.5]])
+            return tensor([0.5, 0.1, 0.2, 0.5])
+        :param ρ: density matrix in matrix form. The shape is [..., N, N], where N is number of levels
         :return density matrix in vector form. The shape is [..., N**2], where N is number of levels:
+
+        Mathematical Formulation:
+        -------------------------
+        vec_row(ρ)[i·N + j] = ρ[i, j]
+
+        Notes:
+        ------
+        - Uses ROW-MAJOR ordering
+        - Affects Kronecker structure: vec(UρU^†) = (U ⊗ U*) vec(ρ) for row-major
         """
         shapes = rho.shape
         return rho.reshape(*shapes[:-2], shapes[-1] * shapes[-1])
@@ -666,11 +1139,19 @@ class Liouvilleator:
         """Transform density matrix to Hilbert space from Liouvillian Space.
 
         Example:
-            vec_rho = torch.tensor([0.6, 0.0, 0.0, 0.4])
-            return tensor([[0.6, 0.0],
-                           [0.0, 0.4]])
+            vec_rho = torch.tensor([0.6, 0.1, 0.2, 0.4])
+            return tensor([[0.6, 0.1],
+                           [0.2, 0.4]])
         :param rho: density matrix in vector form. The shape is [..., N**2], where N is number of levels
         :return density matrix in matrix form. The shape is [..., N, N], where N is number of levels:
+
+        Mathematical Formulation:
+        -------------------------
+        ρ[i, j] = vec_row(ρ)[i·N + j]
+
+        Notes:
+        ------
+        - Inverse of vec() with row-major ordering
         """
         shapes = rho.shape
         dim = int(math.sqrt(shapes[-1]))
@@ -728,8 +1209,8 @@ class Liouvilleator:
         I = torch.eye(d, dtype=operator.dtype, device=operator.device)
         batch_dims = operator.shape[:-2]
 
-        term1 = torch.einsum('...ij,kl->...ikjl', operator, I).reshape(*batch_dims, d * d, d * d)
-        term2 = torch.einsum('kl,...ij->...kilj', I, operator.transpose(-1, -2)).reshape(*batch_dims, d * d, d * d)
+        term1 = torch.einsum("...ij,kl->...ikjl", operator, I).reshape(*batch_dims, d * d, d * d)
+        term2 = torch.einsum("kl,...ij->...kilj", I, operator.transpose(-1, -2)).reshape(*batch_dims, d * d, d * d)
         return term1 + term2
 
     @staticmethod
@@ -758,7 +1239,7 @@ class Liouvilleator:
         batch_dims = operator.shape[:-1]
         i_indices = torch.arange(d, device=operator.device)
         j_indices = torch.arange(d, device=operator.device)
-        i_grid, j_grid = torch.meshgrid(i_indices, j_indices, indexing='ij')
+        i_grid, j_grid = torch.meshgrid(i_indices, j_indices, indexing="ij")
         anticomm_diagonal = operator[..., i_grid] + operator[..., j_grid]
         return anticomm_diagonal.reshape(*batch_dims, d * d)
 
@@ -824,7 +1305,7 @@ class Liouvilleator:
 
         i_indices = torch.arange(n, device=w.device)
         j_indices = torch.arange(n, device=w.device)
-        i_grid, j_grid = torch.meshgrid(i_indices, j_indices, indexing='ij')
+        i_grid, j_grid = torch.meshgrid(i_indices, j_indices, indexing="ij")
 
         offdiag_mask = i_grid != j_grid
         i_offdiag = i_grid[offdiag_mask]
@@ -859,13 +1340,22 @@ class Liouvilleator:
         :param gamma : torch.Tensor
             dephasing rate matrix. Shape: [..., n]
             Element [i] represents dephasing rate.
-            For example, if γ is not zero only for i state, then the result will be ``- γ / 2 * rho_ij for all j != i``
+            For example, if γ is not zero only for i state, then the result will be ``- γ / 2 * ρ_ij for all j != i``
             In the general case:
 
-            ``drho_ij / dt = - (gamma_i + gamma_j) / 2 * rho_ij for i != j``
+            ``dρ_ij / dt = - (gamma_i + gamma_j) / 2 * ρ_ij for i != j``
 
         :return: torch.Tensor
             Lindblad dephasing superoperator. Shape: ``[..., n², n²]``
+
+        Mathematical Formulation:
+        -------------------------
+        For i ≠ j:  dρ_{ij}/dt = -1/2(γ_i + γ_j) ρ_{ij}
+        For i = j:  dρ_{ii}/dt = 0
+
+        Superoperator is diagonal with entries:
+            D[i·n + j, i·n + j] = -1/2(γ_i + γ_j)  for i ≠ j
+            D[i·n + i, i·n + i] = 0
         """
         dephsing = -(gamma[..., :, None] + gamma[..., None, :]) / 2
         dephsing.diagonal(dim1=-2, dim2=-1).zero_()

@@ -30,10 +30,10 @@ In explicit modeling, you would generate many spin systems with different parame
    g_samples = g_mean + g_std * torch.randn(n_samples, 3)
    
    # Create 1000 different spin systems
-   spin_systems = []
+   interactions = []
    for i in range(n_samples):
        g = spin_model.Interaction(g_samples[i])
-       spin_systems.append(g)
+       interactions.append(g)
    
    # Compute spectrum for each and average
 
@@ -202,16 +202,15 @@ When all g-tensor components shift together (isotropic strain):
 
    # Single strain parameter affects all components equally
    g = spin_model.Interaction(
-       components=(2.002, 2.004, 2.008),
-       strain=torch.tensor([0.001])  # Single strain parameter
-   )
+       components=(2.002, 2.004, 2.008)
+   )  # None strain parameter
 
    # Correlation matrix (3×1):
    # [[1],
    #  [1],
    #  [1]]
    C = torch.tensor([[1.0], [1.0], [1.0]])
-   g.set_strain(strain=torch.tensor([0.001]), correlation_matrix=C)
+   g.set_strain(strain=torch.tensor([0.001]), correlation_matrix=C)  # Set the necessary strain here
 
 This means:
 

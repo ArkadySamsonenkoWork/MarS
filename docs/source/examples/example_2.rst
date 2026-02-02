@@ -1,5 +1,5 @@
 Polarized Radiation EPR Simulation
-==============================
+==================================
 
 .. toctree::
    :maxdepth: 1

@@ -3,7 +3,7 @@ import typing as tp
 from . import population
 
 
-def multiply(mars_items: tp.Sequence[population.BaseContext]) -> population.BaseContext:
+def multiply(mars_items: tp.Sequence[population.BaseContext]) -> tp.Union[population.Context, population.SummedContext]:
     """
     Multiply a sequence of homogeneous MarS items into a single combined item.
 

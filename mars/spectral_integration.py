@@ -97,6 +97,58 @@ class SpectraIntegratorStationary(BaseSpectraIntegrator):
         """
         super().__init__(harmonic, natural_width, chunk_size, device=device, dtype=dtype)
 
+    def _build_barycentric_numerators(self, level: int) -> tp.Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Generate unnormalized barycentric weights for recursive triangle subdivision.
+
+        Computes integer weight numerators and a common denominator for barycentric coordinates
+        of sub-triangle vertices created by recursively splitting a parent triangle. Each split
+        divides every existing triangle into 3 smaller sub-triangles by connecting its centroid
+        to its vertices.
+
+        Barycentric coordinates for any sub-triangle vertex are obtained by:
+        coordinates = numerators / denominator
+
+        :param level: int
+        Subdivision depth (number of recursive splits). Must be 1, 2, or 3.
+        - Level 1: 3 sub-triangles (first split)
+        - Level 2: 9 sub-triangles (3²)
+        - Level 3: 27 sub-triangles (3³)
+
+        :return:
+        numerators : torch.Tensor
+            Shape (K, 3) tensor of integer weights for the three parent vertices,
+            where K = 3^level is the number of sub-triangles at this level.
+            Each row [W0, W1, W2] represents unnormalized barycentric weights that sum to `denominator`.
+
+        denominator : torch.Tensor
+            Scalar tensor equal to 9^level, used to normalize numerators into proper
+            barycentric coordinates (values in [0, 1] that sum to 1).
+        """
+        if level not in (1, 2, 3):
+            raise ValueError("level must be 1, 2 or 3")
+
+        device = self.natural_width.device
+        dtype = self.natural_width.dtype
+        M = torch.tensor(
+            [[4, 4, 1],
+             [1, 4, 4],
+             [4, 1, 4]],
+            dtype=torch.int64,
+            device=device
+        )
+
+        if level == 1:
+            return M, torch.tensor(9, device=device, dtype=dtype)
+        M2 = torch.einsum("ij,kj->ikj", M, M).reshape(-1, 3)
+
+        if level == 2:
+            return M2, torch.tensor(9 * 9, device=device, dtype=dtype)
+        M3 = torch.einsum("ij,kj->ikj", M2, M).reshape(-1, 3)
+
+        return M3, torch.tensor(9 * 9 * 9, device=device, dtype=dtype)
+
+
     # Let's imagine width is given in FWHM. Then sigma = FWHM  / (2 * sqrt(2 * log(2)))
     # delta_sigma(field)**2 = ((B1 - B2)**2 + (B2 - B3)**2 + (B1 - B3)**2) / 36
     def forward(self, res_fields: torch.Tensor,
