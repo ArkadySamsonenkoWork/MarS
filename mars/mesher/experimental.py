@@ -5,7 +5,7 @@ import torch
 from . import delanay_neigbour
 
 
-class Mesh3D(delanay_neigbour.DelaunayMeshNeighbour):
+class Mesh3D(delanay_neigbour.DelaunayMesh):
     def __init__(self,
                  eps: float = 1e-7,
                  phi_limits: tuple[float, float] = (0, 2 * math.pi),

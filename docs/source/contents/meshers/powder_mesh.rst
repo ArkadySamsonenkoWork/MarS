@@ -1,7 +1,7 @@
-Powder Mesh: DelaunayMeshNeighbour
+Powder Mesh: DelaunayMesh
 ==================================
 
-The :class:`mars.mesher.delanay_neigbour.DelaunayMeshNeighbour` class implements a spherical triangulation
+The :class:`mars.mesher.delanay_neigbour.DelaunayMesh` class implements a spherical triangulation
 based on an adaptive grid in spherical coordinates (θ, φ). It is designed for disordered
 (powder) samples where all orientations are equally probable.
 
@@ -20,14 +20,14 @@ Typical initialization:
 
 .. code-block:: python
 
-   mesh = mesher.DelaunayMeshNeighbour(
+   mesh = mesher.DelaunayMesh(
        initial_grid_frequency=30,
        interpolate=True,
        interpolation_grid_frequency=60,
-       phi_limits=(0, np.pi),  # half-sphere due to symmetry
+       phi_limits=(0, 2 * np.pi)
        device=device,
        dtype=torch.float64
    )
 
 The mesh is used internally by :class:`mars.spin_model.MultiOrientedSample` to average
-the spin Hamiltonian over orientations.
+the spectrum over orientations.

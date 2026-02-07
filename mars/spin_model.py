@@ -996,9 +996,9 @@ class Interaction(BaseInteraction):
 
 
 class DEInteraction(Interaction):
-    def __init__(self, components: torch.Tensor,
-                 frame: torch.Tensor = None, strain: torch.Tensor = None,
-                 strain_correlation: torch.Tensor = torch.tensor([[-1 / 3, 1], [-1 / 3, -1], [2 / 3, 0]]),
+    def __init__(self, components: tp.Union[torch.Tensor, tp.Sequence, float],
+                 frame: tp.Optional[tp.Union[torch.Tensor, tp.Sequence[float]]] = None,
+                 strain: tp.Optional[tp.Union[torch.Tensor, tp.Sequence, float]] = None,
                  device=torch.device("cpu"), dtype=torch.float32):
         """DEInteraction is given by two components D and E.
 
@@ -2542,6 +2542,20 @@ class BaseSample(nn.Module):
         return '\n'.join(lines)
 
 
+class LimitedDict(collections.OrderedDict):
+    def __init__(self, maxsize: int):
+        super().__init__()
+        self.maxsize = maxsize
+
+    def __setitem__(self, key: tp.Any, value: tp.Any):
+        if key in self:
+            self.move_to_end(key)
+        else:
+            if len(self) >= self.maxsize:
+                self.popitem(last=False)
+        super().__setitem__(key, value)
+
+
 class MultiOrientedSample(BaseSample):
     """Represents a solid-state sample (e.g., powder, glass, or polycrystal)
     averaged over multiple molecular orientations.
@@ -2552,10 +2566,12 @@ class MultiOrientedSample(BaseSample):
 
     This class is the standard entry point for simulating frozen-solution or disordered solid EPR spectra.
     """
+    _mesh_cache = LimitedDict(maxsize=3)
+
     def __init__(self, base_spin_system: SpinSystem,
-                 ham_strain: tp.Optional[torch.Tensor] = None,
-                 gauss: torch.Tensor = None,
-                 lorentz: torch.Tensor = None,
+                 ham_strain: tp.Optional[tp.Union[torch.Tensor, float]] = None,
+                 gauss: tp.Optional[tp.Union[torch.Tensor, float]] = None,
+                 lorentz: tp.Optional[tp.Union[torch.Tensor, float]] = None,
                  spin_system_frame: tp.Optional[tp.Union[torch.Tensor, list[float]]] = None,
                  mesh: tp.Optional[tp.Union[BaseMesh, tuple[int, int]]] = None,
                  device: torch.device = torch.device("cpu"),
@@ -2605,11 +2621,11 @@ class MultiOrientedSample(BaseSample):
            -tuple[initial_grid_frequency, interpolation_grid_frequency],
            where initial_grid_frequency is the size of the initial mesh,
            interpolation_grid_frequency is the size of the interpolation mesh
-           For this case mesh will be initialize as DelaunayMeshNeighbour with given sizes
+           For this case mesh will be initialize as DelaunayMesh with given sizes
 
            -Inheritor of Base Mesh
 
-        If it is None it will be initialize as DelaunayMeshNeighbour with initial_grid_frequency = 20
+        If it is None it will be initialize as DelaunayMesh with initial_grid_frequency = 20
 
         :param device: device to compute (cpu / gpu)
         """
@@ -2628,38 +2644,97 @@ class MultiOrientedSample(BaseSample):
                 base_spin_system, torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
             )
 
+    @classmethod
+    def _get_cached_mesh(
+        cls,
+        device: torch.device,
+        dtype: torch.dtype,
+        initial_grid_frequency: int,
+        interpolation_grid_frequency: int,
+        interpolate: bool
+    ) -> mesher.DelaunayMesh:
+        """
+        Retrieve a Delaunay mesh from the class-specific cache, or create and cache it if not present.
+
+        This method ensures that identical mesh configurations (defined by the input parameters)
+        are reused across calls, avoiding redundant mesh generation.
+        Retrieve or create a cached DelaunayMesh for the given parameters.
+
+        :param device: The device (e.g., CPU or CUDA) on which mesh tensors are allocated.
+        :param dtype: The data type of mesh coordinates (e.g., `torch.float32`).
+        :param initial_grid_frequency: Number of points per dimension in the initial coarse grid used for triangulation.
+        :param interpolation_grid_frequency:
+        Number of points per dimension in the refined interpolation grid (used only if interpolation is enabled).
+        :param interpolate: Flag indicating whether to generate a mesh suitable for interpolation on a finer grid.
+        :return: A cached or newly created ``mesher.DelaunayMesh`` instance configured with the specified
+        """
+        key = (
+            str(device),
+            str(dtype).replace("torch.", ""),
+            initial_grid_frequency,
+            interpolation_grid_frequency,
+            interpolate
+        )
+
+        if key not in cls._mesh_cache:
+            cls._mesh_cache[key] = mesher.DelaunayMesh(
+                interpolate=interpolate,
+                initial_grid_frequency=initial_grid_frequency,
+                interpolation_grid_frequency=interpolation_grid_frequency,
+                device=device,
+                dtype=dtype
+            )
+        return cls._mesh_cache[key]
+
     def _init_mesh(
             self, mesh: tp.Optional[tp.Union[BaseMesh, tuple[int, int]]],
             device: torch.device, dtype: torch.dtype
     ):
         """
-        :param mesh: The given mesh. It can be:
-        -None, then it will be initialized as  'DelaunayMeshNeighbour' with defalue parameters
-        - tuple of two values which are initial grid frequency and interpolation grid frequency
-        -mash itself
+        Initialize or retrieve a mesh instance for orientation sampling.
 
-        :param device:
-        :param dtype:
-        :return: initialized mesh
+        This method handles three input cases:
+
+        1. **``mesh=None``**: Creates a default Delaunay mesh with
+           ``initial_grid_frequency=20`` and ``interpolation_grid_frequency=20``.
+           Interpolation is disabled since both frequencies are equal.
+
+        2. **``mesh=(init_freq, interp_freq)``**: Creates a Delaunay mesh with the
+           specified resolution parameters. Interpolation is enabled only if
+           ``init_freq < interp_freq``.
+
+        3. **Pre-built mesh instance**: Returns the provided ``BaseMesh`` object as-is
+
+        Meshes created from resolution parameters (cases 1 and 2) are cached per
+        device and dtype to avoid redundant computation when the same configuration
+        is reused across different samples.
+
+        :param mesh: Mesh specification. Can be:
+            - ``None`` for default parameters,
+            - A tuple ``(initial_grid_frequency, interpolation_grid_frequency)``,
+            - An existing ``BaseMesh`` instance.
+        :param device: Target computation device for the mesh.
+        :param dtype: Floating-point precision for mesh computations.
+        :return: Initialized mesh object ready for orientation sampling.
         """
         if mesh is None:
-            mesh = mesher.DelaunayMeshNeighbour(interpolate=False,
-                                                initial_grid_frequency=20,
-                                                interpolation_grid_frequency=40, device=device, dtype=dtype)
+            init_freq, interp_freq = 20, 20
+            interpolate = False
         elif isinstance(mesh, tuple):
-            initial_grid_frequency = mesh[0]
-            interpolation_grid_frequency = mesh[1]
-            if initial_grid_frequency >= interpolation_grid_frequency:
-                interpolate = False
-            else:
-                interpolate = True
-            mesh = mesher.DelaunayMeshNeighbour(interpolate=interpolate,
-                                                initial_grid_frequency=initial_grid_frequency,
-                                                interpolation_grid_frequency=interpolation_grid_frequency,
-                                                device=device, dtype=dtype)
-        return mesh
+            init_freq, interp_freq = mesh
+            interpolate = init_freq < interp_freq
+        else:
+            return mesh
 
-    def _expand_hamiltonian_strain(self, ham_strain: torch.Tensor, orientation_vector: torch.Tensor):
+        return self._get_cached_mesh(
+            device=device,
+            dtype=dtype,
+            initial_grid_frequency=init_freq,
+            interpolation_grid_frequency=interp_freq,
+            interpolate=interpolate
+        )
+
+    def _expand_hamiltonian_strain(self, ham_strain: torch.Tensor, orientation_vector: torch.Tensor) -> torch.Tensor:
         ham_shape = ham_strain.shape[:-1]
         orient_shape = orientation_vector.shape[:-1]
         ham_expanded = ham_strain.view(*ham_shape, *([1] * len(orient_shape)), ham_strain.shape[-1])
@@ -2667,7 +2742,7 @@ class MultiOrientedSample(BaseSample):
         result = ((ham_expanded ** 2) * (orient_expanded ** 2)).sum(dim=-1).sqrt()
         return result
 
-    def orientation_vector(self, rotation_matrices: torch.Tensor):
+    def orientation_vector(self, rotation_matrices: torch.Tensor) -> torch.Tensor:
         """
         :param rotation_matrices: The matrix of rotations to rotate of the sample
         :return:

@@ -13,8 +13,8 @@ from .. import constants
 from .. import mesher
 from .. import res_field_algorithm, secular_approximation, spin_model, res_freq_algorithm
 
-from ..spectral_integration import BaseSpectraIntegrator,\
-    SpectraIntegratorStationary, MeanIntegrator, AxialSpectraIntegratorStationary
+from .spectral_integration import BaseSpectraIntegrator,\
+    SphereSpectraIntegrator, MeanIntegrator, AxialSpectraIntegrator
 from ..population import BaseTimeDepPopulator, StationaryPopulator, LevelBasedPopulator,\
     RWADensityPopulator, PropagatorDensityPopulator, BasePopulator
 from ..population import contexts
@@ -248,6 +248,29 @@ class ComputationalDetails:
         Number of magnetic field points processed together during spectrum integration.
         Larger values may improve performance but increase memory usage.
 
+    integration_gaussian_cutoff : float, default= sqrt(5) with exp(-5) = 0.0067 (0.7 %)
+        Absolute cutoff (in units of standard deviations) beyond which the Gaussian
+        contribution is assumed to be zero. Used during final spectrum creation from separate lines to skip
+        unnecessary evaluations when |c·(B_mean - B_val)|> cutoff.
+
+    integration_gaussian_method : str, default="exp"
+        Method used to evaluate the Gaussian function exp(-x²) during final integration:
+        - "exp": uses exact PyTorch exponential (higher accuracy),
+        - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+    integration_level : int, default=0
+        Level of geometric refinement for powder integration:
+        - 0: basic centroid integration (triangle midpoint for spherical, bi-centric midpoint for axial),
+        - 1–3: barycentric subdivision of orientation triangles (spherical symmetry only),
+          increasing angular sampling density by a factor of 3^level.
+        Higher levels improve accuracy for highly anisotropic systems but
+        increase computation time. Axial integrators only support level 0.
+
+    integration_natural_width : float, default=1e-6
+        Minimum intrinsic linewidth added to every transition. Measures in FWHM
+        Prevents division-by-zero or extreme sharpening when user-provided widths are
+        very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
     res_field_r_tol : float, default=1e-5
         Relative tolerance for adaptive splitting of magnetic field sectors
         during res-field procedures. Smaller values yield finer
@@ -261,6 +284,10 @@ class ComputationalDetails:
         are discarded.
     """
     integration_chunk_size: int = 128
+    integration_gaussian_cutoff: float = 2.24
+    integration_gaussian_method: str = "exp"
+    integration_level: int = 0
+    integration_natural_width: float = 1e-5
     res_field_r_tol: float = 1e-5
     res_field_split_max_iterations: int = 20
     intensity_threshold: float = 1e-2
@@ -285,9 +312,9 @@ class BaseProcessing(nn.Module, ABC):
                  spectra_integrator: tp.Optional[BaseSpectraIntegrator] = None,
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
-                 chunk_size: int = 128,
-                 device: torch.device = torch.device("cpu"),
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
+                 device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
         :param mesh: Mesh object defining orientation sampling grid.
@@ -296,7 +323,24 @@ class BaseProcessing(nn.Module, ABC):
         Default is None and initialized with respect to class
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
-        :param chunk_size: Number of field points during integration. Default is 128.
+
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
 
         :param output_mode: str, OutputSpectraMode:
         Controls the organization of the computed spectrum.
@@ -310,11 +354,12 @@ class BaseProcessing(nn.Module, ABC):
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__()
-        self.register_buffer("threshold", torch.tensor(1e-3, device=device))
+        self.register_buffer("threshold", torch.tensor(1e-3, device=device, dtype=dtype))
         self.mesh = mesh
         self.post_spectra_processor = post_spectra_processor
         self.spectra_integrator = self._init_spectra_integrator(spectra_integrator, harmonic,
-                                                                chunk_size=chunk_size, device=device, dtype=dtype)
+                                                                computational_details=computational_details,
+                                                                device=device, dtype=dtype)
         self._output_factory_setter(output_mode)
         self.to(device)
 
@@ -339,7 +384,7 @@ class BaseProcessing(nn.Module, ABC):
 
     @abstractmethod
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator], harmonic: int,
-                                 chunk_size: int, device: torch.device, dtype: torch.dtype):
+                                 computational_details: ComputationalDetails, device: torch.device, dtype: torch.dtype):
         """
         Initialize or validate the spectra integrator used for line integration over the field axis.
 
@@ -348,7 +393,11 @@ class BaseProcessing(nn.Module, ABC):
 
         :param spectra_integrator: Optional pre-defined integrator. If None, a new one is instantiated.
         :param harmonic: Spectral harmonic to compute (0 = absorption, 1 = first derivative, etc.).
-        :param chunk_size: Maximum number of field points processed in one integration step.
+
+        :param computational_details: Details for integrating final spectra:
+              chunk_size, cutoff and so on. For more details read the dock-strings of
+              :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param device: Device on which the integrator should operate (e.g., CPU or CUDA).
         :param dtype: Floating-point data type for internal computations.
         :return: An instance f `BaseSpectraIntegrator`.
@@ -547,7 +596,7 @@ class PowderStationaryProcessing(BaseProcessing):
                  spectra_integrator: tp.Optional[BaseSpectraIntegrator] = None,
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
-                 chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails,
                  output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32
@@ -558,7 +607,24 @@ class PowderStationaryProcessing(BaseProcessing):
         :param spectra_integrator: Custom integrator. Default is None (auto-initialized based on mesh parameters)
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
-        :param chunk_size: Number of field points during integration. Default is 128
+
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
 
         :param output_mode: str, OutputSpectraMode:
         Controls the organization of the computed spectrum.
@@ -572,29 +638,46 @@ class PowderStationaryProcessing(BaseProcessing):
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__(mesh, spectra_integrator, harmonic, post_spectra_processor,
-                         chunk_size=chunk_size, output_mode=output_mode, device=device, dtype=dtype)
+                         computational_details=computational_details,
+                         output_mode=output_mode, device=device, dtype=dtype)
 
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator],
-                                 harmonic: int, chunk_size: int, device: torch.device, dtype: torch.dtype)\
+                                 harmonic: int, computational_details: ComputationalDetails,
+                                 device: torch.device, dtype: torch.dtype)\
             -> BaseSpectraIntegrator:
         """Initialize the appropriate spectra integrator based on mesh
         symmetry.
 
-        Uses AxialSpectraIntegratorStationary for axial powder meshes;
-        otherwise uses general SpectraIntegratorStationary.
+        Uses AxialSpectraIntegrator for axial powder meshes;
+        otherwise uses general SphereSpectraIntegrator.
 
         :param spectra_integrator: Optional pre-defined integrator
         :param harmonic: Spectral harmonic (0 = absorption, 1 = first
             derivative)
-        :param chunk_size: Number of field points per integration chunk
+
+        :param computational_details: Details for integrating final spectra:
+              chunk_size, cutoff and so on. For more details read the dock-strings of
+              :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param device: Computation device
         :param dtype: Floating-point precision
         :return: Instantiated integrator object
         """
         if spectra_integrator is None:
             if self.mesh.axial:
-                return AxialSpectraIntegratorStationary(harmonic, chunk_size=chunk_size, device=device, dtype=dtype)
-            return SpectraIntegratorStationary(harmonic, chunk_size=chunk_size, device=device, dtype=dtype)
+                return AxialSpectraIntegrator(harmonic,
+                                              gaussian_method=computational_details.integration_gaussian_method,
+                                              chunk_size=computational_details.integration_chunk_size,
+                                              integration_level=computational_details.integration_level,
+                                              natural_width=computational_details.integration_natural_width,
+                                              device=device, dtype=dtype)
+            return SphereSpectraIntegrator(
+                harmonic,
+                gaussian_method=computational_details.integration_gaussian_method,
+                chunk_size=computational_details.integration_chunk_size,
+                integration_level=computational_details.integration_level,
+                natural_width=computational_details.integration_natural_width,
+                device=device, dtype=dtype)
         return spectra_integrator
 
     def _compute_areas(self, expanded_size: int, device: torch.device) -> torch.Tensor:
@@ -688,7 +771,7 @@ class CrystalStationaryProcessing(BaseProcessing):
                  spectra_integrator: tp.Optional[BaseSpectraIntegrator] = None,
                  harmonic: int = 1,
                  post_spectra_processor: PostSpectraProcessing = PostSpectraProcessing(),
-                 chunk_size: int = 128,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  output_mode: OutputSpectraMode = OutputSpectraMode.TOTAL,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
@@ -698,7 +781,24 @@ class CrystalStationaryProcessing(BaseProcessing):
         :param spectra_integrator: Custom integrator. Default is None (MeanIntegrator initialized)
         :param harmonic: Spectral harmonic (0 for absorption, 1 for first derivative). Default is 1
         :param post_spectra_processor: Processor for line broadening. Default is PostSpectraProcessing()
-        :param chunk_size: Number of field points during integration. Default is 128
+
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
 
         :param output_mode: str, OutputSpectraMode:
         Controls the organization of the computed spectrum.
@@ -712,12 +812,34 @@ class CrystalStationaryProcessing(BaseProcessing):
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__(mesh, spectra_integrator, harmonic, post_spectra_processor,
-                         chunk_size=chunk_size, output_mode=output_mode, device=device, dtype=dtype)
+                         computational_details=computational_details,
+                         output_mode=output_mode, device=device, dtype=dtype)
 
     def _init_spectra_integrator(self, spectra_integrator: tp.Optional[BaseSpectraIntegrator], harmonic: int,
-                                 chunk_size: int, device: torch.device, dtype: torch.dtype):
+                                 computational_details: ComputationalDetails,
+                                 device: torch.device, dtype: torch.dtype):
+        """Initialize the appropriate spectra integrator based on mesh
+        symmetry.
+
+        :param spectra_integrator: Optional pre-defined integrator
+        :param harmonic: Spectral harmonic (0 = absorption, 1 = first
+            derivative)
+
+        :param computational_details: Details for integrating final spectra:
+              chunk_size, cutoff and so on. For more details read the dock-strings of
+              :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
+        :param device: Computation device
+        :param dtype: Floating-point precision
+        :return: Instantiated integrator object
+        """
         if spectra_integrator is None:
-            return MeanIntegrator(harmonic, chunk_size=chunk_size, device=device)
+            return MeanIntegrator(harmonic=harmonic,
+                                  gaussian_method=computational_details.integration_gaussian_method,
+                                  chunk_size=computational_details.integration_chunk_size,
+                                  integration_level=computational_details.integration_level,
+                                  natural_width=computational_details.integration_natural_width,
+                                  device=device)
         else:
             return spectra_integrator
 
@@ -1357,6 +1479,9 @@ class BaseSpectra(nn.Module, ABC):
               Minimum relative intensity (as a fraction of the strongest transition) required for
               transition to be included.
 
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
 
@@ -1436,7 +1561,7 @@ class BaseSpectra(nn.Module, ABC):
         self.spectra_processor = self._init_spectra_processor(spectra_integrator,
                                                               harmonic,
                                                               post_spectra_processor,
-                                                              chunk_size=computational_details.integration_chunk_size,
+                                                              computational_details=computational_details,
                                                               output_mode=output_mode,
                                                               device=device, dtype=dtype)
         self.recompute_spin_parameters = recompute_spin_parameters
@@ -1517,7 +1642,7 @@ class BaseSpectra(nn.Module, ABC):
                                 spectra_integrator: tp.Optional[BaseSpectraIntegrator],
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
-                                chunk_size: int,
+                                computational_details: ComputationalDetails,
                                 output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
@@ -1529,7 +1654,26 @@ class BaseSpectra(nn.Module, ABC):
         :param spectra_integrator: Custom integrator; if None, one is auto-selected.
         :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
         :param post_spectra_processor: Line-broadening and convolution handler.
-        :param chunk_size: Number of field points processed per integration batch.
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
+        :param output_mode: The mode which computes the EPR-spectroscopy output
 
         :return: Initialized spectra processor instance.
         """
@@ -2033,6 +2177,9 @@ class StationarySpectra(BaseSpectra):
               Minimum relative intensity (as a fraction of the strongest transition) required for
               transition to be included.
 
+            -for other parameters meaning read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
 
@@ -2086,7 +2233,7 @@ class StationarySpectra(BaseSpectra):
                                 spectra_integrator: tp.Optional[BaseSpectraIntegrator],
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
-                                chunk_size: int,
+                                computational_details: ComputationalDetails,
                                 output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
@@ -2094,18 +2241,36 @@ class StationarySpectra(BaseSpectra):
         :param spectra_integrator: Custom integrator; if None, one is auto-selected.
         :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
         :param post_spectra_processor: Line-broadening and convolution handler.
-        :param chunk_size: Number of field points processed per integration batch.
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param output_mode: The output mode for spectra computation
         :return: Initialized spectra processor instance.
         """
         if self.mesh.disordered:
             return PowderStationaryProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                              chunk_size=chunk_size,
+                                              computational_details=computational_details,
                                               output_mode=output_mode,
                                               device=device, dtype=dtype)
         else:
             return CrystalStationaryProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                               chunk_size=chunk_size,
+                                               computational_details=computational_details,
                                                output_mode=output_mode,
                                                device=device, dtype=dtype)
 
@@ -2242,6 +2407,9 @@ class TruncTimeSpectra(BaseSpectra):
               Minimum relative intensity (as a fraction of the strongest transition) required for
               transition to be included.
 
+            -for other parameters meaning read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
 
@@ -2341,7 +2509,7 @@ class TruncTimeSpectra(BaseSpectra):
                                 spectra_integrator: tp.Optional[BaseSpectraIntegrator],
                                 harmonic: int,
                                 post_spectra_processor: PostSpectraProcessing,
-                                chunk_size: int,
+                                computational_details: ComputationalDetails,
                                 output_mode: OutputSpectraMode,
                                 device: torch.device,
                                 dtype: torch.dtype) -> BaseProcessing:
@@ -2349,18 +2517,36 @@ class TruncTimeSpectra(BaseSpectra):
         :param spectra_integrator: Custom integrator; if None, one is auto-selected.
         :param harmonic: Spectral harmonic (0 = absorption, 1 = first derivative).
         :param post_spectra_processor: Line-broadening and convolution handler.
-        :param chunk_size: Number of field points processed per integration batch.
+        :param computational_details: The details of final spectral integration and spectra processing. For example,
+
+            -integration_natural_width : float, default=1e-6
+                Minimum intrinsic linewidth added to every transition. Measures in FWHM
+                Prevents division-by-zero or extreme sharpening when user-provided widths are
+                very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
+
+            - integration_gaussian_method : str, default="exp"
+                Method used to evaluate the Gaussian function exp(-x²) during final integration:
+                - "exp": uses exact PyTorch exponential (higher accuracy),
+                - "approx": uses a fast 6th-order rational approximation (see ``gaussian_approx``).
+
+            - chunk_size (`int`, default=128):
+              Number of magnetic field points processed per integration batch.
+              Larger values improve throughput but increase memory consumption.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
+
         :param output_mode: The output mode for spectra computation
         :return: Initialized spectra processor instance.
         """
         if self.mesh.disordered:
             return PowderTimeProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                        chunk_size=chunk_size,
+                                        computational_details=computational_details,
                                         output_mode=output_mode,
                                         device=device, dtype=dtype)
         else:
             return CrystalTimeProcessing(self.mesh, spectra_integrator, harmonic, post_spectra_processor,
-                                         chunk_size=chunk_size,
+                                         computational_details=computational_details,
                                          output_mode=output_mode,
                                          device=device, dtype=dtype)
 
@@ -2497,6 +2683,9 @@ class DensityTimeSpectra(CoupledTimeSpectra):
             - **intensity_threshold** (`float`, default=1e-2):
               Minimum relative intensity (as a fraction of the strongest transition) required for
               transition to be included.
+
+            -for other parameters meaning read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
@@ -2662,6 +2851,9 @@ class StationaryFreqSpectra(StationarySpectra):
             - **intensity_threshold** (`float`, default=1e-2):
               Minimum relative intensity (as a fraction of the strongest transition) required for
               transition to be included.
+
+            -for other parameters specifications, read
+             docs of :class:'mars.spectra_manager.spectra_manager.ComputationalDetails'
 
         :param inference_mode: bool
             If inference_mode is True, then forward method will be performed under with torch.inference_mode():
