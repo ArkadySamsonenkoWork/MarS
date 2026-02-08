@@ -7,9 +7,13 @@ build:
 
 python:
   install:
-    - requirements: docs/requirements.txt
     - method: pip
       path: .
+      extra_requirements:
+        - opt
+        - plot
+    - requirements: docs/requirements.txt
 
 sphinx:
   configuration: docs/source/conf.py
+  fail_on_warning: false

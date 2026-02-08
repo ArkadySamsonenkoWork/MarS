@@ -42,8 +42,7 @@ autosummary_generate = True  # Generate stub pages automatically
 autosummary_imported_members = True
 autodoc_preserve_defaults = True
 
-
-autodoc_mock_imports = ["torch", "optuna", "nevergrad", "optuna_dashboard"]
+autodoc_mock_imports = ["optuna", "nevergrad", "optuna_dashboard"]
 
 templates_path = ['_templates']
 exclude_patterns = []
