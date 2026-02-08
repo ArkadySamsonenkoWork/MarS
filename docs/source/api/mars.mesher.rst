@@ -12,10 +12,10 @@ mars.mesher.axial\_neigbour module
    :undoc-members:
    :show-inheritance:
 
-mars.mesher.delanay\_neigbour module
-------------------------------------
+mars.mesher.delanay\_neighbour module
+-------------------------------------
 
-.. automodule:: mars.mesher.delanay_neigbour
+.. automodule:: mars.mesher.delanay_neighbour
    :members:
    :undoc-members:
    :show-inheritance:
