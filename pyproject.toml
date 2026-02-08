@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mars-epr"
-version = "0.0.1b1"
+version = "0.0.3b1"
 authors = [
     {name = "Arkady Samsonenko", email = "a.samsonenko@tomo.nsc.ru"},
+    {name = "Ivan Kurganskii", email = "kurgansky@tomo.nsc.ru"},
 ]
 description = "A library for computation CW and time resolved spectra"
 readme = "README.md"

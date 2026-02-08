@@ -12,6 +12,22 @@ mars.spectra\_manager.spectra\_manager module
    :undoc-members:
    :show-inheritance:
 
+mars.spectra\_manager.spectral\_integration module
+--------------------------------------------------
+
+.. automodule:: mars.spectra_manager.spectral_integration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mars.spectra\_manager.spectral\_line\_combiner module
+-----------------------------------------------------
+
+.. automodule:: mars.spectra_manager.spectral_line_combiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mars.spectra\_manager.wave\_calculator module
 ---------------------------------------------
 

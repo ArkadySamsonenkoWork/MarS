@@ -5,7 +5,9 @@
 
 Welcome to MarS!
 =================
-**MarS** is a Python library for constructing spin systems (electrons and nuclei), defining their magnetic interactions, and simulating Electron Paramagnetic Resonance (EPR) spectra.
+MarS is a Python library for simulating Electron Paramagnetic Resonance (EPR) spectra, optimizing spin Hamiltonian and kinetic parameters to match experimental data,
+and computing both continuous-wave (CW) and time-resolved EPR signals.
+It provides robust tools for spectral simulation, automated parameter search, and modeling of transient spin dynamics under relaxation mechanisms.
 
 
 .. toctree::
@@ -48,7 +50,6 @@ Welcome to MarS!
    examples/example_5
    examples/example_6
    examples/example_7
-   examples/example_8
 
 
 .. toctree::

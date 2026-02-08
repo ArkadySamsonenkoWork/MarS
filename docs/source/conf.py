@@ -7,10 +7,10 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'MarS'
-copyright = '2026, Arakady Samsonenko'
-author = 'Arakady Samsonenko'
+copyright = '2026, Arkady Samsonenko, Ivan Kurgansky'
+author = 'Arkady Samsonenko, Ivan Kurgansky'
 release = '2026.01.11'
-version = '0.0.1b1'
+version = '0.0.3b1'
 
 
 # -- General configuration ---------------------------------------------------

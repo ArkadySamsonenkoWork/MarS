@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "timestamp": "2026-02-03T13:33:53.096739",
+    "mars_version": "unknown",
+    "pytorch_version": "2.5.0+cpu",
+    "device": "unknown",
+    "dtype": "unknown",
+    "total_configurations": 9
+  },
+  "results": {
+    "2e": {
+      "10x10": {
+        "mean_ms": 12.102260001847753,
+        "std_ms": 0.36729110698011846,
+        "hilbert_dim": 4,
+        "mesh_size": 55,
+        "system_label": "Two electrons",
+        "mesh_resolution": "10x10"
+      },
+      "20x20": {
+        "mean_ms": 20.314234997931635,
+        "std_ms": 0.40890808154745206,
+        "hilbert_dim": 4,
+        "mesh_size": 210,
+        "system_label": "Two electrons",
+        "mesh_resolution": "20x20"
+      },
+      "25x25": {
+        "mean_ms": 22.827714999584714,
+        "std_ms": 0.7645293032616411,
+        "hilbert_dim": 4,
+        "mesh_size": 325,
+        "system_label": "Two electrons",
+        "mesh_resolution": "25x25"
+      }
+    },
+    "3e": {
+      "10x10": {
+        "mean_ms": 21.65112499933457,
+        "std_ms": 0.2704772978633418,
+        "hilbert_dim": 8,
+        "mesh_size": 55,
+        "system_label": "Three electrons",
+        "mesh_resolution": "10x10"
+      },
+      "20x20": {
+        "mean_ms": 39.31359500202234,
+        "std_ms": 0.9734962958570078,
+        "hilbert_dim": 8,
+        "mesh_size": 210,
+        "system_label": "Three electrons",
+        "mesh_resolution": "20x20"
+      },
+      "25x25": {
+        "mean_ms": 59.84015500071109,
+        "std_ms": 14.303363530463754,
+        "hilbert_dim": 8,
+        "mesh_size": 325,
+        "system_label": "Three electrons",
+        "mesh_resolution": "25x25"
+      }
+    },
+    "2e_1n": {
+      "10x10": {
+        "mean_ms": 25.527759997930843,
+        "std_ms": 1.3700103282951401,
+        "hilbert_dim": 12,
+        "mesh_size": 55,
+        "system_label": "Two electrons + one nucleus",
+        "mesh_resolution": "10x10"
+      },
+      "20x20": {
+        "mean_ms": 60.78840499831131,
+        "std_ms": 2.670780029150935,
+        "hilbert_dim": 12,
+        "mesh_size": 210,
+        "system_label": "Two electrons + one nucleus",
+        "mesh_resolution": "20x20"
+      },
+      "25x25": {
+        "mean_ms": 88.8008149981033,
+        "std_ms": 2.749085725210739,
+        "hilbert_dim": 12,
+        "mesh_size": 325,
+        "system_label": "Two electrons + one nucleus",
+        "mesh_resolution": "25x25"
+      }
+    }
+  }
+}

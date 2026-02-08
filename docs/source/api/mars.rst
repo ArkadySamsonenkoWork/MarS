@@ -82,14 +82,6 @@ mars.spectra\_processing module
    :undoc-members:
    :show-inheritance:
 
-mars.spectral\_integration module
----------------------------------
-
-.. automodule:: mars.spectral_integration
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 mars.spin\_model module
 -----------------------
 

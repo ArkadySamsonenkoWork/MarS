@@ -2,7 +2,7 @@ import math
 
 import torch
 
-from . import delanay_neigbour
+from . import delanay_neighbour
 
 
 class Mesh3D(delanay_neigbour.DelaunayMesh):

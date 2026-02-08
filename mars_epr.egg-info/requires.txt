@@ -1,0 +1,14 @@
+numpy>=1.19.4
+torch>=2.2
+scipy>=1.14
+scikit-learn
+torchdiffeq
+
+[opt]
+optuna>=4.3
+nevergrad>=1.0.12
+optuna_dashboard
+
+[plot]
+seaborn
+plotly

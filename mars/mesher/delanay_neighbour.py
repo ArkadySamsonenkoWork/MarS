@@ -331,7 +331,7 @@ class BarycentricInterpolator(BaseInterpolator):
         :param tol:
             Numerical tolerance used for spherical point-in-triangle tests.
         """
-        super().__init__(init_vertices, extended_vertices)
+        super().__init__(init_vertices, extended_vertices, device=device, dtype=dtype)
         self.init_vertices = np.array(init_vertices)
         self.extended_vertices = np.array(extended_vertices)
         self.init_triangulation = np.array(init_triangulation, dtype=int)
@@ -727,7 +727,7 @@ class MeshProcessorBase(nn.Module):
 class InterpolatorsName(Enum):
     """Enumeration of supported interpolator types."""
     RBF: str = "rbf"
-    BARYCENTRIC: str = "baricentric"
+    BARYCENTRIC: str = "barycentric"
 
 
 class InterpolatingMeshProcessor(MeshProcessorBase):

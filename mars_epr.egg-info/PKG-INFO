@@ -1,3 +1,28 @@
+Metadata-Version: 2.4
+Name: mars-epr
+Version: 0.0.3b1
+Summary: A library for computation CW and time resolved spectra
+Author-email: Arkady Samsonenko <a.samsonenko@tomo.nsc.ru>, Ivan Kurganskii <kurgansky@tomo.nsc.ru>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/ArkadySamsonenkoWork/MarS
+Project-URL: Telegram, https://t.me/Arkady_Samsonenko
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.19.4
+Requires-Dist: torch>=2.2
+Requires-Dist: scipy>=1.14
+Requires-Dist: scikit-learn
+Requires-Dist: torchdiffeq
+Provides-Extra: opt
+Requires-Dist: optuna>=4.3; extra == "opt"
+Requires-Dist: nevergrad>=1.0.12; extra == "opt"
+Requires-Dist: optuna_dashboard; extra == "opt"
+Provides-Extra: plot
+Requires-Dist: seaborn; extra == "plot"
+Requires-Dist: plotly; extra == "plot"
+
 # MarS
 
 **A toolkit for researchers to simulate, analyze, and explore EPR systems efficiently.**

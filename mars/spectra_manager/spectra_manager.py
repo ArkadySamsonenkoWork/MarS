@@ -271,6 +271,26 @@ class ComputationalDetails:
         Prevents division-by-zero or extreme sharpening when user-provided widths are
         very small or zero. Also it can be used as substitution for ordinary gaussian broadaning in the sample.
 
+    integration_clamp_width_factor : float or None, optional
+        Controls how strongly geometric broadening is enforced in the effective linewidth.
+        The effective width combines natural width and field spread across orientations.
+        This factor sets a lower bound on the relative contribution of the geometric term:
+          w_eff² ≥ w₀² · (1 + clamp_width_factor · (ΔB/w₀)²)
+        Defaults:
+          - 3.0 for 'mean' spherical integration,
+          - 2.0 for 'mean' axial integration,
+          - 1.0 for 'analytical' methods (no extra clamping needed).
+        If None, a sensible default is chosen based on symmetry and computation method.
+        Higher values can fix problem of 'oscillating' spectrum but for too high values spectrum become broaden.
+        If the oscillation is too high we recomend to use integration_computation_method == "analuytical"
+        or set integration_level == 1, 2, 3
+
+    integration_computation_method : str, default="mean"
+        Strategy for evaluating transition contributions over orientation space:
+        - "mean": evaluates the line shape at a effective field (e.g., triangle centroids),
+        - "analytical": integrates exactly using antiderivatives over triangles (spherical)
+          or line segments (axial). More accurate for broad or rapidly varying lines.
+
     res_field_r_tol : float, default=1e-5
         Relative tolerance for adaptive splitting of magnetic field sectors
         during res-field procedures. Smaller values yield finer
@@ -288,6 +308,8 @@ class ComputationalDetails:
     integration_gaussian_method: str = "exp"
     integration_level: int = 0
     integration_natural_width: float = 1e-5
+    integration_clamp_width_factor: tp.Optional[float] = None
+    integration_computation_method: str = "mean"
     res_field_r_tol: float = 1e-5
     res_field_split_max_iterations: int = 20
     intensity_threshold: float = 1e-2
@@ -668,15 +690,19 @@ class PowderStationaryProcessing(BaseProcessing):
                 return AxialSpectraIntegrator(harmonic,
                                               gaussian_method=computational_details.integration_gaussian_method,
                                               chunk_size=computational_details.integration_chunk_size,
-                                              integration_level=computational_details.integration_level,
                                               natural_width=computational_details.integration_natural_width,
+                                              integration_level=computational_details.integration_level,
+                                              clamp_width_factor=computational_details.integration_clamp_width_factor,
+                                              computation_method=computational_details.integration_computation_method,
                                               device=device, dtype=dtype)
             return SphereSpectraIntegrator(
                 harmonic,
                 gaussian_method=computational_details.integration_gaussian_method,
                 chunk_size=computational_details.integration_chunk_size,
-                integration_level=computational_details.integration_level,
                 natural_width=computational_details.integration_natural_width,
+                integration_level=computational_details.integration_level,
+                clamp_width_factor=computational_details.integration_clamp_width_factor,
+                computation_method=computational_details.integration_computation_method,
                 device=device, dtype=dtype)
         return spectra_integrator
 
@@ -839,6 +865,8 @@ class CrystalStationaryProcessing(BaseProcessing):
                                   chunk_size=computational_details.integration_chunk_size,
                                   integration_level=computational_details.integration_level,
                                   natural_width=computational_details.integration_natural_width,
+                                  clamp_width_factor=computational_details.integration_clamp_width_factor,
+                                  computation_method=computational_details.integration_computation_method,
                                   device=device)
         else:
             return spectra_integrator
