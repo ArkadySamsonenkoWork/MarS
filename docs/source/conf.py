@@ -75,6 +75,3 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 if on_rtd:
     # Don't need to import these on RTD since they're mocked
     pass
-
-import mars
-print("mars imported from:", mars.__file__)
