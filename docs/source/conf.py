@@ -36,7 +36,31 @@ autosummary_generate_overwrite = True  # Add this
 autosummary_imported_members = False  # Change to False to avoid duplicates
 
 autodoc_preserve_defaults = True
-autodoc_mock_imports = ["optuna", "nevergrad", "optuna_dashboard"]
+autodoc_mock_imports = [
+    # Core dependencies
+    "torch",
+    "scipy",
+    "numpy",
+    "sklearn",
+    "scikit-learn",
+    
+    # Optional dependencies
+    "optuna",
+    "nevergrad",
+    "optuna_dashboard",
+    "torchdiffeq",
+    
+    # Visualization
+    "seaborn",
+    "plotly",
+    "matplotlib",
+    "pandas",
+    
+    # Any torch submodules
+    "torch.nn",
+    "torch.optim",
+    "torch.linalg",
+]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
