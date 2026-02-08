@@ -1,0 +1,298 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lindblad Superoperator Construction &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Basis Transformations" href="basis_transformation.html" />
+    <link rel="prev" title="Relaxation Parameters and Initial States" href="relaxation_parameters.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../populators/index.html">Population Computation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Relaxation Context</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#key-features">Key Features</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#contents">Contents</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="relaxation_parameters.html">Relaxation Parameters and Initial States</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Lindblad Superoperator Construction</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#the-lindblad-master-equation">The Lindblad Master Equation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#physical-interpretation">Physical Interpretation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mapping-relaxation-parameters-to-lindblad-operators">Mapping Relaxation Parameters to Lindblad Operators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#separation-into-free-and-driven-components">Separation into Free and Driven Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#liouville-space-representation">Liouville Space Representation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="basis_transformation.html">Basis Transformations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="complex_context.html">Complex Context Construction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#quick-example">Quick Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Relaxation Context</a></li>
+      <li class="breadcrumb-item active">Lindblad Superoperator Construction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/contents/context/superoperator_creation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="lindblad-superoperator-construction">
+<span id="superoperator-creation"></span><h1>Lindblad Superoperator Construction<a class="headerlink" href="#lindblad-superoperator-construction" title="Link to this heading"></a></h1>
+<p>MarS uses the <em>Lindblad master equation</em> formalism to construct physically valid relaxation superoperators from user-defined parameters.
+This approach guarantees that the density matrix remains positive semi-definite and trace-preserving (if outgoing probabilities equal to zero) during time evolution.</p>
+<a class="reference internal image-reference" href="../../_images/lindblad_overview.png"><img alt="Lindblad formalism overview" class="align-center" src="../../_images/lindblad_overview.png" style="width: 100%;" />
+</a>
+<section id="the-lindblad-master-equation">
+<h2>The Lindblad Master Equation<a class="headerlink" href="#the-lindblad-master-equation" title="Link to this heading"></a></h2>
+<p>The time evolution of the density matrix <span class="math notranslate nohighlight">\(\hat{\rho}(t)\)</span> is governed by the Liouville-von Neumann equation with relaxation:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\hat{\rho}}{dt} = -i[\hat{H}, \hat{\rho}] + \hat{\mathcal{R}}[\hat{\rho}]\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\hat{H}\)</span> is the spin Hamiltonian</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{\mathcal{R}}\)</span> is the relaxation superoperator</p></li>
+</ul>
+<p>The most general Markovian relaxation that preserves positivity and trace is given by the <strong>Lindblad form</strong>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}[\hat{\rho}] = \sum_k \left( \hat{L}_k \hat{\rho} \hat{L}_k^\dagger - \frac{1}{2} \{\hat{L}_k^\dagger \hat{L}_k, \hat{\rho}\} \right)\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\hat{L}_k\)</span> are <strong>Lindblad operators</strong> (jump operators)</p></li>
+<li><p><span class="math notranslate nohighlight">\(\{A, B\} = AB + BA\)</span> is the anticommutator</p></li>
+</ul>
+</section>
+<section id="physical-interpretation">
+<h2>Physical Interpretation<a class="headerlink" href="#physical-interpretation" title="Link to this heading"></a></h2>
+<p>Each Lindblad term has two components:</p>
+<ol class="arabic simple">
+<li><p><strong>Jump term</strong> <span class="math notranslate nohighlight">\(\hat{L}_k \hat{\rho} \hat{L}_k^\dagger\)</span>: Describes the system transitioning to a new state</p></li>
+<li><p><strong>Decay term</strong> <span class="math notranslate nohighlight">\(-\frac{1}{2} \{\hat{L}_k^\dagger \hat{L}_k, \hat{\rho}\}\)</span>: Ensures trace preservation by accounting for population loss from the initial state</p></li>
+</ol>
+</section>
+<section id="mapping-relaxation-parameters-to-lindblad-operators">
+<h2>Mapping Relaxation Parameters to Lindblad Operators<a class="headerlink" href="#mapping-relaxation-parameters-to-lindblad-operators" title="Link to this heading"></a></h2>
+<p>MarS maps the four relaxation parameter types to specific Lindblad operators:</p>
+<section id="out-probabilities-loss-operators">
+<h3>Out Probabilities → Loss Operators<a class="headerlink" href="#out-probabilities-loss-operators" title="Link to this heading"></a></h3>
+<p>For population loss from level <span class="math notranslate nohighlight">\(|i\rangle\)</span> at rate <span class="math notranslate nohighlight">\(o_i\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{L}_i = \sqrt{o_i} \, |i\rangle\langle i|\]</div>
+<p><strong>Relaxation contribution:</strong></p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{out}}[\hat{\rho}] = \sum_i o_i \left( |i\rangle\langle i| \hat{\rho} |i\rangle\langle i| - \frac{1}{2} \{|i\rangle\langle i|, \hat{\rho}\} \right)\]</div>
+<p>This simplifies to:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{out}}[\hat{\rho}] = -\frac{1}{2} \sum_i o_i \, \{|i\rangle\langle i|, \hat{\rho}\}\]</div>
+<p><strong>Implementation:</strong> See <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.anticommutator_superop_diagonal()</span></code> for the anticommutator construction.</p>
+</section>
+<section id="free-probabilities-spontaneous-transition-operators">
+<h3>Free Probabilities → Spontaneous Transition Operators<a class="headerlink" href="#free-probabilities-spontaneous-transition-operators" title="Link to this heading"></a></h3>
+<p>For spontaneous transitions <span class="math notranslate nohighlight">\(|j\rangle \to |i\rangle\)</span> at rate <span class="math notranslate nohighlight">\(w_{ij}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{L}_{ij} = \sqrt{w_{ij}} \, |i\rangle\langle j|\]</div>
+<p><strong>Relaxation contribution:</strong></p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{free}}[\hat{\rho}] = \sum_{i \neq j} w_{ij} \left( |i\rangle\langle j| \hat{\rho} |j\rangle\langle i| - \frac{1}{2} \{|j\rangle\langle j|, \hat{\rho}\} \right)\]</div>
+<p>This can be written as:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{free}}[\hat{\rho}] = \sum_{i \neq j} w_{ij} \left( |i\rangle\langle i| \rho_{jj} - \frac{1}{2} \{|i\rangle\langle i| + |j\rangle\langle j|, \hat{\rho}\} \right)\]</div>
+<p>This term:</p>
+<ul class="simple">
+<li><p>Increases population of <span class="math notranslate nohighlight">\(|i\rangle\)</span> at rate <span class="math notranslate nohighlight">\(w_{ij} \rho_{jj}\)</span></p></li>
+<li><p>Decreases population of <span class="math notranslate nohighlight">\(|j\rangle\)</span> at rate <span class="math notranslate nohighlight">\(\sum_i w_{ij} \rho_{jj}\)</span></p></li>
+</ul>
+<p><strong>Implementation:</strong> See <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.lindblad_dissipator_superop()</span></code> for the full construction.</p>
+</section>
+<section id="driven-probabilities-stimulated-transition-operators">
+<h3>Driven Probabilities → Stimulated Transition Operators<a class="headerlink" href="#driven-probabilities-stimulated-transition-operators" title="Link to this heading"></a></h3>
+<p>For driven transitions <span class="math notranslate nohighlight">\(|j\rangle \to |i\rangle\)</span> at rate <span class="math notranslate nohighlight">\(d_{ij}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{L}_{ij} = \sqrt{d_{ij}} \, |i\rangle\langle j|\]</div>
+<p><strong>Relaxation contribution:</strong></p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{driv}}[\hat{\rho}] = \sum_{i \neq j} d_{ij} \left( |i\rangle\langle j| \hat{\rho} |j\rangle\langle i| - \frac{1}{2} \{|j\rangle\langle j|, \hat{\rho}\} \right)\]</div>
+<p>This term is same form as free probabilities, but not modified by detailed balance constraints.</p>
+<p><strong>Implementation:</strong> See <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.lindblad_dissipator_superop()</span></code> for the full construction.</p>
+</section>
+<section id="dephasing">
+<h3>Dephasing<a class="headerlink" href="#dephasing" title="Link to this heading"></a></h3>
+<p>For pure dephasing of level <span class="math notranslate nohighlight">\(|i\rangle\)</span> at rate <span class="math notranslate nohighlight">\(\gamma_i\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{L}_i = \sqrt{\gamma_i} \, |i\rangle\langle i|\]</div>
+<p><strong>Relaxation contribution:</strong></p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{deph}}[\hat{\rho}] = \sum_i \gamma_i \left( |i\rangle\langle i| \hat{\rho} |i\rangle\langle i| - \frac{1}{2} \{|i\rangle\langle i|, \hat{\rho}\} \right)\]</div>
+<p>For off-diagonal elements (<span class="math notranslate nohighlight">\(i \neq j\)</span>):</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\rho_{ij}}{dt}\Big|_{\text{deph}} = -\frac{\gamma_i + \gamma_j}{2} \, \rho_{ij}\]</div>
+<p><strong>Implementation:</strong> See <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.lindblad_dephasing_superop()</span></code> for the construction.</p>
+</section>
+</section>
+<section id="separation-into-free-and-driven-components">
+<h2>Separation into Free and Driven Components<a class="headerlink" href="#separation-into-free-and-driven-components" title="Link to this heading"></a></h2>
+<p>MarS internally separates the total relaxation superoperator:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}} = \hat{\mathcal{R}}_{\text{free}} + \hat{\mathcal{R}}_{\text{driv}}\]</div>
+<p>where:</p>
+<p><strong>Free relaxation</strong> <span class="math notranslate nohighlight">\(\hat{\mathcal{R}}_{\text{free}}\)</span>:</p>
+<ul class="simple">
+<li><p>Includes: out_probs, free_probs, dephasing</p></li>
+<li><p>Modified them to enforce detailed balance at temperature <span class="math notranslate nohighlight">\(T\)</span></p></li>
+</ul>
+<p><strong>Driven relaxation</strong> <span class="math notranslate nohighlight">\(\hat{\mathcal{R}}_{\text{driv}}\)</span>:</p>
+<ul class="simple">
+<li><p>Includes: driven_probs or user-defined relaxation superoperator</p></li>
+<li><p>This term remains as specified by user</p></li>
+</ul>
+</section>
+<section id="liouville-space-representation">
+<h2>Liouville Space Representation<a class="headerlink" href="#liouville-space-representation" title="Link to this heading"></a></h2>
+<p>For numerical computation, the superoperator is represented in <strong>Liouville space</strong> where:</p>
+<ul class="simple">
+<li><p>Density matrix <span class="math notranslate nohighlight">\(\hat{\rho}\)</span> (dimension <span class="math notranslate nohighlight">\(N \times N\)</span>) → vector <span class="math notranslate nohighlight">\(|\rho\rangle\rangle\)</span> (dimension <span class="math notranslate nohighlight">\(N^2\)</span>)</p></li>
+<li><p>Superoperator <span class="math notranslate nohighlight">\(\hat{\mathcal{R}}\)</span> → matrix (dimension <span class="math notranslate nohighlight">\(N^2 \times N^2\)</span>)</p></li>
+</ul>
+<p>The transformation is:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{L}} = -i(\hat{H} \otimes \mathbb{I} - \mathbb{I} \otimes \hat{H}^T) + \hat{\mathcal{R}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbb{I}\)</span> is the identity operator.</p>
+<p><strong>Key Functions:</strong></p>
+<ul class="simple">
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.vec()</span></code> - Convert density matrix to vector</p></li>
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.unvec()</span></code> - Convert vector back to matrix</p></li>
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.Liouvilleator.hamiltonian_superop()</span></code> - Create Hamiltonian superoperator</p></li>
+</ul>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Lindblad, G. (1976). “On the generators of quantum dynamical semigroups.” <em>Communications in Mathematical Physics</em>, 48(2), 119-130. <a class="reference external" href="https://doi.org/10.1007/BF01608499">https://doi.org/10.1007/BF01608499</a></p></li>
+<li><p>Breuer, H.-P., &amp; Petruccione, F. (2002). <em>The Theory of Open Quantum Systems</em>. Oxford University Press.</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="relaxation_parameters.html" class="btn btn-neutral float-left" title="Relaxation Parameters and Initial States" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="basis_transformation.html" class="btn btn-neutral float-right" title="Basis Transformations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

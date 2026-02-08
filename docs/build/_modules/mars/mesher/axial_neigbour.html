@@ -1,0 +1,295 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mars.mesher.axial_neigbour &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mars.mesher.axial_neigbour</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mars.mesher.axial_neigbour</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.general_mesh</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseMesh</span><span class="p">,</span> <span class="n">BaseMeshAxial</span>
+
+
+
+<div class="viewcode-block" id="MeshProcessorAxial">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.MeshProcessorAxial">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeshProcessorAxial</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<div class="viewcode-block" id="MeshProcessorAxial.__init__">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.MeshProcessorAxial.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_grid_frequency</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+                 <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+                 <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_grid_frequency</span> <span class="o">=</span> <span class="n">init_grid_frequency</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_triangulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid_frequency</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">grid_frequency</span><span class="o">-</span><span class="mi">1</span><span class="p">)])</span></div>
+
+
+
+<div class="viewcode-block" id="SkipMeshProcessor">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.SkipMeshProcessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SkipMeshProcessor</span><span class="p">(</span><span class="n">MeshProcessorAxial</span><span class="p">):</span>
+<div class="viewcode-block" id="SkipMeshProcessor.__init__">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.SkipMeshProcessor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_vertices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">simplices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_post_mesh</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_vertices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_grid_frequency</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_post_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">vertices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_grid_frequency</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">simplices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triangulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">init_grid_frequency</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">vertices</span><span class="p">,</span> <span class="n">simplices</span>
+
+<div class="viewcode-block" id="SkipMeshProcessor.forward">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.SkipMeshProcessor.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_values</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f_values</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="mesh_processor_factory">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.mesh_processor_factory">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mesh_processor_factory</span><span class="p">(</span><span class="n">init_grid_frequency</span><span class="p">,</span>
+                           <span class="n">interpolate_grid_frequency</span><span class="p">,</span>
+                           <span class="n">interpolate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">device</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+                           <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">interpolate</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SkipMeshProcessor</span><span class="p">(</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">init_grid_frequency</span><span class="o">=</span><span class="n">init_grid_frequency</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="AxialMeshNeighbour">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.AxialMeshNeighbour">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AxialMeshNeighbour</span><span class="p">(</span><span class="n">BaseMeshAxial</span><span class="p">):</span>
+<div class="viewcode-block" id="AxialMeshNeighbour.__init__">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.AxialMeshNeighbour.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-7</span><span class="p">,</span>
+                 <span class="n">initial_grid_frequency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+                 <span class="n">interpolation_grid_frequency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>
+                 <span class="n">interpolate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+                 <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize Delaunay mesh parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            eps: Small epsilon value for numerical stability</span>
+<span class="sd">            initial_grid_frequency: Resolution of initial grid</span>
+<span class="sd">            interpolation_grid_frequency: Resolution of interpolation grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+        <span class="k">if</span> <span class="n">interpolate</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Interpolation for axial case is not implemented&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps</span> <span class="o">=</span> <span class="n">eps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_grid_frequency</span> <span class="o">=</span> <span class="n">initial_grid_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interpolation_grid_frequency</span> <span class="o">=</span> <span class="n">interpolation_grid_frequency</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mesh_processor</span> <span class="o">=</span> <span class="n">mesh_processor_factory</span><span class="p">(</span><span class="n">initial_grid_frequency</span><span class="p">,</span> <span class="n">interpolation_grid_frequency</span><span class="p">,</span>
+                                                     <span class="n">interpolate</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+                                                     <span class="p">)</span>
+
+        <span class="p">(</span>
+        <span class="n">initial_grid</span><span class="p">,</span>
+        <span class="n">post_grid</span><span class="p">,</span>
+        <span class="n">post_simplices</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_initial_cache_data</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;_initial_grid&quot;</span><span class="p">,</span> <span class="n">initial_grid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;_post_grid&quot;</span><span class="p">,</span> <span class="n">post_grid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;_post_simplices&quot;</span><span class="p">,</span> <span class="n">post_simplices</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AxialMeshNeighbour.create_initial_cache_data">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.AxialMeshNeighbour.create_initial_cache_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_initial_cache_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create and cache initial mesh data structures.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_processor</span><span class="o">.</span><span class="n">init_vertices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_processor</span><span class="o">.</span><span class="n">final_vertices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_processor</span><span class="o">.</span><span class="n">simplices</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">post_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_simplices</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initial_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_grid</span>
+
+<div class="viewcode-block" id="AxialMeshNeighbour.to_delaunay">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.AxialMeshNeighbour.to_delaunay">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_delaunay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">f_post</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                    <span class="n">simplices</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Format interpolated values for Delaunay representation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            f_post: Interpolated function values</span>
+<span class="sd">            simplices: Simplices to use for final representation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: Values formatted for Delaunay triangulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">f_post</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">simplices</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="AxialMeshNeighbour.forward">
+<a class="viewcode-back" href="../../../api/mars.mesher.html#mars.mesher.axial_neigbour.AxialMeshNeighbour.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">f_init</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Format interpolated values for Delaunay representation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            f_init: Interpolated function values</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: Values formatted for Delaunay triangulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh_processor</span><span class="p">(</span><span class="n">f_init</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

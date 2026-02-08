@@ -1,0 +1,185 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mars.particles package &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="mars.population package" href="mars.population.html" />
+    <link rel="prev" title="mars.optimization package" href="mars.optimization.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="mars.html">mars package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="mars.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="mars.mesher.html">mars.mesher package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.optimization.html">mars.optimization package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">mars.particles package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mars-particles-nuclei-db-creation-module">mars.particles.nuclei_db_creation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mars-particles-typed-particles-module">mars.particles.typed_particles module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-contents">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="mars.population.html">mars.population package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.reader.html">mars.reader package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.spectra_manager.html">mars.spectra_manager package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.visualization.html">mars.visualization package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-concatination-module">mars.concatination module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-mars.constants">mars.constants module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-multiplication-module">mars.multiplication module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-res-field-algorithm-module">mars.res_field_algorithm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-res-freq-algorithm-module">mars.res_freq_algorithm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-save-procedures-module">mars.save_procedures module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-secular-approximation-module">mars.secular_approximation module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-spectra-processing-module">mars.spectra_processing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-spin-model-module">mars.spin_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-mars.utils">mars.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="mars.html">mars package</a></li>
+      <li class="breadcrumb-item active">mars.particles package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/mars.particles.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mars-particles-package">
+<h1>mars.particles package<a class="headerlink" href="#mars-particles-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="mars-particles-nuclei-db-creation-module">
+<h2>mars.particles.nuclei_db_creation module<a class="headerlink" href="#mars-particles-nuclei-db-creation-module" title="Link to this heading"></a></h2>
+</section>
+<section id="mars-particles-typed-particles-module">
+<h2>mars.particles.typed_particles module<a class="headerlink" href="#mars-particles-typed-particles-module" title="Link to this heading"></a></h2>
+</section>
+<section id="module-contents">
+<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="mars.optimization.html" class="btn btn-neutral float-left" title="mars.optimization package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="mars.population.html" class="btn btn-neutral float-right" title="mars.population package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,628 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Basis Transformations &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Complex Context Construction" href="complex_context.html" />
+    <link rel="prev" title="Lindblad Superoperator Construction" href="superoperator_creation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../populators/index.html">Population Computation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Relaxation Context</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#key-features">Key Features</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#contents">Contents</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="relaxation_parameters.html">Relaxation Parameters and Initial States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="superoperator_creation.html">Lindblad Superoperator Construction</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Basis Transformations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#supported-bases">Supported Bases</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#transformation-rules">Transformation Rules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#example-usage">Example usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#notes">Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#basis-transformation-in-multiplied-contexts">Basis Transformation in Multiplied Contexts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#context-transformation-interface">Context Transformation Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="complex_context.html">Complex Context Construction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#quick-example">Quick Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Relaxation Context</a></li>
+      <li class="breadcrumb-item active">Basis Transformations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/contents/context/basis_transformation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="basis-transformations">
+<span id="basis-transformation"></span><h1>Basis Transformations<a class="headerlink" href="#basis-transformations" title="Link to this heading"></a></h1>
+<p>The Context class in MarS supports defining relaxation parameters in multiple bases. All parameters are automatically transformed to the eigenbasis of the full Hamiltonian in the magnetic field before computation.
+This flexibility allows users to specify relaxation mechanisms in the most physically intuitive representation.</p>
+<section id="supported-bases">
+<h2>Supported Bases<a class="headerlink" href="#supported-bases" title="Link to this heading"></a></h2>
+<p>MarS provides four predefined bases:</p>
+<ol class="arabic">
+<li><p><strong>“eigen”</strong> (default)</p>
+<p>The eigenbasis of the full Hamiltonian <span class="math notranslate nohighlight">\(\hat{H}_0 = \hat{F} + g\mu_B B_z \hat{S}_z\)</span> at the resonance magnetic field.</p>
+<ul class="simple">
+<li><p>States are sorted by increasing energy</p></li>
+<li><p>This is the natural basis for most EPR calculations</p></li>
+<li><p>No transformation needed if parameters are already defined here</p></li>
+</ul>
+</li>
+<li><p><strong>“zfs”</strong></p>
+<p>The eigenbasis of the zero-field splitting operator <span class="math notranslate nohighlight">\(\hat{F}\)</span> (the field-independent part of the Hamiltonian).</p>
+<ul class="simple">
+<li><p>States are sorted by increasing zero-field energy</p></li>
+<li><p>For the triplet system this is the same as  “xyz” basis but usually in another order (depending on D and E values): <span class="math notranslate nohighlight">\(|T_Z\rangle, |T_X\rangle, |T_Y\rangle\)</span></p></li>
+</ul>
+</li>
+<li><p><strong>“multiplet”</strong></p>
+<p>The total spin basis <span class="math notranslate nohighlight">\(|S, M\rangle\)</span>, where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(S\)</span> is the total spin quantum number</p></li>
+<li><p><span class="math notranslate nohighlight">\(M\)</span> is the projection of total spin on the z-axis</p></li>
+<li><p>States sorted by increasing <span class="math notranslate nohighlight">\(S\)</span>, then increasing <span class="math notranslate nohighlight">\(M\)</span></p></li>
+</ul>
+</li>
+<li><p><strong>“product”</strong></p>
+<p>The uncoupled basis <span class="math notranslate nohighlight">\(|m_1, m_2, \ldots, m_n\rangle\)</span> of individual spin projections.</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(m_k\)</span> is the projection of the <span class="math notranslate nohighlight">\(k\)</span>-th electron spin</p></li>
+<li><p>States sorted by <strong>decreasing</strong> spin projections</p></li>
+</ul>
+</li>
+</ol>
+<ol class="arabic" start="4">
+<li><p><strong>“xyz”</strong></p>
+<p>A molecular-frame basis commonly used for triplet (<span class="math notranslate nohighlight">\(S = 1\)</span>) systems,
+constructed from symmetric combinations of the two-electron product states
+<span class="math notranslate nohighlight">\(|\alpha\alpha\rangle\)</span>, <span class="math notranslate nohighlight">\(|\alpha\beta\rangle\)</span>,
+<span class="math notranslate nohighlight">\(|\beta\alpha\rangle\)</span>, and <span class="math notranslate nohighlight">\(|\beta\beta\rangle\)</span>.
+After projection onto the total-spin <span class="math notranslate nohighlight">\(S = 1\)</span> subspace, the orthonormal
+triplet states are:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}|T_X\rangle &amp;= \frac{1}{\sqrt{2}}\bigl(-|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\
+|T_Y\rangle &amp;= \frac{i}{\sqrt{2}}\bigl(|\beta\beta\rangle + |\alpha\alpha\rangle\bigr) \\
+|T_Z\rangle &amp;= \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle + |\beta\alpha\rangle\bigr)\end{split}\]</div>
+</li>
+<li><p><strong>“zeeman”</strong></p>
+<p>The eigenbasis of the Z-projections of the Zeeman operator. It is the basis of the system in an infinite magnetic field <span class="math notranslate nohighlight">\(\hat{Gz}\)</span>.
+- States are sorted by increasing energy</p>
+</li>
+</ol>
+<section id="custom-transformation-basis">
+<h3>Custom Transformation Basis<a class="headerlink" href="#custom-transformation-basis" title="Link to this heading"></a></h3>
+<p>Users can also provide a custom transformation basis with shape <span class="math notranslate nohighlight">\([\ldots, R, 1, N, N]\)</span>:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(R\)</span> is the number of orientations</p></li>
+<li><p><span class="math notranslate nohighlight">\(N\)</span> is the spin system dimension</p></li>
+<li><p>This basis should be defined in laboratory frame (with repspect to orientations) and in the basis of individual spin projections.</p></li>
+</ul>
+</section>
+<section id="specifying-the-sample-for-context-initialization">
+<h3>Specifying the Sample for Context Initialization<a class="headerlink" href="#specifying-the-sample-for-context-initialization" title="Link to this heading"></a></h3>
+<p>When creating a <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.Context</span></code>, if you set some predefined basis, you must associate it with a “sample”.</p>
+<p>In most cases, the same sample is used both to define the initial relaxation parameters (and populations) and to compute the resulting spectrum.
+However, advanced workflows allow you to:</p>
+<ul class="simple">
+<li><p>Define populations and rates using one sample</p></li>
+<li><p>Compute spectra for a different sample.</p></li>
+</ul>
+<p>Both samples must have the same Hilbert space dimension and compatible orientation grids.
+Notice, that if you choose “product”, “multiplet”, “xyz” basis, which doesn’t depend on interactions,
+you will get the same result for any specified sample with the same Hilbert dimension and the same particles.</p>
+</section>
+</section>
+<section id="transformation-rules">
+<h2>Transformation Rules<a class="headerlink" href="#transformation-rules" title="Link to this heading"></a></h2>
+<p>Let <span class="math notranslate nohighlight">\(V_{\text{new}}\)</span> be the eigenbasis of the full Hamiltonian and <span class="math notranslate nohighlight">\(V_{\text{old}}\)</span> be the specified basis.
+The transformation matrix from coordinates in old basis to coordinates in a new basis is:</p>
+<div class="math notranslate nohighlight">
+\[U = V_{\text{new}}^\dagger V_{\text{old}}\]</div>
+<p>This is computed using <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.basis_transformation()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">basis_transformation</span>
+
+<span class="c1"># basis_new and basis_old are tensors of shape [..., N, N]</span>
+<span class="c1"># Columns are eigenvectors</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">basis_transformation</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># Result: transformation matrix [..., N, N]</span>
+</pre></div>
+</div>
+<section id="populations-and-out-probabilities">
+<h3>Populations and Out Probabilities<a class="headerlink" href="#populations-and-out-probabilities" title="Link to this heading"></a></h3>
+<p>These are scalar quantities associated with individual states and transform via probability conservation:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n}' = |U|^2 \cdot \mathbf{n}\]</div>
+<div class="math notranslate nohighlight">
+\[\mathbf{o}' = |U|^2 \cdot \mathbf{o}\]</div>
+<p>where <span class="math notranslate nohighlight">\(|U|^2\)</span> denotes element-wise squaring of the transformation matrix.</p>
+<p><strong>Implementation:</strong> Uses <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.get_transformation_probabilities()</span></code>
+and <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.transform_state_weights_to_new_basis()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_transformation_probabilities</span><span class="p">,</span>
+    <span class="n">transform_state_weights_to_new_basis</span>
+<span class="p">)</span>
+
+<span class="c1"># Get |U|^2 coefficients</span>
+<span class="n">probabilities</span> <span class="o">=</span> <span class="n">get_transformation_probabilities</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># Shape: [..., N, N] with elements |⟨new_i|old_j⟩|²</span>
+
+<span class="c1"># Transform populations</span>
+<span class="n">populations_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+<span class="n">populations_new</span> <span class="o">=</span> <span class="n">transform_state_weights_to_new_basis</span><span class="p">(</span><span class="n">populations_old</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">)</span>
+
+<span class="c1"># Transform out probabilities</span>
+<span class="n">out_probs_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">75.0</span><span class="p">])</span>
+<span class="n">out_probs_new</span> <span class="o">=</span> <span class="n">transform_state_weights_to_new_basis</span><span class="p">(</span><span class="n">out_probs_old</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Physical interpretation:</strong> If state <span class="math notranslate nohighlight">\(|i'\rangle\)</span> in the new basis is a superposition <span class="math notranslate nohighlight">\(|i'\rangle = \sum_k U^{*}_{ik} |k\rangle\)</span>,
+then its population is the sum of populations with <span class="math notranslate nohighlight">\(|U^{*}_{ik}|^2\)</span> which is equal to <span class="math notranslate nohighlight">\(|U_{ik}|^2\)</span>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you set the initial density as parameter of Context, then the denisty will be tranformed under desnity transforamtion rule (see futher),
+then the real part of transformed diagonal will be used as initial population if it is needed</p>
+</div>
+</section>
+<section id="transition-probabilities-free-and-driven">
+<h3>Transition Probabilities (Free and Driven)<a class="headerlink" href="#transition-probabilities-free-and-driven" title="Link to this heading"></a></h3>
+<p>The library supports two types of transitions: <strong>free</strong> (spontaneous) and <strong>driven</strong> (induced), represented by matrices <span class="math notranslate nohighlight">\(W\)</span> and <span class="math notranslate nohighlight">\(D\)</span>, respectively.</p>
+<p>Analogously to populations which transform as <span class="math notranslate nohighlight">\(n'_i = \sum_k |U_{ik}|^2 n_k\)</span> - transition probabilities are transformed by weighting both the initial and final states with their respective overlap probabilities.
+Specifically, the probability of transition from state <span class="math notranslate nohighlight">\(j'\)</span> to <span class="math notranslate nohighlight">\(i'\)</span> in the new basis is:</p>
+<div class="math notranslate nohighlight">
+\[W'_{i'j'} = \sum_{k,l} |U_{ik}|^2 \, W_{kl} \, |U_{jl}|^2,\]</div>
+<p>where <span class="math notranslate nohighlight">\(|U_{ik}|^2 = |\langle i' | k \rangle|^2\)</span> is the probability that new basis state <span class="math notranslate nohighlight">\(|i'\rangle\)</span> contains old basis state <span class="math notranslate nohighlight">\(|k\rangle\)</span>.</p>
+<p>In compact matrix form, this becomes:</p>
+<div class="math notranslate nohighlight">
+\[W' = |U|^2 \, W \, (|U|^2)^\top,\]</div>
+<p>and identically for driven transitions:</p>
+<div class="math notranslate nohighlight">
+\[D' = |U|^2 \, D \, (|U|^2)^\top.\]</div>
+<ul class="simple">
+<li><p><strong>Free transition probabilities</strong> describe spontaneous relaxation processes (e.g., spin-lattice relaxation).</p></li>
+<li><p><strong>Driven transition probabilities</strong> model field-induced transitions (e.g., microwave-driven mixing).</p></li>
+</ul>
+<p><strong>Implementation:</strong> Uses <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.transform_rate_matrix_to_new_basis()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">transform_rate_matrix_to_new_basis</span>
+<span class="c1"># Transition probabilities between singlet state and triplet sublevels</span>
+<span class="n">W_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>    <span class="mf">1000.0</span><span class="p">,</span>   <span class="mf">1000.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1000.0</span><span class="p">,</span>    <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1000.0</span><span class="p">,</span>    <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1000.0</span><span class="p">,</span>    <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">],</span>
+<span class="p">])</span>
+
+<span class="c1"># Transform to new basis</span>
+<span class="n">W_new</span> <span class="o">=</span> <span class="n">transform_rate_matrix_to_new_basis</span><span class="p">(</span><span class="n">W_old</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">)</span>
+<span class="c1"># Applies: probabilities @ W_old @ probabilities.T</span>
+</pre></div>
+</div>
+</section>
+<section id="density-matrix">
+<h3>Density Matrix<a class="headerlink" href="#density-matrix" title="Link to this heading"></a></h3>
+<p>For full density matrix calculations:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\rho}' = U \hat{\rho} U^\dagger\]</div>
+<p>or transforms of vectorized density matrix in Liouville space:</p>
+<div class="math notranslate nohighlight">
+\[|\rho'\rangle\rangle = (U \otimes U^*) |\rho\rangle\rangle:\]</div>
+<p>where <span class="math notranslate nohighlight">\(\otimes\)</span> denotes the Kronecker product and <span class="math notranslate nohighlight">\(U^*\)</span> is the element-wise complex conjugate of <span class="math notranslate nohighlight">\(U\)</span>.</p>
+<p><strong>Implementation:</strong> Uses <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.transform_operator_to_new_basis()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">transform_operator_to_new_basis</span>
+<span class="p">)</span>
+
+<span class="c1"># Get transformation matrix (complex, not squared)</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">basis_transformation</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># This is just: basis_new.conj().T @ basis_old</span>
+
+<span class="c1"># Transform density matrix</span>
+<span class="n">rho_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span><span class="o">+</span><span class="mf">0.2</span><span class="n">j</span><span class="p">],</span>
+                        <span class="p">[</span><span class="mf">0.1</span><span class="o">-</span><span class="mf">0.2</span><span class="n">j</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]])</span>
+<span class="n">rho_new</span> <span class="o">=</span> <span class="n">transform_operator_to_new_basis</span><span class="p">(</span><span class="n">rho_old</span><span class="p">,</span> <span class="n">U</span><span class="p">)</span>
+<span class="c1"># Applies: U @ rho_old @ U.conj().T</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="example-usage">
+<h2>Example usage<a class="headerlink" href="#example-usage" title="Link to this heading"></a></h2>
+<p>Compute the Liouville-space transformation between eigenbases of two spin Hamiltonians and apply it to a relaxation superoperator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">basis_transformation</span><span class="p">,</span>
+    <span class="n">compute_liouville_basis_transformation</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">basis_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+<span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">complex64</span><span class="p">)</span>
+
+<span class="n">basis_new</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">]</span>
+<span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">complex64</span><span class="p">)</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">2.0</span><span class="p">))</span>
+
+<span class="c1"># 1. Get Hilbert-space transformation (for operators like ρ)</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">basis_transformation</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># Equivalent to: U = basis_new.conj().T @ basis_old</span>
+
+<span class="c1"># 2. Get Liouville-space transformation (for vectorized ρ or superoperators)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">compute_liouville_basis_transformation</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># Returns: kron(U, U.conj()) with shape (4, 4) for K=2</span>
+
+<span class="c1"># 3. Transform a density matrix (Hilbert space)</span>
+<span class="n">rho_old</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span><span class="o">+</span><span class="mf">0.2</span><span class="n">j</span><span class="p">],</span>
+                        <span class="p">[</span><span class="mf">0.1</span><span class="o">-</span><span class="mf">0.2</span><span class="n">j</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">complex64</span><span class="p">)</span>
+<span class="n">rho_new</span> <span class="o">=</span> <span class="n">U</span> <span class="o">@</span> <span class="n">rho_old</span> <span class="o">@</span> <span class="n">U</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># 4. Transform via vectorization (Liouville space) – equivalent result</span>
+<span class="n">rho_old_vec</span> <span class="o">=</span> <span class="n">rho_old</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>          <span class="c1"># Row-major: [0.6, 0.1+0.2j, 0.1-0.2j, 0.4]</span>
+<span class="n">rho_new_vec</span> <span class="o">=</span> <span class="n">T</span> <span class="o">@</span> <span class="n">rho_old_vec</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">rho_new_vec</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">rho_new</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>For the transformation of operators from Hilbert space to Liouville space, MarS uses <strong>row-major</strong> (C-order) vectorization.
+This corresponds to flattening the density matrix by stacking its rows sequentially—the default behavior in NumPy and PyTorch.
+For example, in a 2×2 system, the vectorized density matrix appears as:
+<code class="docutils literal notranslate"><span class="pre">[ρ₀₀,</span> <span class="pre">ρ₀₁,</span> <span class="pre">ρ₁₀,</span> <span class="pre">ρ₁₁]</span></code>.</p></li>
+<li><p>The transformation matrix for the vectorized density matrix, <span class="math notranslate nohighlight">\(T = U \otimes U^*\)</span>, is unitary whenever <span class="math notranslate nohighlight">\(U\)</span> is unitary.</p></li>
+</ul>
+</div>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>The function assumes row-major (C-order) vectorization, consistent with PyTorch/NumPy <code class="docutils literal notranslate"><span class="pre">.flatten()</span></code>.</p></li>
+<li><p>The returned for vectorized density matrix transformation <span class="math notranslate nohighlight">\(T=U \otimes U^*\)</span> is unitary when <span class="math notranslate nohighlight">\(U\)</span> is unitary.</p></li>
+</ul>
+<section id="relaxation-superoperator">
+<h3>Relaxation Superoperator<a class="headerlink" href="#relaxation-superoperator" title="Link to this heading"></a></h3>
+<p>The relaxation superoperator transforms in Liouville space:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}' = (U \otimes U^*) \hat{\mathcal{R}} (U^\dagger \otimes U^T)\]</div>
+<p><strong>Implementation:</strong> Uses <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.compute_liouville_basis_transformation()</span></code> and <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.population.transform.transform_superop_to_new_basis()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.population.transform</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">compute_liouville_basis_transformation</span><span class="p">,</span>
+    <span class="n">transform_superop_to_new_basis</span>
+<span class="p">)</span>
+
+<span class="c1"># Get Liouville space transformation</span>
+<span class="n">T_liouville</span> <span class="o">=</span> <span class="n">compute_liouville_basis_transformation</span><span class="p">(</span><span class="n">basis_old</span><span class="p">,</span> <span class="n">basis_new</span><span class="p">)</span>
+<span class="c1"># Shape: [..., N², N²]</span>
+<span class="c1"># This is: kron(U, U.conj())</span>
+
+<span class="c1"># Transform superoperator</span>
+<span class="n">R_old</span> <span class="o">=</span> <span class="n">relaxation_superop</span>  <span class="c1"># Shape: [..., N², N²]</span>
+<span class="n">R_new</span> <span class="o">=</span> <span class="n">transform_superop_to_new_basis</span><span class="p">(</span><span class="n">R_old</span><span class="p">,</span> <span class="n">T_liouville</span><span class="p">)</span>
+<span class="c1"># Applies: T @ R_old @ T.conj().T</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="basis-transformation-in-multiplied-contexts">
+<h2>Basis Transformation in Multiplied Contexts<a class="headerlink" href="#basis-transformation-in-multiplied-contexts" title="Link to this heading"></a></h2>
+<p>When constructing composite systems via Kronecker multiplication, each subsystem is typically defined in its own “intra-basis” (e.g., molecular frame, ZFS basis, zeeman basis).
+Consider two subsystems with initial bases <span class="math notranslate nohighlight">\(V^{(1)}_{\text{old}}\)</span> and <span class="math notranslate nohighlight">\(V^{(2)}_{\text{old}}\)</span>. If the subsystems interact weakly, the composite eigenbasis may still decompose as:</p>
+<div class="math notranslate nohighlight">
+\[V_{\text{new}} = V^{(1)}_{\text{new}} \otimes V^{(2)}_{\text{new}}\]</div>
+<p>where the individual transformations are:</p>
+<div class="math notranslate nohighlight">
+\[U_1 = (V^{(1)}_{\text{new}})^\dagger V^{(1)}_{\text{old}}, \quad
+U_2 = (V^{(2)}_{\text{new}})^\dagger V^{(2)}_{\text{old}}\]</div>
+<section id="density-composition">
+<h3>Density Composition<a class="headerlink" href="#density-composition" title="Link to this heading"></a></h3>
+<p>For density matrices, the composite transformation follows the unitary rule:</p>
+<div class="math notranslate nohighlight">
+\[\rho_{\text{total}} \rightarrow (U_1 \otimes U_2) \, \rho_{\text{total}} \, (U_1 \otimes U_2)^\dagger\]</div>
+</section>
+<section id="superoperator-composition">
+<h3>Superoperator Composition<a class="headerlink" href="#superoperator-composition" title="Link to this heading"></a></h3>
+<p>For relaxation superoperators in Liouville space, two sequential operations are required:</p>
+<ol class="arabic">
+<li><p>Permutation of the Kronecker-sum structure to reconcile vectorization ordering. The identity</p>
+<div class="math notranslate nohighlight">
+\[\operatorname{vec}(\rho_1 \otimes \rho_2) \neq \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2)\]</div>
+<p>necessitates a commutation matrix <span class="math notranslate nohighlight">\(\Pi\)</span> such that</p>
+<div class="math notranslate nohighlight">
+\[\operatorname{vec}(\rho_1 \otimes \rho_2) = \Pi \bigl[ \operatorname{vec}(\rho_1) \otimes \operatorname{vec}(\rho_2) \bigr]\]</div>
+<p>This permutation must be applied to the composite superoperator <em>before</em> basis transformation:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{initial}} = \Pi \,
+\bigl[ \hat{\mathcal{R}}^{(1)} \otimes \hat{\mathbb{I}}^{(2)} + \hat{\mathbb{I}}^{(1)} \otimes \hat{\mathcal{R}}^{(2)} \bigr] \,
+\Pi^\top\]</div>
+</li>
+<li><p>Joint basis transformation using the composite unitary matrix. After permutation, the superoperator transforms as:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{total}} \rightarrow
+\bigl[(U_1 \otimes U_2) \otimes (U_1^* \otimes U_2^*)\bigr] \;
+\hat{\mathcal{R}}_{\text{initial}} \;
+\bigl[(U_1^\dagger \otimes U_2^\dagger) \otimes (U_1^T \otimes U_2^T)\bigr]\]</div>
+<p>The transformation matrix</p>
+<div class="math notranslate nohighlight">
+\[T = (U_1 \otimes U_2) \otimes (U_1^* \otimes U_2^*)\]</div>
+<p>applies a joint change of basis to the vectorized composite state.</p>
+</li>
+</ol>
+</section>
+<section id="population-composition">
+<h3>Population Composition<a class="headerlink" href="#population-composition" title="Link to this heading"></a></h3>
+<p>Populations and transition probabilities transform differently.
+They follow probability rules rather than amplitude rules. For a population vector <span class="math notranslate nohighlight">\(\mathbf{n}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n} \rightarrow |U|^2 \mathbf{n}, \quad\]</div>
+<p>Importantly, for Kronecker products the element-wise squaring distributes exactly:</p>
+<div class="math notranslate nohighlight">
+\[|U_1 \otimes U_2|^2 = |U_1|^2 \otimes |U_2|^2\]</div>
+<p>Furthermore, for any unitary matrix <span class="math notranslate nohighlight">\(U\)</span>, the probability matrix <span class="math notranslate nohighlight">\(|U|^2\)</span> satisfies:</p>
+<div class="math notranslate nohighlight">
+\[|U|^2 \, \mathbf{1} = \mathbf{1}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{1}\)</span> is the vector of ones. This holds because unitary matrices have orthonormal rows (<span class="math notranslate nohighlight">\(\sum_j |U_{ij}|^2 = 1\)</span> for all <span class="math notranslate nohighlight">\(i\)</span>), so each row of <span class="math notranslate nohighlight">\(|U|^2\)</span> sums to unity.</p>
+<p>Therefore populations and outgoing probabilities can be transformed separately in each subsystem and then combined via Kronecker product. The transformation is separable:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n}_{\text{new}} = (|U_1|^2 \mathbf{n}^{(1)}) \otimes (|U_2|^2 \mathbf{n}^{(2)}) = (|U_1 \otimes U_2|^2 (\mathbf{n}^{(1)} \otimes \mathbf{n}^{(2)})\]</div>
+<div class="math notranslate nohighlight">
+\[\boldsymbol{\Gamma}_{\text{new}} = (|U_1|^2 \boldsymbol{\Gamma}^{(1)}) \otimes \mathbf{1}^{(2)} + \mathbf{1}^{(1)} \otimes (|U_2|^2 \boldsymbol{\Gamma}^{(2)}) = (|U_1 \otimes U_2|^2 (\boldsymbol{\Gamma}^{(1)} \otimes \mathbf{1}^{(2)} + \mathbf{1}^{(1)} \otimes \boldsymbol{\Gamma}^{(2)})\]</div>
+</section>
+<section id="transition-probabilities-compositions">
+<h3>Transition Probabilities Compositions<a class="headerlink" href="#transition-probabilities-compositions" title="Link to this heading"></a></h3>
+<p>However, for transition probability matrices the situation is more subtle.
+The full transformation of the Kronecker-sum structure does not factorize cleanly:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+&amp;|U_1 \otimes U_2|^2 \, (K_1 \otimes \mathbb{I}_2 + \mathbb{I}_1 \otimes K_2) \, |U_1 \otimes U_2|^2{}^\top \\
+&amp;= (|U_1|^2 \otimes |U_2|^2) (K_1 \otimes \mathbb{I}_2) (|U_1|^2{}^\top \otimes |U_2|^2{}^\top) + (|U_1|^2 \otimes |U_2|^2) (\mathbb{I}_1 \otimes K_2) (|U_1|^2{}^\top \otimes |U_2|^2{}^\top) \\
+&amp;= (|U_1|^2 K_1 |U_1|^2{}^\top) \otimes (|U_2|^2 |U_2|^2{}^\top) + (|U_1|^2 |U_1|^2{}^\top) \otimes (|U_2|^2 K_2 |U_2|^2{}^\top)
+\end{aligned}\end{split}\]</div>
+<p>Since <span class="math notranslate nohighlight">\(|U|^2\)</span> is a doubly probability matrix (not unitary), we generally have <span class="math notranslate nohighlight">\(|U|^2 |U|^2{}^\top \neq \mathbb{I}\)</span>. Therefore:</p>
+<div class="math notranslate nohighlight">
+\[(|U_1|^2 K_1 |U_1|^2{}^\top) \otimes (|U_2|^2 |U_2|^2{}^\top) \neq (|U_1|^2 K_1 |U_1|^2{}^\top) \otimes \mathbb{I}_2\]</div>
+<p>This non-factorization means that transforming transition probabilities separately and then forming the Kronecker sum does not generally yield the same result
+as forming the Kronecker sum first and then transforming the composite operator.</p>
+<p>Nevertheless, MarS consistently interprets transition probabilities as probabilities for “state-to-state processes”:
+a transition from initial state <span class="math notranslate nohighlight">\(|j\rangle\)</span> to final state <span class="math notranslate nohighlight">\(|i\rangle\)</span> occurs with probability weight determined by both the initial-state overlap <span class="math notranslate nohighlight">\(|U_{\beta j}|^2\)</span> and the final-state overlap <span class="math notranslate nohighlight">\(|U_{\alpha i}|^2\)</span>.</p>
+<p>Consequently, the MarS transformation for the composite system applies the joint probability rule to the full operator:</p>
+<div class="math notranslate nohighlight">
+\[K'_{\text{total}} = |U_1 \otimes U_2|^2 \, \bigl(K_1 \otimes \mathbb{I}_2 + \mathbb{I}_1 \otimes K_2\bigr) \, |U_1 \otimes U_2|^2{}^\top\]</div>
+<p>This transformation rule implies that even for two physically independent relaxation processes, the relaxation operator of the multiplied system differs from the Kronecker sum of independently transformed subsystem operators.
+The bilinear dependence on both initial and final state overlaps couples the transformations, making the composite relaxation non-separable under basis change.</p>
+<p>Here we highlight that such complexity and ambiguity of interpretation arises only for “free_probs” and “driven_probs” attributes. For the remaining parameters (including superoperators), the transformation is determined unambiguously.</p>
+<p>For composite systems, MarS implements the dedicated <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.KroneckerContext</span></code>.
+This class computes exact transformation coefficients between the product basis of subsystems and the true composite eigenbasis.</p>
+<p>Let <span class="math notranslate nohighlight">\(|\alpha\rangle\)</span> denote an eigenstate of the full composite Hamiltonian, expanded in the product basis of subsystems:</p>
+<div class="math notranslate nohighlight">
+\[|\alpha\rangle = \sum_{i,j} c^{(\alpha)}_{ij} \; |i\rangle \otimes |j\rangle\]</div>
+<p>where the expansion coefficients are given by:</p>
+<div class="math notranslate nohighlight">
+\[c^{(\alpha)}_{ij} = \langle\alpha|\bigl(|i\rangle \otimes |j\rangle\bigr) = U\bigl[\alpha,\; \text{index}(i,j)\bigr]\]</div>
+<p>with the full transformation matrix:</p>
+<div class="math notranslate nohighlight">
+\[U = V_{\text{new}}^\dagger \bigl(V^{(1)}_{\text{old}} \otimes V^{(2)}_{\text{old}}\bigr)\]</div>
+<p>The squared magnitudes <span class="math notranslate nohighlight">\(|c^{(\alpha)}_{ij}|^2\)</span> represent Clebsch-Gordan probability coefficients—the probability that composite eigenstate <span class="math notranslate nohighlight">\(|\alpha\rangle\)</span> contains the product-state component <span class="math notranslate nohighlight">\(|i\rangle \otimes |j\rangle\)</span>. Transition probabilities then transform according to the joint-probability rule:</p>
+<div class="math notranslate nohighlight">
+\[W'_{\alpha\beta} = \sum_{i,j,k,l} |c^{(\alpha)}_{ij}|^2 \; W_{(ij),(kl)} \; |c^{(\beta)}_{kl}|^2\]</div>
+<p>preserving the interpretation of <span class="math notranslate nohighlight">\(W_{ij}\)</span> as the probability for transitions from initial state <span class="math notranslate nohighlight">\(j\)</span> to final state <span class="math notranslate nohighlight">\(i\)</span>.</p>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.KroneckerContext</span></code> automatically computes these coefficients from the composite contexts.</p>
+</section>
+</section>
+<section id="context-transformation-interface">
+<h2>Context Transformation Interface<a class="headerlink" href="#context-transformation-interface" title="Link to this heading"></a></h2>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.Context</span></code> class provides a convenient interface to transform all internally stored relaxation and initialization parameters into an arbitrary target basis.</p>
+<p>Consider the following setup for a triplet spin system:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars.population</span><span class="w"> </span><span class="kn">import</span> <span class="n">Context</span>
+
+<span class="c1"># Define initial parameters in the &quot;zfs&quot; basis</span>
+<span class="n">init_density</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+    <span class="p">[[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">complex128</span>
+<span class="p">)</span>
+
+<span class="n">out_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="n">free_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+<span class="n">driven_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                             <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                             <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span>
+    <span class="n">init_density</span><span class="o">=</span><span class="n">init_density</span><span class="p">,</span>
+    <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span>
+    <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span>
+    <span class="n">driven_probs</span><span class="o">=</span><span class="n">driven_probs</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Now, suppose we wish to evaluate the model at a low magnetic field (e.g., 10 mT). We first compute the eigenbasis of the full Hamiltonian:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">F</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">Gz</span> <span class="o">=</span> <span class="n">triplet</span><span class="o">.</span><span class="n">get_hamiltonian_terms</span><span class="p">()</span>
+<span class="n">field</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># 10 mT</span>
+<span class="n">values</span><span class="p">,</span> <span class="n">vectors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">F</span> <span class="o">+</span> <span class="n">field</span> <span class="o">*</span> <span class="n">Gz</span><span class="p">)</span>
+<span class="n">vectors</span> <span class="o">=</span> <span class="n">vectors</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># Shape: [orientations, 1, N, N]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">vectors</span></code> tensor now represents the target basis (columns are eigenvectors of the full Hamiltonian). The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.Context</span></code> instance can transform all its internal quantities into this basis using the following methods:</p>
+<ul>
+<li><p><strong>Initial populations (diagonal of the density matrix):</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_init_populations()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pop</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_init_populations</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N]</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Full initial density matrix:</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_init_density()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rho</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_init_density</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N, N]</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Outgoing probabilities (scalar rates per state):</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_out_probs()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_out_probs</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N]</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Free transition probabilities (between states):</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_free_probs()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">W</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_free_probs</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N, N]</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Free relaxation superoperator (in Liouville space):</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_free_superop()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">R_free</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_free_superop</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N², N²]</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Driven relaxation superoperator (in Liouville space):</strong>
+See <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.population.contexts.Context.get_transformed_driven_superop()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">R_driven</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_transformed_driven_superop</span><span class="p">(</span><span class="n">full_system_vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">)</span>
+<span class="c1"># Returns: tensor of shape [..., N², N²]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="superoperator_creation.html" class="btn btn-neutral float-left" title="Lindblad Superoperator Construction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="complex_context.html" class="btn btn-neutral float-right" title="Complex Context Construction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

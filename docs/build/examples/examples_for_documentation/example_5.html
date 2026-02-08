@@ -1,0 +1,1457 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. Context Logic and Spin-Polarized Systems &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Multi-System Kinetic" href="../example_6.html" />
+    <link rel="prev" title="Spectra Polarization and Time Resolved" href="../example_5.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../example_5.html">Spectra Polarization and Time Resolved</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1. Context Logic and Spin-Polarized Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.1.-Context-Definition-and-Time-Resolved-Spectra">1.1. Context Definition and Time Resolved Spectra</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#1.2.-Plot-spin-polarized-spectra-for-all-possible-predifined-basis">1.2. Plot spin-polarized spectra for all possible predifined basis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#2.-Introduction-to-Time-Resolved-Spectroscopy">2. Introduction to Time-Resolved Spectroscopy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#3.-Population-Dynamics">3. Population Dynamics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#4.-Density-Based-Dynamics">4. Density-Based Dynamics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.-Out-probabilities-(``out_probs``)">1. <strong>Out probabilities (``out_probs``)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.-Free-probabilities-(``free_probs``)">2. <strong>Free probabilities (``free_probs``)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.-Driven-probabilities-(``driven_probs``)">3. <strong>Driven probabilities (``driven_probs``)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.-Dephasing-(``dephasing``)">4. <strong>Dephasing (``dephasing``)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.-User-Defined-superoperators-(``relaxation_superop``)">5. <strong>User-Defined superoperators (``relaxation_superop``)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.1-Rotating-Wave-Approximation-(RWA)">4.1 Rotating Wave Approximation (RWA)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.2-Solution-with-Propagator-computations">4.2 Solution with Propagator computations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.3-Setting-up-a-populator">4.3 Setting up a populator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#5.-Context-Algebra">5. Context Algebra</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#5.1.-%22Sum%22-of-Relaxation-Mechanisms">5.1. “Sum” of Relaxation Mechanisms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.2.-%22Multiplication%22-of-Relaxation-Mechanisms">5.2. “Multiplication” of Relaxation Mechanisms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.3.-%22Concatination%22-of-Relaxation-Mechanisms">5.3. “Concatination” of Relaxation Mechanisms</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../example_5.html">Spectra Polarization and Time Resolved</a></li>
+      <li class="breadcrumb-item active">1. Context Logic and Spin-Polarized Systems</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/examples_for_documentation/example_5.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>Spin Piolarized and Time-Resolved EPR Spectroscopy in MarS.</p>
+<p>This notebook demonstrates how to use the MarS library to compute spin polarized and time-resolved EPR spectra</p>
+<p>We’ll explore:</p>
+<ol class="arabic simple">
+<li><p>Context logic for describing spin relaxation mechanisms</p></li>
+<li><p>Population-based relaxation dynamics</p></li>
+<li><p>Rotating Wave Approximation and Lindblad formalism</p></li>
+<li><p>Full propagator computation beyond approximations</p></li>
+</ol>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">For any questions, please contact Arkady Samsonenko via:</div>
+<div class="line">Telegram: &#64;Arkady_Samsonenko</div>
+<div class="line">Email: a.samsonenko.tomo.nsc.ru</div>
+<div class="line">The last notebook update: 2026.01.27</div>
+<div class="line">Please, if you want to download this notebook to your computer visit <a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples">https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples</a></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import necessary libraries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c1"># Import Mars library components</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mars</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">spectra_manager</span><span class="p">,</span> <span class="n">mesher</span><span class="p">,</span> <span class="n">constants</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="c1"># # Let&#39;s import some useful functions for plotting simulation results over time.</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">visualization</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="1.-Context-Logic-and-Spin-Polarized-Systems">
+<h1>1. Context Logic and Spin-Polarized Systems<a class="headerlink" href="#1.-Context-Logic-and-Spin-Polarized-Systems" title="Link to this heading"></a></h1>
+<p>In time-resolved EPR, we need to model how spin systems evolve after initial excitation. The Context class in MarS provides a comprehensive framework for defining these relaxation mechanisms.</p>
+<p>A Context encapsulates the physical model of relaxation and initial state in time-resolved EPR. It specifies:</p>
+<ol class="arabic simple">
+<li><p>The basis where relaxation parameters and initial populations are defined</p></li>
+<li><p>Initial populations or density matrix</p></li>
+<li><p>Probabilities of transitions and superoperators</p></li>
+</ol>
+<section id="1.1.-Context-Definition-and-Time-Resolved-Spectra">
+<h2>1.1. Context Definition and Time Resolved Spectra<a class="headerlink" href="#1.1.-Context-Definition-and-Time-Resolved-Spectra" title="Link to this heading"></a></h2>
+<p>Here we introduce new object in MarS library - context. Context allows to describe relaxation mechanisms and initial populations</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s start from the sample creation</span>
+
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">zfs_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 500 and 100 MHz</span>
+
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># S=1 triplet</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">triplet</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">3e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s create Context object. It takes:</p>
+<ol class="arabic simple">
+<li><p>Initial populations if the populations are not under temperature equilibrium</p></li>
+<li><p>Basis where the parameters are defined.</p></li>
+</ol>
+<p><strong>Available Basis Options:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>“eigen”</strong> (default): Hamiltonian eigenbasis at resonance field</p></li>
+<li><p><strong>“zfs”</strong>: Zero-field splitting eigenbasis</p></li>
+<li><p><strong>“xyz”</strong>: xyz basis for triplet molecules</p></li>
+<li><p><strong>“multiplet”</strong>: Total spin basis |S, M⟩</p></li>
+<li><p><strong>“product”</strong>: Individual spin projections |ms₁, ms₂, …⟩</p></li>
+<li><p><strong>“zeeman”</strong>: Bisis in infinite magnetic field.</p></li>
+<li><p><strong>Custom tensor</strong>: Explicit transformation matrix with shape […R, 1 ,N, N], where N is spin dimension, R is numer of orientations</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s create some spectra with polarization</span>
+<span class="n">init_populations</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="c1"># Here we define Context with populations given in the Hamiltonian eigen basis in magnetic field</span>
+
+<span class="c1"># In most cases, the context requests a sample to obtain the basis vectors.</span>
+<span class="c1"># This is only true if you don&#39;t specify a basis in a magnetic field (eigen or None).</span>
+<span class="c1"># You can also set different samples for specifying the basis and for specifying the sample whose spectra you want to obtain.</span>
+<span class="c1"># It can be useful for the creation spectra of some radical - triplet combinations.</span>
+
+
+<span class="c1"># StationarySpectra can take context to compute spin-polarized spectra</span>
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># absorbtion</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="c1"># Define magnetic field range for simulation</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+
+<span class="c1"># Calculate spectrum</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+
+<span class="c1"># Plot the result</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum for spin-polarized system&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_7_0.png" src="../../_images/examples_examples_for_documentation_example_5_7_0.png" />
+</div>
+</div>
+<p>As a result we observe spin-polarized system.</p>
+</section>
+<section id="1.2.-Plot-spin-polarized-spectra-for-all-possible-predifined-basis">
+<h2>1.2. Plot spin-polarized spectra for all possible predifined basis<a class="headerlink" href="#1.2.-Plot-spin-polarized-spectra-for-all-possible-predifined-basis" title="Link to this heading"></a></h2>
+<p>Now, Let’s plot spectra with populations given at all possible predefined basis</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create function that makes it</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># absorbtion</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+    <span class="c1"># Define magnetic field range for simulation</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+    <span class="c1"># Calculate spectrum</span>
+    <span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">spectrum</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_stationary</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>  <span class="c1"># stationary spectra</span>
+
+<span class="n">init_populations</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_zfs</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># zfs spectra z, x, y</span>
+
+<span class="n">init_populations_xyz</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]</span> <span class="c1"># To compare with zero-field spitting basis. It should be the same in this order as zero-field splitting</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;xyz&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_xyz</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_xyz</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># xyz spectra</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_eigen</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># eigen basis spectra</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;multiplet&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_mul</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># multiplet spectra</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zeeman&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_zeeman</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># multiplet spectra</span>
+
+
+<span class="n">init_populations_product</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]</span>  <span class="c1"># For the product basis we inverted the populations because product basis defined from the higher spin projection</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;product&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_product</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_product</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># product spectra</span>
+
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_stationary</span><span class="p">,</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;stationary&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_eigen</span><span class="p">,</span> <span class="s1">&#39;y-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_zfs</span><span class="p">,</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_xyz</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;xyz&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_mul</span><span class="p">,</span> <span class="s1">&#39;g--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;multiplet&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_mul</span><span class="p">,</span> <span class="s1">&#39;y--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;zeeman&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_product</span><span class="p">,</span> <span class="s1">&#39;r--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;product&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of palarized systems&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_11_0.png" src="../../_images/examples_examples_for_documentation_example_5_11_0.png" />
+</div>
+</div>
+<div class="line-block">
+<div class="line">We get expected result:</div>
+<div class="line">In a magnetic field, the eigenbasis is practically equal to the multiplet basis, which is equal to the product basis and Zeeman Basis</div>
+<div class="line">XYZ basis is the same as ZFS basis but in another order</div>
+</div>
+</section>
+</section>
+<section id="2.-Introduction-to-Time-Resolved-Spectroscopy">
+<h1>2. Introduction to Time-Resolved Spectroscopy<a class="headerlink" href="#2.-Introduction-to-Time-Resolved-Spectroscopy" title="Link to this heading"></a></h1>
+<p>In MarS, time-resolved EPR spectra are computed using three distinct methods, each with specific capabilities and limitations.</p>
+<ol class="arabic">
+<li><div class="line-block">
+<div class="line"><strong>Population (kinetic) dynamics</strong></div>
+<div class="line">This method solves a kinetic rate equation for the populations of spin energy levels:</div>
+</div>
+<div class="math notranslate nohighlight">
+\[\frac{d\mathbf{n}}{dt} = K \cdot \mathbf{n}(t),\]</div>
+<div class="line-block">
+<div class="line">where <span class="math notranslate nohighlight">\(\mathbf{n}\)</span> is the vector of level populations and <span class="math notranslate nohighlight">\(K\)</span> is the kinetic matrix.</div>
+<div class="line">It supports arbitrary spin Hamiltonians but cannot describe quantum coherences, coherent polarization transfer, or any effect that depends on off-diagonal elements of the density matrix.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Density-based dynamics via rotating-wave approximation</strong></div>
+<div class="line">MarS provides two approaches to solve the full density matrix relaxation. Both solve the Liouville–von Neumann equation in Liouville space:</div>
+</div>
+<div class="math notranslate nohighlight">
+\[\frac{d\rho}{dt} = -i[H, \rho] + \mathcal{R}[\rho],\]</div>
+<div class="line-block">
+<div class="line">where <span class="math notranslate nohighlight">\(H\)</span> is the Hamiltonian and <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> is the relaxation superoperator.</div>
+<div class="line">The first approach uses the rotating-wave approximation (RWA), which transforms the problem into a rotating frame. While computationally efficient, it imposes several key restrictions:</div>
+</div>
+<ul class="simple">
+<li><p>The g-tensor must be isotropic, so the Zeeman term takes the form
+<span class="math notranslate nohighlight">\(G_x = g \mu_B S_x\)</span>, <span class="math notranslate nohighlight">\(G_y = g \mu_B S_y\)</span>, <span class="math notranslate nohighlight">\(G_z = g \mu_B S_z\)</span>., where Gx, Gy, Gz are Zeeman Operators, <span class="math notranslate nohighlight">\(\mu_B\)</span> is Bohr Magneton</p></li>
+<li><p>The static part of the Hamiltonian (denoted <span class="math notranslate nohighlight">\(F\)</span>) must commute with <span class="math notranslate nohighlight">\(G_z\)</span>: <span class="math notranslate nohighlight">\([F, G_z] = 0\)</span>.</p></li>
+<li><p>The relaxation superoperator <span class="math notranslate nohighlight">\(\mathcal{R}_{ijkl}\)</span> (coupling matrix elements <span class="math notranslate nohighlight">\(\rho_{ij}\)</span> and <span class="math notranslate nohighlight">\(\rho_{kl}\)</span>) is only non-zero when <span class="math notranslate nohighlight">\(i - j = k - l\)</span>.
+This includes:</p>
+<ul>
+<li><p>Population transfer between levels (<span class="math notranslate nohighlight">\(i = j\)</span>, <span class="math notranslate nohighlight">\(k = l\)</span>), including pure decay (<span class="math notranslate nohighlight">\(i = j = k = l\)</span>),</p></li>
+<li><p>Pure dephasing of coherences (<span class="math notranslate nohighlight">\(i = k\)</span>, <span class="math notranslate nohighlight">\(j = l\)</span>).</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Propagator-based dynamics via explicit propagator computation</strong></div>
+<div class="line">This method computes the time-resolved EPR signal by explicitly evaluating the full time-evolution propagator <span class="math notranslate nohighlight">\(U(t, 0)\)</span>. The propagator is calculated over one period of the microwave field and then extended to arbitrary detection times using Floquet theory.</div>
+<div class="line">For disordered (powder) samples, the signal is averaged over the Euler angle <span class="math notranslate nohighlight">\(\gamma\)</span> by evaluating responses to two orthogonal microwave polarizations. For this method any kind of Hamiltonian can be used</div>
+</div>
+</li>
+</ol>
+</section>
+<section id="3.-Population-Dynamics">
+<h1>3. Population Dynamics<a class="headerlink" href="#3.-Population-Dynamics" title="Link to this heading"></a></h1>
+<p>In MarS, relaxation within the population (kinetic) paradigm is defined by three distinct types of transition probabilities:</p>
+<ol class="arabic simple">
+<li><p><strong>Out probabilities (``out_probs``)</strong> – probabilities at which population is irreversibly lost from each energy level (e.g., due to phosphorescence or chemical decay). These are diagonal loss terms.</p></li>
+<li><p><strong>Free probabilities (``free_probs``)</strong> – probabilities of <em>spontaneous</em> transitions between levels. After transformation into the eigenbasis of the full Hamiltonian, these are automatically adjusted to satisfy the principle of detailed balance at the specified temperature.</p></li>
+<li><p><strong>Driven probabilities (``driven_probs``)</strong> – probabilities of <em>stimulated</em> (e.g., microwave-induced) transitions. These are not modified to enforce detailed balance and remain as user-specified.</p></li>
+</ol>
+<p>All probabilities are expressed in <strong>s⁻¹</strong> (inverse seconds).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">init_populations</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5015</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5015</span><span class="p">]</span> <span class="c1"># Let&#39;s make them almoust equel</span>
+<span class="n">init_populations</span>  <span class="o">=</span> <span class="p">[</span><span class="n">pop</span> <span class="o">/</span> <span class="nb">sum</span><span class="p">(</span><span class="n">init_populations</span><span class="p">)</span> <span class="k">for</span> <span class="n">pop</span> <span class="ow">in</span> <span class="n">init_populations</span><span class="p">]</span>
+
+<span class="n">out_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="c1"># 10 ms is some depopulation time</span>
+
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2 at 1000 s⁻¹ (~1 ms equilibration).</span>
+<span class="c1"># Note that you do not need to specify the diagonal elements manually, they are set automatically during calculations.</span>
+<span class="n">free_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span> <span class="c1"># 1 ms is time of equilibration for triplet relaxation.</span>
+
+<span class="c1"># No driven transitions in this example</span>
+<span class="n">driven_probs</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&quot;s get statinary spectrum to compare with time-resolved results</span>
+<span class="n">_</span><span class="p">,</span> <span class="n">stationary_spectrum</span> <span class="o">=</span> <span class="n">get_spectrum_with_context</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+<span class="c1"># We intoduce new spectra creator: CoupledTimeSpectra</span>
+<span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>  <span class="c1"># The most parameters are the same</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># absorbtion</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="c1"># Define magnetic field range for simulation</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+
+<span class="c1"># Time axes in long and short time scale</span>
+<span class="n">tot_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time_long</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2e-2</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, long time scale, up to 20ms</span>
+<span class="n">time_short</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, short time scale, up to 300µs</span>
+
+<span class="c1"># Compute 2D spectra</span>
+<span class="n">spectrum_pop_long</span>  <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+<span class="n">spectrum_pop_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+
+<span class="c1"># Let&quot;s plot normilized plots</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_pop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_pop_long_np</span> <span class="o">=</span> <span class="n">spectrum_pop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_pop_short_np</span> <span class="o">=</span> <span class="n">spectrum_pop_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+
+<span class="c1"># Create time points to plot them</span>
+<span class="n">point_quart</span> <span class="o">=</span> <span class="n">tot_points</span> <span class="o">//</span> <span class="mi">4</span>
+<span class="n">point_end</span> <span class="o">=</span> <span class="n">tot_points</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">long_scale_points</span> <span class="o">=</span> <span class="p">[</span><span class="n">point_quart</span><span class="p">,</span> <span class="n">point_end</span><span class="p">]</span>
+<span class="n">short_scale_points</span> <span class="o">=</span> <span class="p">[</span><span class="n">point_quart</span><span class="p">,</span> <span class="n">point_end</span><span class="p">]</span>
+
+
+<span class="c1"># Let&quot;s normalize stationary_spectrum on spectrum_pop_long_np[point_quart] for convinience to compare:</span>
+<span class="n">stationary_spectrum</span> <span class="o">=</span> <span class="n">stationary_spectrum</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">spectrum_pop_long_np</span><span class="p">[</span><span class="n">point_quart</span><span class="p">]))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create figure with mosaic layout</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot_mosaic</span><span class="p">([[</span><span class="s2">&quot;short&quot;</span><span class="p">,</span> <span class="s2">&quot;slices&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;long&quot;</span><span class="p">,</span> <span class="s2">&quot;slices&quot;</span><span class="p">]],</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                                <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;width_ratios&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]})</span>
+
+<span class="c1"># Short timescale heatmap</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;short&quot;</span><span class="p">])</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_pop_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Long timescale heatmap</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;long&quot;</span><span class="p">])</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_pop_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Field slices at specific times</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;slices&quot;</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">stationary_spectrum</span><span class="p">,</span> <span class="s2">&quot;--k&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Stationary&quot;</span><span class="p">)</span>
+
+<span class="c1"># Long timescale slices</span>
+<span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">long_scale_points</span><span class="p">:</span>
+    <span class="n">t_val</span> <span class="o">=</span> <span class="n">time_long</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_pop_long_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;t = </span><span class="si">{</span><span class="n">t_val</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+
+<span class="c1"># Short timescale slices</span>
+<span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">short_scale_points</span><span class="p">:</span>
+    <span class="n">t_val</span> <span class="o">=</span> <span class="n">time_short</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_pop_short_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;t = </span><span class="si">{</span><span class="n">t_val</span><span class="o">*</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> μs&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Normalized Intensity&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Field Dependence at Selected Times&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;best&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_17_0.png" src="../../_images/examples_examples_for_documentation_example_5_17_0.png" />
+</div>
+</div>
+<p>Here we observe two effects:</p>
+<ol class="arabic simple">
+<li><p>Rapid relaxation to stationary spectra with 1 / free_probs time</p></li>
+<li><p>Long-term decay of the triplet state</p></li>
+</ol>
+</section>
+<section id="4.-Density-Based-Dynamics">
+<h1>4. Density-Based Dynamics<a class="headerlink" href="#4.-Density-Based-Dynamics" title="Link to this heading"></a></h1>
+<p>MarS implements full density-matrix relaxation using the Liouville-von Neumann equation with relaxation superoperator:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\rho}{dt} = -i[H, \rho] + \mathcal{R}[\rho],\]</div>
+<p>where <span class="math notranslate nohighlight">\(\rho\)</span> is the density matrix, <span class="math notranslate nohighlight">\(H\)</span> is the spin Hamiltonian, and <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> is the relaxation superoperator.</p>
+<p>To connect level-base approach and density - computation approach MarS uses the Lindblad formalism to write free probabilities, out probabilities, driven probabilitie and dephasing, which guarantees physical validity (positivity and trace preservation) of the evolving quantum state.</p>
+<p>In this case relaxation superoperator <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> can be expressed as a sum over Lindblad (“jump”) operators <span class="math notranslate nohighlight">\(L_k\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{R}[\rho] = \sum_k \left( L_k \rho L_k^\dagger - \frac{1}{2} \{ L_k^\dagger L_k, \rho \} \right).\]</div>
+<p>MarS maps user-defined relaxation parameters directly onto specific jump operators:</p>
+<hr class="docutils" />
+<section id="1.-Out-probabilities-(``out_probs``)">
+<h2>1. <strong>Out probabilities (``out_probs``)</strong><a class="headerlink" href="#1.-Out-probabilities-(``out_probs``)" title="Link to this heading"></a></h2>
+<p>To model irreversible loss.</p>
+<ul class="simple">
+<li><p>The next jump operator is used: <span class="math notranslate nohighlight">\(L_i = \sqrt{o_i}\, |i\rangle\langle i|\)</span>, where <span class="math notranslate nohighlight">\(\sqrt{o_i}\)</span> is probability of loss from the level</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="2.-Free-probabilities-(``free_probs``)">
+<h2>2. <strong>Free probabilities (``free_probs``)</strong><a class="headerlink" href="#2.-Free-probabilities-(``free_probs``)" title="Link to this heading"></a></h2>
+<p>Describe <em>spontaneous</em> transitions <span class="math notranslate nohighlight">\(|j\rangle \to |i\rangle\)</span> that obey detailed balance at temperature <span class="math notranslate nohighlight">\(T\)</span>:</p>
+<ul class="simple">
+<li><p>The next jump operator is used: <span class="math notranslate nohighlight">\(L_{ij} = \sqrt{w_{ij}}\, |i\rangle\langle j|\)</span>, where <span class="math notranslate nohighlight">\(\sqrt{w_{ij}}\)</span> is probability of the transitions between levels</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="3.-Driven-probabilities-(``driven_probs``)">
+<h2>3. <strong>Driven probabilities (``driven_probs``)</strong><a class="headerlink" href="#3.-Driven-probabilities-(``driven_probs``)" title="Link to this heading"></a></h2>
+<p>Represent <em>stimulated</em> transitions (e.g., microwave-induced flips).</p>
+<ul class="simple">
+<li><p>The next jump operator is used: <span class="math notranslate nohighlight">\(L_{ij} = \sqrt{d_{ij}}\, |i\rangle\langle j|\)</span> , where <span class="math notranslate nohighlight">\(\sqrt{d_{ij}}\)</span> is probability of the transitions between levels</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="4.-Dephasing-(``dephasing``)">
+<h2>4. <strong>Dephasing (``dephasing``)</strong><a class="headerlink" href="#4.-Dephasing-(``dephasing``)" title="Link to this heading"></a></h2>
+<p>Pure dephasing between levels <span class="math notranslate nohighlight">\(|i\rangle\)</span> and <span class="math notranslate nohighlight">\(|j\rangle\)</span> (<span class="math notranslate nohighlight">\(i \neq j\)</span>):</p>
+<ul class="simple">
+<li><p>The next jump operator is used: <span class="math notranslate nohighlight">\(L_i = \sqrt{\gamma_i}\, |i\rangle\langle i|\)</span>, where <span class="math notranslate nohighlight">\(\gamma_i\)</span> is probability of dephasing</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="5.-User-Defined-superoperators-(``relaxation_superop``)">
+<h2>5. <strong>User-Defined superoperators (``relaxation_superop``)</strong><a class="headerlink" href="#5.-User-Defined-superoperators-(``relaxation_superop``)" title="Link to this heading"></a></h2>
+<p>Also it is possible to set the user-defined superoperator at the given basis</p>
+<p>All jump operators are first defined in the user-specified basis (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;zfs&quot;</span></code>), then transformed into the eigenbasis of the full Hamiltonian before assembly into <span class="math notranslate nohighlight">\(\mathcal{R}\)</span>. Internally, MarS separates the total relaxation superoperator into two parts:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\hat{\mathcal{R}}_{\text{free}}\)</span>: includes <code class="docutils literal notranslate"><span class="pre">out_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">free_probs</span></code>, and <code class="docutils literal notranslate"><span class="pre">dephasing</span></code>. This part enforces detailed balance.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{\mathcal{R}}_{\text{driv}}\)</span>: contains only <code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>. This part remained unmodified</p></li>
+</ul>
+<p>In any case MarS solve equation:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\rho}{dt} = -i[H, \rho] + \mathcal{R}[\rho],\]</div>
+<p>transforming it to Liouvillian space where Hamiltonian and relaxation superoperators have dimension <span class="math notranslate nohighlight">\(N^2\)</span> x <span class="math notranslate nohighlight">\(N^2\)</span> and density matrix has dimension <span class="math notranslate nohighlight">\(N^2\)</span>. In this case MarS propose two methods how to solve this equation</p>
+</section>
+<section id="4.1-Rotating-Wave-Approximation-(RWA)">
+<h2>4.1 Rotating Wave Approximation (RWA)<a class="headerlink" href="#4.1-Rotating-Wave-Approximation-(RWA)" title="Link to this heading"></a></h2>
+<p>One of the way to solve the Rotating Wave Approximation. In the Rotating Wave Approximation (RWA), the time-dependent Hamiltonian is transformed into a time-independent effective Hamiltonian by moving to a frame rotating at the driving frequency <span class="math notranslate nohighlight">\(\omega\)</span>. Under the following assumptions:</p>
+<ol class="arabic simple">
+<li><p>The transverse magnetic field is circularly polarized,</p></li>
+<li><p>The <span class="math notranslate nohighlight">\(g\)</span>-tensor is isotropic, so that <span class="math notranslate nohighlight">\(\hat{G}_\alpha = g \mu_\mathrm{B} \hat{S}_\alpha\)</span> (<span class="math notranslate nohighlight">\(\alpha = x, y, z\)</span>),</p></li>
+<li><p>The static part <span class="math notranslate nohighlight">\(\hat{F}\)</span> of the Hamiltonian commutes with <span class="math notranslate nohighlight">\(\hat{S}_z\)</span>: <span class="math notranslate nohighlight">\([\hat{F}, \hat{S}_z] = 0\)</span>,</p></li>
+</ol>
+<p>the total Hamiltonian in the rotating frame becomes:</p>
+<div class="math notranslate nohighlight">
+\[\hat{H}_\mathrm{eff} = \hat{F} + g \mu_\mathrm{B} B_z \hat{S}_z - \omega \hat{S}_z + g \mu_\mathrm{B} B_1 \hat{S}_x,\]</div>
+<p>or, more compactly,</p>
+<div class="math notranslate nohighlight">
+\[\hat{H}_\mathrm{eff} = \hat{H}_0 - \omega \hat{S}_z + g \mu_\mathrm{B} B_1 \hat{S}_x,\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{H}_0 = \hat{F} + g \mu_\mathrm{B} B_z \hat{S}_z\)</span> is the static Zeeman-plus-rest Hamiltonian, <span class="math notranslate nohighlight">\(B_1\)</span> is the amplitude of the circularly polarized transverse field, and <span class="math notranslate nohighlight">\(\omega\)</span> is the angular frequency of the driving field.</p>
+<p>The Liouville–von Neumann equation for the density matrix <span class="math notranslate nohighlight">\(\hat{\rho}\)</span> in this frame reads:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\hat{\tilde{\rho}}}{dt} = -i [\hat{H}_\mathrm{eff}, \hat{\rho}] + \mathcal{R}[\hat{\rho}],\]</div>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">It is quite simple but it has some limitations:</div>
+</div>
+<ol class="arabic">
+<li><p>The oscillating magnetic field (e.g., microwave or RF) is assumed to be circularly polarized.</p></li>
+<li><div class="line-block">
+<div class="line">The <span class="math notranslate nohighlight">\(g\)</span>-tensor must be isotropic or close to isotropic, so that the Zeeman operators are proportional to the spin operators:</div>
+<div class="line"><span class="math notranslate nohighlight">\(\hat{G}_x = g_x \mu_\mathrm{B} \hat{S}_x\)</span>,</div>
+<div class="line"><span class="math notranslate nohighlight">\(\hat{G}_y = g_y \mu_\mathrm{B} \hat{S}_y\)</span>,</div>
+<div class="line"><span class="math notranslate nohighlight">\(\hat{G}_z = g_z \mu_\mathrm{B} \hat{S}_z\)</span>.</div>
+</div>
+</li>
+</ol>
+<p>In general, in MarS under RWA, we modify Gx, Gy, and Gz by default to make them approximately commute with the corresponding total spin projection operators Gx, Gy, and Gz.</p>
+<ol class="arabic" start="3">
+<li><div class="line-block">
+<div class="line">The static part of the Hamiltonian (denoted <span class="math notranslate nohighlight">\(\hat{F}\)</span>) must commute with <span class="math notranslate nohighlight">\(\hat{S}_z\)</span>:</div>
+<div class="line"><span class="math notranslate nohighlight">\([\hat{F}, \hat{S}_z] = 0\)</span>.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">The relaxation superoperator <span class="math notranslate nohighlight">\(\mathcal{R}_{ijkl}\)</span>—which couples density matrix elements <span class="math notranslate nohighlight">\(\rho_{ij}\)</span> and <span class="math notranslate nohighlight">\(\rho_{kl}\)</span> - is non-zero only when</div>
+<div class="line"><span class="math notranslate nohighlight">\(i - j = k - l\)</span>.</div>
+<div class="line">This condition includes two physical processes:</div>
+</div>
+<ul class="simple">
+<li><p>Population transfer between energy levels (<span class="math notranslate nohighlight">\(i = j\)</span>, <span class="math notranslate nohighlight">\(k = l\)</span>), including pure decay (<span class="math notranslate nohighlight">\(i = j = k = l\)</span>).</p></li>
+<li><p>Dephasing of coherences (<span class="math notranslate nohighlight">\(i = k\)</span>, <span class="math notranslate nohighlight">\(j = l\)</span>).</p></li>
+</ul>
+</li>
+</ol>
+<p>When the dipolar interaction is small and the sample is organic it works good and it is default method in MarS for density-based time-resolved computations. Let’s consider it and define context</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># For any density computations it is better to use some dephasing to preserve spectra saturation by magnetic field</span>
+<span class="n">dephasing</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e4</span> <span class="c1"># 100 µs is ann additioanl time to T2 relaxation.</span>
+
+
+<span class="c1"># Other parameters are from the previous task</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">dephasing</span><span class="o">=</span><span class="n">dephasing</span><span class="p">,</span>
+    <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Here we implement DensityTimeSpectra class for computations of ttimeime-resolved spectroscopy in density-based approach. By default it uses RWA and secular approximation to force [F, Sz] = 0</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute spectra</span>
+<span class="n">tr_spectra_creator_rwa</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">DensityTimeSpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># absorbtion</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectrum_rwa_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator_rwa</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+<span class="n">spectrum_rwa_long</span> <span class="o">=</span> <span class="n">tr_spectra_creator_rwa</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+
+<span class="c1"># Normalize using long-time scale max</span>
+<span class="n">normalization_rwa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_rwa_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_rwa_long_np</span> <span class="o">=</span> <span class="n">spectrum_rwa_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization_rwa</span>
+<span class="n">spectrum_rwa_short_np</span> <span class="o">=</span> <span class="n">spectrum_rwa_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization_rwa</span>
+
+<span class="c1"># Plotting</span>
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax_short</span><span class="p">,</span> <span class="n">ax_long</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Short timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax_short</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_rwa_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;RWA Solution (Short Timescale)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Long timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax_long</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_rwa_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;RWA Solution (Long Timescale)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_23_0.png" src="../../_images/examples_examples_for_documentation_example_5_23_0.png" />
+</div>
+</div>
+<p>Yes, it seems pretty close. The main difference is in the behavior at the beginning, when there is no transverse magnetization and the spectrum is zero. Let’s compare with population-based spectra</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Define actual time values (in seconds) for slicing</span>
+<span class="n">time_points_long</span> <span class="o">=</span> <span class="p">[</span><span class="n">time_long</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">long_scale_points</span><span class="p">]</span>      <span class="c1"># e.g., [0.005, 0.02]</span>
+<span class="n">time_points_short</span> <span class="o">=</span> <span class="p">[</span><span class="n">time_short</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">short_scale_points</span><span class="p">]</span>   <span class="c1"># e.g., [7.5e-5, 3e-4]</span>
+
+<span class="c1"># --- Long timescale comparisons ---</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t_val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">time_points_long</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c1"># Population solution</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_pop_long_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Population (t = </span><span class="si">{</span><span class="n">t_val</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ms)&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span>
+    <span class="p">)</span>
+
+    <span class="c1"># RWA solution</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_rwa_long_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;RWA (t = </span><span class="si">{</span><span class="n">t_val</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ms)&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Normalized Intensity&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;best&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- Short timescale comparisons ---</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t_val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">time_points_short</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c1"># Population solution</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_pop_short_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Population (t = </span><span class="si">{</span><span class="n">t_val</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> µs)&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span>
+    <span class="p">)</span>
+
+    <span class="c1"># RWA solution</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span>
+        <span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_rwa_short_np</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;RWA (t = </span><span class="si">{</span><span class="n">t_val</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> µs)&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Normalized Intensity&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;best&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_25_0.png" src="../../_images/examples_examples_for_documentation_example_5_25_0.png" />
+</div>
+</div>
+<p>The spectra appear identical on long time scales. Minor differences arise from the use of the secular approximation in RWA calculations. The initial spectra differ due to the inclusion of the relaxation time of the transverse magnetization.</p>
+</section>
+<section id="4.2-Solution-with-Propagator-computations">
+<h2>4.2 Solution with Propagator computations<a class="headerlink" href="#4.2-Solution-with-Propagator-computations" title="Link to this heading"></a></h2>
+<p>Another method for calculating time-resolved spectra based on density matrix relaxation is to use a propagator calculation based on Floquet theory. This approach does not have the same limitations, but it is more time-consuming.</p>
+<p>In this method, the Hamiltonian remains explicitly time-dependent due to the oscillating microwave field, and the evolution of the density matrix <span class="math notranslate nohighlight">\(\hat{\rho}(t)\)</span> is governed by:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\hat{\rho}}{dt} = -i [\hat{H}(t), \hat{\rho}(t)] + \mathcal{R}[\hat{\rho}(t)],\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{H}(t) = \hat{H}_0 + \hat{H}_1 \cos(\omega t)\)</span> includes the static part <span class="math notranslate nohighlight">\(\hat{H}_0\)</span> and the transverse oscillating field <span class="math notranslate nohighlight">\(\hat{H}_1\)</span>, and <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> is the relaxation superoperator.</p>
+<p>The *propagator** <span class="math notranslate nohighlight">\(\mathcal{G}(t, t_0)\)</span> is the linear superoperator that evolves the density matrix from time <span class="math notranslate nohighlight">\(t_0\)</span> to <span class="math notranslate nohighlight">\(t\)</span>, defined by <span class="math notranslate nohighlight">\(\hat{\rho}(t) = \mathcal{G}(t, t_0)\,\hat{\rho}(t_0)\)</span>. It satisfies the Liouville–von Neumann equation in superoperator form:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d}{dt}\mathcal{G}(t, 0) = \big( -i\hat{\hat{H}}(t) + \mathcal{R} \big)\, \mathcal{G}(t, 0),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{\hat{H}}(t) = [\hat{H}(t), \cdot]\)</span> is the hamiltonian in Liouvillian space.</p>
+<p>Because the oscillating field is periodic with period <span class="math notranslate nohighlight">\(T = 2\pi/\omega\)</span>, the evolution operator (propagator) over one period, <span class="math notranslate nohighlight">\(\mathcal{G}(T, 0)\)</span>, can be computed efficiently using Floquet theory. The full propagator at time <span class="math notranslate nohighlight">\(t = kT + \tau\)</span> (with integer <span class="math notranslate nohighlight">\(k\)</span> and <span class="math notranslate nohighlight">\(0 \leq \tau &lt; T\)</span>) can be expressed as:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{G}(t, 0) = \mathcal{G}(\tau, 0) \cdot \big[\mathcal{G}(T, 0)\big]^k.\]</div>
+<p>In practice, MarS computes two key quantities over a single microwave period:</p>
+<ul class="simple">
+<li><p>The <em>period propagator</em> <span class="math notranslate nohighlight">\(\mathcal{G}(T, 0)\)</span>,</p></li>
+<li><p>The <em>mean propagator over period</em> <span class="math notranslate nohighlight">\(\displaystyle \int_0^T \mathcal{G}(t, 0) \sin(\omega t)\, dt\)</span>,</p></li>
+</ul>
+<p>This approach supports arbitrary <span class="math notranslate nohighlight">\(g\)</span>-tensor anisotropy, general zero-field splitting tensors, and unrestricted relaxation superoperators-unlike the Rotating Wave Approximation.</p>
+<p>Let’s write the relaxation via the propagator computations:</p>
+<ol class="arabic simple">
+<li><p>We need to set it in DensityTimeSpectra initialization</p></li>
+<li><p>Or if we want to perform more difficult computations we should define populator</p></li>
+<li><p>Also it is better to switch from secular to res-field compuations of resonance lines. ‘hamiltonian_mode’ is used to set appropriate computation method</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute spectra</span>
+<span class="n">tr_spectra_creator_prop</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">DensityTimeSpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># absorbtion</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">populator</span> <span class="o">=</span> <span class="s2">&quot;propagator&quot;</span><span class="p">,</span> <span class="c1"># Define propagator approach to compute spectra</span>
+    <span class="n">hamiltonian_mode</span><span class="o">=</span><span class="s2">&quot;direct&quot;</span><span class="p">,</span>  <span class="c1"># DensityTimeSpectra has default hamiltonian_mode equel to secular. Now we want to use direct computation of eigen vectors (via res-field)</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectrum_prop_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator_prop</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+<span class="n">spectrum_prop_long</span> <span class="o">=</span> <span class="n">tr_spectra_creator_prop</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+
+<span class="c1"># normalize them</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_prop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_prop_long_np</span> <span class="o">=</span> <span class="n">spectrum_prop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_prop_short_np</span> <span class="o">=</span> <span class="n">spectrum_prop_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax0</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_prop_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;seismic&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale – Propagator)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_prop_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;seismic&quot;</span>
+<span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale – Propagator)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_31_0.png" src="../../_images/examples_examples_for_documentation_example_5_31_0.png" />
+</div>
+</div>
+</section>
+<section id="4.3-Setting-up-a-populator">
+<h2>4.3 Setting up a populator<a class="headerlink" href="#4.3-Setting-up-a-populator" title="Link to this heading"></a></h2>
+<p>For some advance case it can be convinient to set populator by your own.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">populator_prop</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">PropagatorDensityPopulator</span><span class="p">(</span>
+    <span class="n">omega_intensity</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="c1"># Default walue of oscillating field intensity in Hz / 2pi</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">measurement_time</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="c1"># By default MarS measures intensity in one oscillating period. Let&#39;s set this time as 1 µs.</span>
+    <span class="n">init_temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="c1"># For some cases this value can be ctucial. It significanlty increase the computation time. However if it is low, then the results will be broken. Usually 100-200 is more then enough</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute spectra</span>
+<span class="n">tr_spectra_creator_prop</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">DensityTimeSpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">populator</span><span class="o">=</span><span class="n">populator_prop</span><span class="p">,</span> <span class="c1"># Our predefined populator</span>
+    <span class="n">hamiltonian_mode</span><span class="o">=</span><span class="s2">&quot;direct&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectrum_prop_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator_prop</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+<span class="n">spectrum_prop_long</span> <span class="o">=</span> <span class="n">tr_spectra_creator_prop</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+
+<span class="c1"># normalize them</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_prop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_prop_long_np</span> <span class="o">=</span> <span class="n">spectrum_prop_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_prop_short_np</span> <span class="o">=</span> <span class="n">spectrum_prop_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax0</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_prop_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;seismic&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale – Custom Propagator)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_prop_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;seismic&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale – Custom Propagator)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_35_0.png" src="../../_images/examples_examples_for_documentation_example_5_35_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="5.-Context-Algebra">
+<h1>5. Context Algebra<a class="headerlink" href="#5.-Context-Algebra" title="Link to this heading"></a></h1>
+<p>MarS allows the construction of complex <code class="docutils literal notranslate"><span class="pre">Context</span></code> objects to describe realistic relaxation scenarios by combining simpler mechanisms. Three fundamental algebraic operations are supported:</p>
+<ul class="simple">
+<li><p><strong>Addition</strong> (<code class="docutils literal notranslate"><span class="pre">context_1</span> <span class="pre">+</span> <span class="pre">context_2</span></code>): combines independent relaxation pathways acting on the <em>same</em> spin system.</p></li>
+<li><p><strong>Multiplication</strong> (<code class="docutils literal notranslate"><span class="pre">context_1</span> <span class="pre">&#64;</span> <span class="pre">context_2</span></code>): constructs a composite system from <em>independent particles</em>, each with its own relaxation.</p></li>
+<li><p><strong>Concatenation</strong> (<code class="docutils literal notranslate"><span class="pre">mars.concat((context_1,</span> <span class="pre">context_2))</span></code>): constructs a composite system of energy levels from independent subsystems, each with its own relaxation.</p></li>
+</ul>
+<p>All three operations automatically handle basis transformations, detailed balance enforcement, and composition of kinetic matrices or relaxation superoperators.</p>
+<hr class="docutils" />
+<section id="5.1.-%22Sum%22-of-Relaxation-Mechanisms">
+<h2>5.1. “Sum” of Relaxation Mechanisms<a class="headerlink" href="#5.1.-%22Sum%22-of-Relaxation-Mechanisms" title="Link to this heading"></a></h2>
+<p>The addition of contexts corresponds to the physical situation where multiple relaxation processes (e.g., spin–lattice relaxation and phosphorescence) act simultaneously on the same set of states. In this case, the total relaxation operator is the sum of individual contributions after transformation into the common eigenbasis of the full Hamiltonian.</p>
+<p>For population dynamics (kinetic approach), the final kinetic matrix is:</p>
+<div class="math notranslate nohighlight">
+\[K_{\text{total}} = K^{(1)} + K^{(2)} + \cdots\]</div>
+<p>For density-matrix dynamics, the total relaxation superoperator becomes:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\mathcal{R}}_{\text{total}} = \hat{\mathcal{R}}^{(1)} + \hat{\mathcal{R}}^{(2)} + \cdots\]</div>
+<p>Let’s return to the example of the triplet state. MarS context can be operates with several mechanisms at the same time</p>
+<p><img alt="Drawing" src="../../_images/sum_context.png" /></p>
+<p>In this system there are two relaxation mechanisms</p>
+<ol class="arabic simple">
+<li><p>Depopulation given in ZFS basis (or the same in the X,Y,Z) basis</p></li>
+<li><p>Relaxation between levels given in eigen basis of spin hamiltonina</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># This part is the same as in previous examples</span>
+
+<span class="n">init_populations</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5015</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5015</span><span class="p">]</span> <span class="c1"># Let&#39;s make them almoust equel</span>
+<span class="n">init_populations</span>  <span class="o">=</span> <span class="p">[</span><span class="n">pop</span> <span class="o">/</span> <span class="nb">sum</span><span class="p">(</span><span class="n">init_populations</span><span class="p">)</span> <span class="k">for</span> <span class="n">pop</span> <span class="ow">in</span> <span class="n">init_populations</span><span class="p">]</span>
+
+<span class="n">out_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="c1"># 10 ms is some depopulation time</span>
+
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2 at 1000 s⁻¹ (~1 ms equilibration).</span>
+<span class="c1"># Note that you do not need to specify the diagonal elements manually, they are set automatically during calculations.</span>
+<span class="n">free_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span> <span class="c1"># 1 ms is time of equilibration for triplet relaxation.</span>
+
+<span class="c1"># No driven transitions in this example</span>
+<span class="n">driven_probs</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+</pre></div>
+</div>
+</div>
+<p>Here we set two contexts and sum up the.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We set context with basis in zero field splitting and define populations and out relaxation in this basis</span>
+<span class="n">context_zfs</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="c1"># We set context with basis in hamiltonian with magnetic field  and set triplet relaxation in this basis</span>
+<span class="n">context_eigen</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="c1"># And create complex realaxation context</span>
+<span class="n">context_tot</span> <span class="o">=</span> <span class="n">context_zfs</span> <span class="o">+</span> <span class="n">context_eigen</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>  <span class="c1"># The most parameters are the same</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context_tot</span><span class="p">,</span>  <span class="c1"># Here we set total relaxation context</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+<span class="n">tot_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time_long</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2e-2</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, long time scale, up to 20ms</span>
+<span class="n">time_short</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, short time scale, up to 300µs</span>
+
+<span class="n">spectrum_tot_long</span>  <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+<span class="n">spectrum_tot_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+
+<span class="c1"># Normalize</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_tot_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_tot_long_np</span> <span class="o">=</span> <span class="n">spectrum_tot_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_tot_short_np</span> <span class="o">=</span> <span class="n">spectrum_tot_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+
+<span class="c1"># Plot</span>
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax0</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_tot_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale – Total Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_tot_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale – Total Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_41_0.png" src="../../_images/examples_examples_for_documentation_example_5_41_0.png" />
+</div>
+</div>
+</section>
+<section id="5.2.-%22Multiplication%22-of-Relaxation-Mechanisms">
+<h2>5.2. “Multiplication” of Relaxation Mechanisms<a class="headerlink" href="#5.2.-%22Multiplication%22-of-Relaxation-Mechanisms" title="Link to this heading"></a></h2>
+<p>The tensor product (<code class="docutils literal notranslate"><span class="pre">&#64;</span></code>) of contexts describes a system consisting of two (or more) weakly coupled or independent spin-centers. The total Hilbert space is the tensor product of subsystem spaces, and initial states as well as relaxation operators combine accordingly.</p>
+<p>For populations and kinetic matrises:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n}_{\text{total}} = \mathbf{n}^{(1)} \otimes \mathbf{n}^{(2)}, \quad
+K_{\text{total}} = K^{(1)} \otimes I^{(2)} + I^{(1)} \otimes K^{(2)}\]</div>
+<p>For density matrices and superoperators:</p>
+<div class="math notranslate nohighlight">
+\[\rho_{\text{total}} = \rho^{(1)} \otimes \rho^{(2)}, \quad
+\hat{\mathcal{R}}_{\text{total}} = \hat{\mathcal{R}}^{(1)} \otimes \hat{I}^{(2)} + \hat{I}^{(1)} \otimes \hat{\mathcal{R}}^{(2)}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{I}^{(k)}\)</span> denotes the identity superoperator acting on subsystem <span class="math notranslate nohighlight">\(k\)</span>.</p>
+<p>Let’s consider an example of two identical triplets connected by small dopolar-interaction.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s define triplet sample and two triplets, conntected by dipolar interaction</span>
+<span class="c1"># The triplet definition as in the beggining</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">zfs_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 500 and 100 MHz</span>
+
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># S=1 triplet</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">triplet</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">3e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="c1"># The two-triplets definition as in the beggining</span>
+<span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">20e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 100 and 20 MHz</span>
+
+<span class="n">base_spin_system_dipolar</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># S=1, 1 two triplets</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dipolar_interaction</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">dipol_triplets</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system_dipolar</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">3e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s define the multiplication context</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We set context for the first triplet</span>
+<span class="n">context_zfs_1</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="c1"># We set context for the second triplet. Yes, they are the same</span>
+<span class="n">context_zfs_2</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="c1"># And create complex realaxation context</span>
+<span class="n">context_mul</span> <span class="o">=</span> <span class="n">context_zfs_1</span> <span class="o">@</span> <span class="n">context_zfs_2</span>
+
+<span class="c1"># Also, one can add to this term another context with its eigen basis for relaxation between zeeman sublevels.</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>  <span class="c1"># The most parameters are the same</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">dipol_triplets</span><span class="p">,</span>   <span class="c1"># Now we here another sample with 9 levels</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context_mul</span><span class="p">,</span>  <span class="c1"># Here we set mutual relaxation context</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+<span class="n">mul_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time_long</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2e-2</span><span class="p">,</span> <span class="n">mul_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, long time scale, up to 20ms</span>
+<span class="n">time_short</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="n">mul_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, short time scale, up to 300µs</span>
+
+<span class="n">spectrum_mul_long</span>  <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">dipol_triplets</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>   <span class="c1"># change the sample</span>
+<span class="n">spectrum_mul_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">dipol_triplets</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>  <span class="c1"># change the sample</span>
+
+<span class="c1"># Normalize</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_mul_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_mul_long_np</span> <span class="o">=</span> <span class="n">spectrum_mul_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_mul_short_np</span> <span class="o">=</span> <span class="n">spectrum_mul_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+
+<span class="c1"># Plotting</span>
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Short timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax0</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_mul_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale – Multiplication Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Long timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_mul_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale – Multiplication Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_47_0.png" src="../../_images/examples_examples_for_documentation_example_5_47_0.png" />
+</div>
+</div>
+<p>Here we observe that the decay of two multiplied triplet states is faster than that of a single triplet state. However, in real physical systems, relaxation does not occur directly from the combined state <span class="math notranslate nohighlight">\(|T_1\rangle \otimes |T_2\rangle\)</span> to the singlet state. Instead, it proceeds toward the individual <span class="math notranslate nohighlight">\(|T_1\rangle\)</span> and <span class="math notranslate nohighlight">\(|T_2\rangle\)</span> states which may also be experimentally observable.</p>
+</section>
+<section id="5.3.-%22Concatination%22-of-Relaxation-Mechanisms">
+<h2>5.3. “Concatination” of Relaxation Mechanisms<a class="headerlink" href="#5.3.-%22Concatination%22-of-Relaxation-Mechanisms" title="Link to this heading"></a></h2>
+<p>The concatination (‘mars.concat’) of contexts describes a system consisting of two (or more) independant subsistems of the one group of spin-centers. The total Hilbert space is the direct sum of subsystem spaces, and initial states as well as relaxation operators combine accordingly.</p>
+<p>For populations (kinetic picture):</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n}_{\text{total}} = \mathbf{n}^{(1)} \oplus  \mathbf{n}^{(2)}, \quad
+K_{\text{total}} = K^{(1)} \oplus K^{(2)}\]</div>
+<p>For density matrices and superoperators:</p>
+<div class="math notranslate nohighlight">
+\[\rho_{\text{total}} = \rho^{(1)} \oplus \rho^{(2)}, \quad
+\hat{\mathcal{R}}_{\text{total}} = \hat{\mathcal{R}}^{(1)} \oplus \hat{\mathcal{R}}^{(2)}\]</div>
+<p>Let’s consider the system of two triplet states with some energy gap with some additional transitions between them.</p>
+<p><strong>Here we should note</strong>, this model applies strictly to the slow exchange regime where inter-subspace transition rates are negligible compared to intra-subspace relaxation rates. When the coupling strength is significant, the system enters the fast exchange regime, where the energy-isolated subspaces hybridize, and the dynamics must be described by a single unified density matrix evolving under a combined Hamiltonian and Lindblad superoperator - not by concatenation.</p>
+<p>Let’s define the sample</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">zfs_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 500 and 100 MHz</span>
+
+<span class="c1"># Define the first triplet spin_system and sample</span>
+<span class="n">base_spin_system_1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># S=1 triplet</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">)]</span>
+<span class="p">)</span>
+<span class="n">triplet_1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system_1</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">3e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+
+<span class="c1"># Define the second triplet spin_system and sample. Let it be the same but with some energy shift.</span>
+<span class="n">base_spin_system_2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># S=1 triplet</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs_interaction</span><span class="p">)],</span>
+    <span class="n">energy_shift</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)</span> <span class="c1"># define energy shift</span>
+<span class="p">)</span>
+<span class="n">triplet_2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system_2</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">3e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">triplet</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">triplet_1</span><span class="p">,</span> <span class="n">triplet_2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\spin_model.py:258: UserWarning: You are creating a block-diagonal (non-interacting) composite spin system via direct sum. This does NOT represent a true multi-particle quantum system (which would require a tensor-product space). Only use this if you are modeling effectively isolated subsystems (e.g., for polarized or time-resolved EPR). For physical spin clusters (diradicals, etc.), build a single SpinSystem with explicit couplings instead.
+  concatenated_spin_system = concat_spin_systems(spin_systems)
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\spin_model.py:2042: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  width = torch.tensor(width, device=device, dtype=dtype)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">visualization</span><span class="o">.</span><span class="n">plot_energy_system</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">B_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_52_0.png" src="../../_images/examples_examples_for_documentation_example_5_52_0.png" />
+</div>
+</div>
+<p>Let’s define complex context</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We set context for the first subsystem</span>
+<span class="n">context_zfs_1</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet_1</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="c1"># We set context for the second subsystem. Let it be the same again</span>
+<span class="n">context_zfs_2</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet_2</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="c1">#---------- Let set some relaxation probabilities between subsystems.s-----------------</span>
+<span class="n">dim</span> <span class="o">=</span> <span class="mi">6</span> <span class="c1"># 6 energy levels</span>
+<span class="n">probs_echange</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">relaxation_rate</span> <span class="o">=</span> <span class="mf">1e2</span> <span class="c1"># relaxation probabiltiy value</span>
+<span class="n">probs_echange</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">relaxation_rate</span>  <span class="c1"># relaxation from Ms=-1 of high-lying triplet state to Ms=-1 of low-lying triplet state</span>
+<span class="n">probs_echange</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">relaxation_rate</span>  <span class="c1"># relaxation from Ms=0 of high-lying triplet state to Ms=0 of low-lying triplet state</span>
+<span class="n">probs_echange</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">relaxation_rate</span>  <span class="c1"># relaxation from Ms=1 of high-lying triplet state to Ms=1 of low-lying triplet state</span>
+
+<span class="n">context_exchange</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span> <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">probs_echange</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># set in the eigen basis</span>
+
+
+<span class="c1"># And create complex realaxation context</span>
+<span class="n">context_concat</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">context_zfs_1</span><span class="p">,</span> <span class="n">context_zfs_2</span><span class="p">))</span> <span class="o">+</span> <span class="n">context_exchange</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet</span><span class="p">,</span>   <span class="c1"># Now we here another sample with 6 levels</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">context_concat</span><span class="p">,</span>  <span class="c1"># Here we set mulal relaxation context</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">mul_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time_long</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2e-2</span><span class="p">,</span> <span class="n">mul_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">time_short</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="n">mul_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">spectrum_mul_long</span>  <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">)</span>
+<span class="n">spectrum_mul_short</span> <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">triplet</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">)</span>
+
+<span class="c1"># Normalize</span>
+<span class="n">normalization</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_mul_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+<span class="n">spectrum_mul_long_np</span> <span class="o">=</span> <span class="n">spectrum_mul_long</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+<span class="n">spectrum_mul_short_np</span> <span class="o">=</span> <span class="n">spectrum_mul_short</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">normalization</span>
+
+<span class="c1"># Plotting</span>
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Short timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax0</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_short</span><span class="p">,</span> <span class="n">spectrum_mul_short_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Short Scale – Multi-Context Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Long timescale</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span>
+    <span class="n">fields</span><span class="p">,</span> <span class="n">time_long</span><span class="p">,</span> <span class="n">spectrum_mul_long_np</span><span class="p">,</span>
+    <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum (Long Scale – Multi-Context Relaxation)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_5_55_0.png" src="../../_images/examples_examples_for_documentation_example_5_55_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../example_5.html" class="btn btn-neutral float-left" title="Spectra Polarization and Time Resolved" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../example_6.html" class="btn btn-neutral float-right" title="Multi-System Kinetic" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,393 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitting Spectroscopic Data &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Interactions in MarS" href="interactions/index.html" />
+    <link rel="prev" title="EPR Spectrum Construction" href="spectrum_constraction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fitting Spectroscopic Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#defining-the-parameter-space">Defining the Parameter Space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-a-spectra-simulator">Creating a Spectra Simulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#objective-functions">Objective Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fitting-with-optuna-samplers">Fitting with Optuna Samplers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optuna-dashboard">Optuna Dashboard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fitting-with-nevergrad">Fitting with Nevergrad</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#weighted-multi-spectrum-fitting">Weighted Multi-Spectrum Fitting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#d-spectral-fitting-with-spectrum2dfitter">2D Spectral Fitting with Spectrum2DFitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exploring-alternative-minima-with-spacesearcher">Exploring Alternative Minima with SpaceSearcher</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Fitting Spectroscopic Data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/contents/fitting_tutorial.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="fitting-spectroscopic-data">
+<span id="fitting-tutorial"></span><h1>Fitting Spectroscopic Data<a class="headerlink" href="#fitting-spectroscopic-data" title="Link to this heading"></a></h1>
+<p>MarS provides a flexible framework for fitting experimental spectroscopic data using modern optimization libraries such as Optuna and Nevergrad.</p>
+<section id="defining-the-parameter-space">
+<h2>Defining the Parameter Space<a class="headerlink" href="#defining-the-parameter-space" title="Link to this heading"></a></h2>
+<p>All fitting procedures start by defining which parameters are allowed to vary and within what bounds.
+This is done using the <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.optimization.fitter.ParameterSpace</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.optimization.fitter.ParamSpec</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParameterSpace</span><span class="p">,</span> <span class="n">ParamSpec</span>
+
+<span class="n">param_specs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mf">2.05</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span>  <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">1000e6</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mf">200e6</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;J&quot;</span><span class="p">,</span>  <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">5e9</span><span class="p">,</span> <span class="mf">40e9</span><span class="p">),</span>   <span class="n">default</span><span class="o">=</span><span class="mf">10e6</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;ham_strain&quot;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">2e7</span><span class="p">,</span> <span class="mf">1e8</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mf">5e7</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;lorentz&quot;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">param_space</span> <span class="o">=</span> <span class="n">ParameterSpace</span><span class="p">(</span>
+    <span class="n">specs</span><span class="o">=</span><span class="n">param_specs</span><span class="p">,</span>
+    <span class="n">fixed_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span> <span class="s2">&quot;freq&quot;</span><span class="p">:</span> <span class="mf">34e9</span><span class="p">}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-a-spectra-simulator">
+<h2>Creating a Spectra Simulator<a class="headerlink" href="#creating-a-spectra-simulator" title="Link to this heading"></a></h2>
+<p>The optimizer needs a callable that maps a parameter dictionary to a simulated spectrum:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CWSpectraSimulator</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_params</span><span class="p">):</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">create_sample</span><span class="p">(</span><span class="n">init_params</span><span class="p">)</span>  <span class="c1"># user-defined function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">StationarySpectra</span><span class="p">(</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">init_params</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">],</span>
+            <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">init_params</span><span class="p">[</span><span class="s2">&quot;temperature&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">create_sample</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>  <span class="c1"># user-defined function</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For cases where only context-dependent quantities (e.g., populations or kinetic rates) change while spin Hamiltonian parameters remain fixed, you can cache resonance data to speed up evaluation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CWSpectraSimulator</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_params</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">create_sample</span><span class="p">(</span><span class="n">init_params</span><span class="p">)</span>  <span class="c1"># user-defined function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">StationarySpectra</span><span class="p">(</span>
+            <span class="n">recompute_spin_parameters</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># resonance positions/vectors won&#39;t be recomputed</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">init_params</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">],</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">init_params</span><span class="p">[</span><span class="s2">&quot;temperature&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">create_context</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>  <span class="c1"># user-defined function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectra_creator</span><span class="o">.</span><span class="n">update_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>  <span class="c1"># update context to new polarization parameters</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra_creator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="objective-functions">
+<h2>Objective Functions<a class="headerlink" href="#objective-functions" title="Link to this heading"></a></h2>
+<p>MarS supports multiple objective functions for comparing simulated and experimental spectra.
+All objectives inherit from <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.optimization.objectives.BaseObjectiveFunction</span></code> and return a scalar loss.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization.objectives</span><span class="w"> </span><span class="kn">import</span> <span class="n">MSEObjective</span><span class="p">,</span> <span class="n">CosineSimilarity</span>
+
+<span class="n">fitter</span> <span class="o">=</span> <span class="n">SpectrumFitter</span><span class="p">(</span>
+    <span class="n">x_exp</span><span class="o">=</span><span class="n">fields_exp</span><span class="p">,</span>
+    <span class="n">y_exp</span><span class="o">=</span><span class="n">spectrum_exp</span><span class="p">,</span>
+    <span class="n">param_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+    <span class="n">spectra_simulator</span><span class="o">=</span><span class="n">CWSpectraSimulator</span><span class="p">(),</span>
+    <span class="n">norm_mode</span><span class="o">=</span><span class="s2">&quot;max&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">MSEObjective</span><span class="p">()</span>  <span class="c1"># or CosineSimilarity(), etc.</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="fitting-with-optuna-samplers">
+<h2>Fitting with Optuna Samplers<a class="headerlink" href="#fitting-with-optuna-samplers" title="Link to this heading"></a></h2>
+<p>MarS supports two optimization libraries for parameter fitting: <em>Optuna</em> and <em>Nevergrad</em>. While both are powerful, they differ in design philosophy and ease of use:</p>
+<ul class="simple">
+<li><p><strong>Optuna</strong> provides a smaller but well curated set of samplers that are easy to configure and highly effective for most spectroscopic fitting tasks.</p></li>
+<li><p><strong>Nevergrad</strong> offers a much broader collection of optimization algorithms - from gradient-free methods to evolutionary and population-based strategies,</p></li>
+</ul>
+<p>making it highly flexible but also more challenging to navigate without prior experience.</p>
+<p>Optuna samplers (e.g., <code class="docutils literal notranslate"><span class="pre">TPESampler</span></code>, <code class="docutils literal notranslate"><span class="pre">CmaEsSampler</span></code>, <code class="docutils literal notranslate"><span class="pre">NSGAIISampler</span></code>) offers several samplers suitable for different stages of optimization.</p>
+<p><strong>Tree-structured Parzen Estimator (TPE)</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">optuna</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpectrumFitter</span>
+
+<span class="n">fitter</span> <span class="o">=</span> <span class="n">SpectrumFitter</span><span class="p">(</span>
+    <span class="n">x_exp</span><span class="o">=</span><span class="n">fields_exp</span><span class="p">,</span>
+    <span class="n">y_exp</span><span class="o">=</span><span class="n">spectrum_exp</span><span class="p">,</span>
+    <span class="n">param_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+    <span class="n">spectra_simulator</span><span class="o">=</span><span class="n">CWSpectraSimulator</span><span class="p">(),</span>
+    <span class="n">norm_mode</span><span class="o">=</span><span class="s2">&quot;max&quot;</span>
+<span class="p">)</span>
+
+<span class="n">sampler_tpe</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">samplers</span><span class="o">.</span><span class="n">TPESampler</span><span class="p">(</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">multivariate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">n_startup_trials</span><span class="o">=</span><span class="mi">50</span>
+<span class="p">)</span>
+
+<span class="n">result_tpe</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span>
+    <span class="n">n_trials</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">sampler</span><span class="o">=</span><span class="n">sampler_tpe</span><span class="p">,</span>
+    <span class="n">study_name</span><span class="o">=</span><span class="s2">&quot;tpe_fit&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler_cmaes</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">samplers</span><span class="o">.</span><span class="n">CmaEsSampler</span><span class="p">(</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">n_startup_trials</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">restart_strategy</span><span class="o">=</span><span class="s2">&quot;ipop&quot;</span>
+<span class="p">)</span>
+
+<span class="n">result_cmaes</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span>
+    <span class="n">n_trials</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">sampler</span><span class="o">=</span><span class="n">sampler_cmaes</span><span class="p">,</span>
+    <span class="n">study_name</span><span class="o">=</span><span class="s2">&quot;cmaes_fit&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Bayesian Optimization with BoTorch</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler_botorch</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">integration</span><span class="o">.</span><span class="n">BoTorchSampler</span><span class="p">(</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">n_startup_trials</span><span class="o">=</span><span class="mi">20</span>
+<span class="p">)</span>
+
+<span class="n">result_botorch</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span>
+    <span class="n">n_trials</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">sampler</span><span class="o">=</span><span class="n">sampler_botorch</span><span class="p">,</span>
+    <span class="n">study_name</span><span class="o">=</span><span class="s2">&quot;botorch_fit&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>In general, MarS can accept any additional arguments and pass them to <code class="docutils literal notranslate"><span class="pre">optuna.create_study()</span></code>. For more possibilities, see the <a class="reference external" href="https://optuna.readthedocs.io/en/stable/">Optuna documentation</a>.</p>
+</section>
+<section id="optuna-dashboard">
+<h2>Optuna Dashboard<a class="headerlink" href="#optuna-dashboard" title="Link to this heading"></a></h2>
+<p>MarS supports launching the Optuna dashboard during fitting for real-time monitoring. Set <code class="docutils literal notranslate"><span class="pre">run_dashboard=True</span></code> in the <code class="docutils literal notranslate"><span class="pre">fit()</span></code> call:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">run_dashboard</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This starts a local web server (typically at <a class="reference external" href="http://localhost:8080">http://localhost:8080</a>) where you can inspect trial history, parameter importance, and convergence behavior. The dashboard requires the <code class="docutils literal notranslate"><span class="pre">optuna-dashboard</span></code> package to be installed.</p>
+</section>
+<section id="fitting-with-nevergrad">
+<h2>Fitting with Nevergrad<a class="headerlink" href="#fitting-with-nevergrad" title="Link to this heading"></a></h2>
+<p><cite>Nevergrad &lt;https://github.com/facebookresearch/nevergrad&gt;</cite> is a gradient-free optimization library. It provides a unified interface to more than 100 derivative-free optimization algorithms, including evolutionary strategies (e.g., CMA-ES), Bayesian optimization variants, particle swarm methods, and classical direct search techniques like COBYLA and Powell.</p>
+<p>Example: using the COBYLA optimizer (a constrained optimization algorithm based on linear approximations):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result_cobyla</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;ng&quot;</span><span class="p">,</span>
+    <span class="n">budget</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>          <span class="c1"># maximum number of function evaluations</span>
+    <span class="n">optimizer_name</span><span class="o">=</span><span class="s2">&quot;Cobyla&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The full list of optimizers available through Nevergrad in MarS can be inspected at runtime:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">SpectrumFitter</span><span class="o">.</span><span class="n">__available_optimizers__</span><span class="p">[</span><span class="s2">&quot;nevergrad&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>This includes popular choices such as:
+- <code class="docutils literal notranslate"><span class="pre">&quot;CMA&quot;</span></code> (Covariance Matrix Adaptation Evolution Strategy) — robust for continuous, non-convex problems,
+- <code class="docutils literal notranslate"><span class="pre">&quot;DE&quot;</span></code> (Differential Evolution) — effective for multimodal landscapes,
+- <code class="docutils literal notranslate"><span class="pre">&quot;PSO&quot;</span></code> (Particle Swarm Optimization),
+- <code class="docutils literal notranslate"><span class="pre">&quot;OnePlusOne&quot;</span></code> — simple yet surprisingly effective for low-dimensional problems,
+- and many more.</p>
+</section>
+<section id="weighted-multi-spectrum-fitting">
+<h2>Weighted Multi-Spectrum Fitting<a class="headerlink" href="#weighted-multi-spectrum-fitting" title="Link to this heading"></a></h2>
+<p>When fitting multiple spectra simultaneously, you can assign different weights to each dataset using the <code class="docutils literal notranslate"><span class="pre">weights</span></code> argument. This is useful when some spectra are noisier or more critical than others:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fitter</span> <span class="o">=</span> <span class="n">SpectrumFitter</span><span class="p">(</span>
+    <span class="n">x_exp</span><span class="o">=</span><span class="p">[</span><span class="n">fields1</span><span class="p">,</span> <span class="n">fields2</span><span class="p">],</span>
+    <span class="n">y_exp</span><span class="o">=</span><span class="p">[</span><span class="n">spectrum1</span><span class="p">,</span> <span class="n">spectrum2</span><span class="p">],</span>
+    <span class="n">param_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+    <span class="n">spectra_simulator</span><span class="o">=</span><span class="n">MultiSpectraSimulator</span><span class="p">(),</span>
+    <span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>  <span class="c1"># second spectrum contributes half as much to total loss</span>
+    <span class="n">norm_mode</span><span class="o">=</span><span class="s2">&quot;max&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="d-spectral-fitting-with-spectrum2dfitter">
+<h2>2D Spectral Fitting with Spectrum2DFitter<a class="headerlink" href="#d-spectral-fitting-with-spectrum2dfitter" title="Link to this heading"></a></h2>
+<p>For time-resolved or other 2D spectroscopic data, it is possible to use <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.optimization.fitter.Spectrum2DFitter</span></code>. It accepts two independent axes (e.g., magnetic field and time) and a 2D intensity array.</p>
+<p>The simulator must accept three arguments: <code class="docutils literal notranslate"><span class="pre">x1</span></code>, <code class="docutils literal notranslate"><span class="pre">x2</span></code>, and <code class="docutils literal notranslate"><span class="pre">params</span></code>.</p>
+<p>Example setup:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TRSpectraSimulator</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="c1"># fields: 1D tensor (magnetic field axis)</span>
+        <span class="c1"># times: 1D tensor (time axis)</span>
+        <span class="c1"># returns: 2D tensor of shape (len(times), len(fields))</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">create_sample</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">create_context</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">tr_creator</span> <span class="o">=</span> <span class="n">TimeResolvedSpectra</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">],</span>
+            <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;temperature&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">tr_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">times</span><span class="p">)</span>
+
+<span class="n">fitter_2d</span> <span class="o">=</span> <span class="n">Spectrum2DFitter</span><span class="p">(</span>
+    <span class="n">x1_exp</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span>      <span class="c1"># magnetic field (T)</span>
+    <span class="n">x2_exp</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>       <span class="c1"># time (s)</span>
+    <span class="n">y_exp</span><span class="o">=</span><span class="n">spectrum_2d</span><span class="p">,</span>  <span class="c1"># 2D experimental data</span>
+    <span class="n">param_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+    <span class="n">spectra_simulator</span><span class="o">=</span><span class="n">TRSpectraSimulator</span><span class="p">(),</span>
+    <span class="n">norm_mode</span><span class="o">=</span><span class="s2">&quot;integral&quot;</span>
+<span class="p">)</span>
+
+<span class="n">result_2d</span> <span class="o">=</span> <span class="n">fitter_2d</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Like its 1D counterpart, <code class="xref py py-class docutils literal notranslate"><span class="pre">Spectrum2DFitter</span></code> supports multi-dataset fitting (list inputs), custom objectives, and weighted losses.</p>
+</section>
+<section id="exploring-alternative-minima-with-spacesearcher">
+<h2>Exploring Alternative Minima with SpaceSearcher<a class="headerlink" href="#exploring-alternative-minima-with-spacesearcher" title="Link to this heading"></a></h2>
+<p>In complex landscapes, multiple parameter sets may yield similarly good fits. The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.optimization.fitter.SpaceSearcher</span></code> class identifies such alternatives that are distant from the best solution in parameter space.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpaceSearcher</span>
+
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">SpaceSearcher</span><span class="p">(</span>
+    <span class="n">loss_rel_tol</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>      <span class="c1"># accept trials with loss ≤ 1.2 × best_loss</span>
+    <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>               <span class="c1"># return up to 5 alternatives</span>
+    <span class="n">distance_fraction</span><span class="o">=</span><span class="mf">0.2</span>  <span class="c1"># require minimum scaled Euclidean distance</span>
+<span class="p">)</span>
+
+<span class="n">alternatives</span> <span class="o">=</span> <span class="n">searcher</span><span class="p">(</span><span class="n">fit_result</span><span class="o">=</span><span class="n">result_tpe</span><span class="p">,</span> <span class="n">param_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="s2">&quot;J&quot;</span><span class="p">])</span>
+<span class="n">print_trial_results</span><span class="p">(</span><span class="n">alternatives</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">SpaceSearcher</span></code> works with results from both Optuna and Nevergrad backends and scales parameters before computing distances to ensure fair comparison across units.</p>
+<p>For convenience, use <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.optimization.fitter.print_trial_results()</span></code> to display results in a readable format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization</span><span class="w"> </span><span class="kn">import</span> <span class="n">print_trial_results</span>
+<span class="n">print_trial_results</span><span class="p">(</span><span class="n">alternatives</span><span class="p">,</span> <span class="n">max_params</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spectrum_constraction.html" class="btn btn-neutral float-left" title="EPR Spectrum Construction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="interactions/index.html" class="btn btn-neutral float-right" title="Interactions in MarS" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

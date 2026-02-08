@@ -1,0 +1,1176 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mars: Electron Paramagnetic Resonacne simulation library &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Polarized Radiation EPR Simulation" href="../example_2.html" />
+    <link rel="prev" title="Continuous-Wave EPR Simulation" href="../example_1.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../example_1.html">Continuous-Wave EPR Simulation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Mars: Electron Paramagnetic Resonacne simulation library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.-Fundamental-Concepts">1. Fundamental Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.1-Spin-Systems-and-Interactions">1.1 Spin Systems and Interactions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#1.2-Basic-Interaction-Types">1.2 Basic Interaction Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#2.-Building-a-Spin-System">2. Building a Spin System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#2.1-Defining-Particles-and-Interactions">2.1 Defining Particles and Interactions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.2-Creating-a-Sample">2.2 Creating a Sample</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#2.3-Computing-Spectra">2.3 Computing Spectra</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#3.-Additional-settings">3. Additional settings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#3.1-Save-Created-data">3.1 Save Created data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.2-Dtype-and-Device-Settings-in-MarS">3.2 Dtype and Device Settings in MarS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.3-Batch-Computing-Support">3.3 Batch Computing Support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.4.-Different-Mesh-Configuration">3.4. Different Mesh Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.5.-Output-format">3.5. Output format</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#4.-Spectra-Creation-Examples">4. Spectra Creation Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../example_1.html">Continuous-Wave EPR Simulation</a></li>
+      <li class="breadcrumb-item active">Mars: Electron Paramagnetic Resonacne simulation library</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/examples_for_documentation/example_1.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Mars:-Electron-Paramagnetic-Resonacne-simulation-library">
+<h1>Mars: Electron Paramagnetic Resonacne simulation library<a class="headerlink" href="#Mars:-Electron-Paramagnetic-Resonacne-simulation-library" title="Link to this heading"></a></h1>
+<p>Mars is a powerful Python library built on PyTorch for simulating spin systems and calculating electron paramagnetic resonance (EPR) spectra.</p>
+<p>This notebook provides a comprehensive guide to using Mars for modeling stationary EPR spectra of various spin systems, from simple electron pairs to complex multi-spin systems with nuclei.</p>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">For any questions, please contact Arkady Samsonenko via:</div>
+<div class="line">Telegram: &#64;Arkady_Samsonenko</div>
+<div class="line">Email: a.samsonenko.tomo.nsc.ru</div>
+<div class="line">The last notebook update: 2026.02.07</div>
+<div class="line">Please, if you want to download this notebook to your computer visit <a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples">https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples</a></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">mars</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">spectra_manager</span><span class="p">,</span> <span class="n">mesher</span><span class="p">,</span> <span class="n">save_procedures</span><span class="p">,</span> <span class="n">constants</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="1.-Fundamental-Concepts">
+<h1>1. Fundamental Concepts<a class="headerlink" href="#1.-Fundamental-Concepts" title="Link to this heading"></a></h1>
+<section id="1.1-Spin-Systems-and-Interactions">
+<h2>1.1 Spin Systems and Interactions<a class="headerlink" href="#1.1-Spin-Systems-and-Interactions" title="Link to this heading"></a></h2>
+<p>In quantum mechanincs, spin systems consist of particles (electrons, nuclei) characterized by their spin quantum numbers and interactions between them. Mars represents these systems through several core components:</p>
+<div class="line-block">
+<div class="line"><strong>Particles</strong>: Electrons and nuclei with defined spin values</div>
+<div class="line"><strong>Interactions</strong>: Couplings between particles (Zeeman, dipolar, exchange, hyperfine)</div>
+<div class="line"><strong>Tensor propertie</strong>s: Physical properties described by tensors (g-tensors, D-tensors)</div>
+<div class="line"><strong>Sample environment</strong>: Orientation distributions, broadening parameters</div>
+</div>
+<p><em>The computational workflow in Mars follows these steps:</em></p>
+<div class="line-block">
+<div class="line">-Define particles (electrons, nuclei)</div>
+<div class="line">-Create interactions between particles</div>
+<div class="line">-Assemble the spin system</div>
+<div class="line">-Configure the sample environment</div>
+<div class="line">-Calculate and visualize spectra</div>
+</div>
+</section>
+<section id="1.2-Basic-Interaction-Types">
+<h2>1.2 Basic Interaction Types<a class="headerlink" href="#1.2-Basic-Interaction-Types" title="Link to this heading"></a></h2>
+<p>Mars supports two primary interaction classes:</p>
+<ol class="arabic">
+<li><div class="line-block">
+<div class="line"><strong>Interaction</strong>: General tensor interaction with principal values that can be:</div>
+<div class="line">Isotropic (single value)</div>
+<div class="line">Axial (two values: perpendicular and parallel)</div>
+<div class="line">Orthorhombic (three values for x, y, z directions)</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>DEInteraction</strong>: Specialized for zero-field splitting interactions, parameterized by D and E values:</div>
+<div class="line">D: Axial component</div>
+<div class="line">E: Rhombic component</div>
+</div>
+</li>
+</ol>
+<div class="line-block">
+<div class="line">For any interaction it is possible to set:   Frame to ratate this interaction via 3 euler angles or 3 x 3 rotation matrix</div>
+<div class="line">Strains, which define the broadaning of a spectra due distribution of Spin Hamiltonian parameters</div>
+</div>
+<p>Let’s create interaction between two electrons</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">exchange_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span>
+    <span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Example: Creating a dipolar interaction in D-E notation</span>
+<span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">10e6</span><span class="p">])</span>  <span class="c1"># D=100 MHz, E=10 MHz</span>
+
+<span class="c1"># Interactions can be combined</span>
+<span class="n">total_interaction</span> <span class="o">=</span> <span class="n">exchange_interaction</span> <span class="o">+</span> <span class="n">dipolar_interaction</span>
+</pre></div>
+</div>
+</div>
+<p>In mars the many objects can be printed in human reliable view. Let’s try to print tot objecty</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">total_interaction</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Principal values: [3.00e+10, 2.99e+10, 3.00e+10]
+Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+Strain: None
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="2.-Building-a-Spin-System">
+<h1>2. Building a Spin System<a class="headerlink" href="#2.-Building-a-Spin-System" title="Link to this heading"></a></h1>
+<section id="2.1-Defining-Particles-and-Interactions">
+<h2>2.1 Defining Particles and Interactions<a class="headerlink" href="#2.1-Defining-Particles-and-Interactions" title="Link to this heading"></a></h2>
+<p>To construct a spin system, we first define the particles and their interactions. Let’s create a simple system of two coupled electrons:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define g-tensor for electrons (orthorhombic case)</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.06</span><span class="p">))</span>
+
+<span class="c1"># Create the spin system with two electrons</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>  <span class="c1"># Two spin-1/2 electrons</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># g-tensor for each electron with the same g-tensors</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">total_interaction</span><span class="p">)]</span>  <span class="c1"># Interaction between electrons 0 and 1</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>electron_electron takes the position of two connecteded electrons. Also it cab be Zero Field splitting. In this case idx_1 == idx_2</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">base_spin_system</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+SPIN SYSTEM SUMMARY
+============================================================
+
+PARTICLES:
+--------------------
+Electrons (2):
+  e0: S=0.5
+Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+  e1: S=0.5
+Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+Nuclei: None
+
+SYSTEM PROPERTIES:
+--------------------
+Hilbert space dimension: 4
+Configuration shape: ()
+
+INTERACTIONS (1 total):
+------------------------------
+
+Electron-Electron (1):
+  1. e0 ↔ e1:
+      Principal values: [3.00e+10, 2.99e+10, 3.00e+10]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+============================================================
+</pre></div></div>
+</div>
+</section>
+<section id="2.2-Creating-a-Sample">
+<h2>2.2 Creating a Sample<a class="headerlink" href="#2.2-Creating-a-Sample" title="Link to this heading"></a></h2>
+<p>After defining the spin system, we create a sample that includes additional physical parameters:</p>
+<ul class="simple">
+<li><p>hamiltonian strain. It can be anisotropic with 3 angles</p></li>
+<li><p>gauss</p></li>
+<li><p>lorentz</p></li>
+</ul>
+<p>By default sample uses powder trinagle mesh</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">5e7</span><span class="p">,</span>  <span class="c1"># Hamiltonian strain (broadening) in Hz</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>    <span class="c1"># Gaussian broadening in Tesla</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span>   <span class="c1"># Lorentzian broadening in Tesla</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+SPIN SYSTEM SUMMARY
+============================================================
+
+PARTICLES:
+--------------------
+Electrons (2):
+  e0: S=0.5
+Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+  e1: S=0.5
+Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+Nuclei: None
+
+SYSTEM PROPERTIES:
+--------------------
+Hilbert space dimension: 4
+Configuration shape: ()
+
+INTERACTIONS (1 total):
+------------------------------
+
+Electron-Electron (1):
+  1. e0 ↔ e1:
+      Principal values: [3.00e+10, 2.99e+10, 3.00e+10]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+============================================================
+
+============================================================
+GENERAL INFO:
+============================================================
+lorentz: 0.00100 T
+gauss: 0.00100 T
+ham_str: [&#39;5.0000e+07&#39;, &#39;5.0000e+07&#39;, &#39;5.0000e+07&#39;] Hz
+</pre></div></div>
+</div>
+</section>
+<section id="2.3-Computing-Spectra">
+<h2>2.3 Computing Spectra<a class="headerlink" href="#2.3-Computing-Spectra" title="Link to this heading"></a></h2>
+<p>With the sample defined, we can now compute EPR spectra at a specific frequency:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span>
+<span class="p">)</span>
+
+<span class="c1"># Define magnetic field range for simulation</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+
+<span class="c1"># Calculate spectrum</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+
+<span class="c1"># Plot the result</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of Two Coupled Electrons&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_15_0.png" src="../../_images/examples_examples_for_documentation_example_1_15_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="3.-Additional-settings">
+<h1>3. Additional settings<a class="headerlink" href="#3.-Additional-settings" title="Link to this heading"></a></h1>
+<p>MarS supports some additional possibilities that can be usefull for many scenario</p>
+<section id="3.1-Save-Created-data">
+<h2>3.1 Save Created data<a class="headerlink" href="#3.1-Save-Created-data" title="Link to this heading"></a></h2>
+<div class="line-block">
+<div class="line">For statinary spectra for the many cases Mars supprots save sample and experemental parameters at different datatypes including .mat to open in EasySpin</div>
+</div>
+<p>Let’s save the spectra and check that spectra is similar to created in easyspin</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s save the sample parameters and experemental parameters</span>
+<span class="n">mars</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;.\example.mat&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">spectra_creator</span><span class="o">=</span><span class="n">spectra_creator</span><span class="p">,</span> <span class="n">field</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="n">format_type</span><span class="o">=</span><span class="s2">&quot;easyspin&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Let&#39;s save the spectra itself</span>
+<span class="n">data_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="n">fields</span><span class="p">,</span> <span class="s2">&quot;spec&quot;</span><span class="p">:</span> <span class="n">spectrum</span><span class="p">})</span>
+<span class="n">data_frame</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;.\qulity_spectra.csv&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>MarS supports print of a lot of different objects: interactions, spin systems, samples</p>
+</section>
+<section id="3.2-Dtype-and-Device-Settings-in-MarS">
+<h2>3.2 Dtype and Device Settings in MarS<a class="headerlink" href="#3.2-Dtype-and-Device-Settings-in-MarS" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Device Support:</strong> MarS is built on the PyTorch library and therefore supports flexible device configuration-most commonly cpu or cuda. By default, computations run on the CPU. However, you can explicitly set the device to cuda to accelerate computations, especially for time-resolved simulations, where GPU acceleration can provide speedups of 100–1000×.</p></li>
+<li><p><strong>Floating-Point Precision:</strong> By default, MarS uses torch.float64 (double precision) for floating-point calculations. This is essential for accurately modeling systems with strong exchange interactions (e.g., &gt;10 cm⁻¹) or large zero-field splitting parameters (D and E) for magnetic ions. However, for systems with weaker interactions, double precision is often unnecessary. In such cases, using torch.float32 (single precision) is sufficient and can improve performance and memory efficiency.</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span>  <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="c1"># set device cuda if it is possible</span>
+<span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Best Practice:</strong></p>
+<p>For clarity and consistency, we recommend specifying both the device and dtype at the beginning of your workflow. That said, like any standard torch.nn.Module, MarS objects support dynamic changes via the .to() method, allowing you to move tensors and parameters between devices or dtypes as needed.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of Two Coupled Electrons&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_27_0.png" src="../../_images/examples_examples_for_documentation_example_1_27_0.png" />
+</div>
+</div>
+</section>
+<section id="3.3-Batch-Computing-Support">
+<h2>3.3 Batch Computing Support<a class="headerlink" href="#3.3-Batch-Computing-Support" title="Link to this heading"></a></h2>
+<p>MarS supports batched tensor inputs, enabling efficient parallel computation across multiple datasets.</p>
+<p>This capability accelerates simulations when processing large collections of similar configurations</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.06</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.07</span><span class="p">,</span> <span class="mf">2.09</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># Two g-tensors set</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">J</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)],</span> <span class="p">[</span><span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)]])</span>
+<span class="n">exchange_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">DE</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">10e6</span><span class="p">],</span> <span class="p">[</span><span class="mf">200e6</span><span class="p">,</span> <span class="mf">50e6</span><span class="p">]])</span> <span class="c1"># D=100 MHz, E=10 MHz and D=200 MHz, E=50 MHz</span>
+<span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">(</span><span class="n">DE</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">total_interaction</span> <span class="o">=</span> <span class="n">exchange_interaction</span> <span class="o">+</span> <span class="n">dipolar_interaction</span>
+
+<span class="c1"># Create the spin system with two electrons</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>  <span class="c1"># Two spin-1/2 electrons</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># g-tensor for each electron with the same g-tensors</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">total_interaction</span><span class="p">)],</span>  <span class="c1"># Interaction between electrons 0 and 1</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">gauss</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">])</span> <span class="c1"># Gaussina broadening in Tesla: two values</span>
+<span class="n">lorentz</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">])</span>  <span class="c1"># Lorentzian broadening in Tesla: two values</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span> <span class="n">ham_strain</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">5e7</span><span class="p">,</span> <span class="mf">5e7</span><span class="p">,</span> <span class="mf">5e7</span><span class="p">],</span> <span class="p">[</span><span class="mf">5e7</span><span class="p">,</span> <span class="mf">5e7</span><span class="p">,</span> <span class="mf">5e7</span><span class="p">]]),</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="n">lorentz</span><span class="p">,</span> <span class="n">gauss</span><span class="o">=</span><span class="n">gauss</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>    <span class="c1"># Frequency in Hz</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">fields</span><span class="p">,</span> <span class="n">fields</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Also for batched data the separate representation is determined</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+SPIN SYSTEM SUMMARY
+============================================================
+
+PARTICLES:
+--------------------
+Electrons (2):
+  e0: S=0.5
+BATCHED (batch_size=2) - showing first instance:
+      Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+  e1: S=0.5
+BATCHED (batch_size=2) - showing first instance:
+      Principal values: [2.0200, 2.0400, 2.0600]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+Nuclei: None
+
+SYSTEM PROPERTIES:
+--------------------
+Hilbert space dimension: 4
+Configuration shape: (2,)
+
+INTERACTIONS (1 total):
+------------------------------
+
+Electron-Electron (1):
+  1. e0 ↔ e1:
+      BATCHED (batch_size=2) - showing first instance:
+      Principal values: [3.00e+10, 2.99e+10, 3.00e+10]
+      Frame (Euler angles): [α=0.000, β=0.000, γ=0.000] rad
+      Strain: None
+
+============================================================
+
+============================================================
+GENERAL INFO:
+============================================================
+BATCHED (batch_size=2) - showing first instance:
+lorentz: 0.00100 T
+gauss: 0.00100 T
+ham_str (dim=torch.Size([3])): [&#39;5.0000e+07&#39;, &#39;5.0000e+07&#39;, &#39;5.0000e+07&#39;] Hz
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s plot two spectra form a batch</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;g-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of Two Coupled Electrons&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_31_0.png" src="../../_images/examples_examples_for_documentation_example_1_31_0.png" />
+</div>
+</div>
+</section>
+<section id="3.4.-Different-Mesh-Configuration">
+<h2>3.4. Different Mesh Configuration<a class="headerlink" href="#3.4.-Different-Mesh-Configuration" title="Link to this heading"></a></h2>
+<p>By default, MarS uses the DelaunayMesh mesh is a spherical mesh with neighborhood-based interpolation for powder samples. However, depending on the sample’s symmetry and structure, a different mesh type may be more appropriate:</p>
+<p>-mesher.DelaunayMesh: Designed for powder. It supports the phi_limits parameter to restrict the azimuthal angle range, which is useful when the sample -exhibits rotational symmetry.</p>
+<p>-mesher.AxialMeshNeighbour: Designed for systems with axial (cylindrical) symmetry, where physical properties vary only with the polar angle and are invariant under rotation around a fixed axis.</p>
+<p>-mesher.CrystalMesh: Designed for single-crystal or polycrystalline samples with defined orientations. In this case detection will be considered in x-axis direction</p>
+<p>Let’s return to out example with two spins and consider user-cases for this system and define function to work with mesh in more convinient way</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tp</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_spectrum_with_a_given_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">tp</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">mesher</span><span class="o">.</span><span class="n">BaseMesh</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param: mesh: the user-defined mesh to consider what types of mesh can be defined</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.06</span><span class="p">))</span>
+
+    <span class="n">exchange_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span>
+        <span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">10e6</span><span class="p">])</span>
+    <span class="n">total_interaction</span> <span class="o">=</span> <span class="n">exchange_interaction</span> <span class="o">+</span> <span class="n">dipolar_interaction</span>
+
+    <span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+        <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+        <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>
+        <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">total_interaction</span><span class="p">)]</span>
+    <span class="p">)</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+        <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+        <span class="n">ham_strain</span><span class="o">=</span><span class="mf">5e7</span><span class="p">,</span>
+        <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+        <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+        <span class="n">mesh</span><span class="o">=</span><span class="n">mesh</span><span class="p">,</span>  <span class="c1"># add mesh here</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+    <span class="p">)</span>
+
+    <span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s consider and plot samples with different meshesspectrum_crystal</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mesh_default</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_default</span> <span class="o">=</span> <span class="n">create_spectrum_with_a_given_mesh</span><span class="p">(</span><span class="n">mesh_default</span><span class="p">)</span>
+
+<span class="n">mesh_powder_as_tuple_poor</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">mesh_powder_poor</span> <span class="o">=</span> <span class="n">mesher</span><span class="o">.</span><span class="n">DelaunayMesh</span><span class="p">(</span><span class="n">phi_limits</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">),</span>
+                                    <span class="n">initial_grid_frequency</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                                    <span class="n">interpolate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="c1"># This is the same as mesh_powder_as_tuple_poor = (20, 20)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_powder_poor</span> <span class="o">=</span> <span class="n">create_spectrum_with_a_given_mesh</span><span class="p">(</span><span class="n">mesh_powder_as_tuple_poor</span><span class="p">)</span>
+
+<span class="n">mesh_powder_as_tuple_normal</span> <span class="o">=</span> <span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">mesh_powder_normal</span> <span class="o">=</span> <span class="n">mesher</span><span class="o">.</span><span class="n">DelaunayMesh</span><span class="p">(</span><span class="n">phi_limits</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">),</span>
+                                    <span class="n">initial_grid_frequency</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+                                    <span class="n">interpolate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># This is the same as mesh_powder_as_tuple_poor = (40, 40)</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_powder_normal</span> <span class="o">=</span> <span class="n">create_spectrum_with_a_given_mesh</span><span class="p">(</span><span class="n">mesh_powder_as_tuple_normal</span><span class="p">)</span>
+
+
+<span class="n">mesh_crystal</span> <span class="o">=</span> <span class="n">mesher</span><span class="o">.</span><span class="n">CrystalMesh</span><span class="p">(</span><span class="n">euler_angles</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="c1"># CrystalMesh takes 3 euler angles (or set) of euler angles</span>
+<span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_crystal</span> <span class="o">=</span> <span class="n">create_spectrum_with_a_given_mesh</span><span class="p">(</span><span class="n">mesh_crystal</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_default</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powder default&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_powder_poor</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powder poor mesh&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_powder_normal</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powder normal mesh&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">spectrum_crystal</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Single Crystal&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Absorption (a.u.)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Two-Spin Spectrum Under Different Mesh&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_36_0.png" src="../../_images/examples_examples_for_documentation_example_1_36_0.png" />
+</div>
+</div>
+<p>As can be seen from the plot, the poor quality mesh produced poor results, which was expected.</p>
+</section>
+<section id="3.5.-Output-format">
+<h2>3.5. Output format<a class="headerlink" href="#3.5.-Output-format" title="Link to this heading"></a></h2>
+<p>Mars provides some options for spectrum calculation and representation. The output_mode parameter in ‘Spectra’ determines how transition contributions are organized in the final result. This feature is particularly valuable for analyzing complex spin systems where individual transitions</p>
+<p>The two primary output modes are:</p>
+<p><strong>“total”</strong>: Returns a conventional EPR spectrum summed over all allowed transitions (default behavior).</p>
+<p><strong>“transitions”</strong>: Returns specta of individual transitions, and level indices of individual transitions (lvl_down, lvl_up). When using output_mode=”transitions”, each slice of the spectrum_transitions tensor corresponds to the spectral contribution of a specific transition between energy levels lvl_down[i] and lvl_up[i].</p>
+<p>Let’s consider the example of two spins and consider the usage of output modes</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Reuse the base spin system and sample from Section 2</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.06</span><span class="p">))</span>
+<span class="n">exchange_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">))</span>
+<span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">10e6</span><span class="p">])</span>
+<span class="n">total_interaction</span> <span class="o">=</span> <span class="n">exchange_interaction</span> <span class="o">+</span> <span class="n">dipolar_interaction</span>
+
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">total_interaction</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">5e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># Compute spectrum in &quot;total&quot; mode. This is default mode which was used in all previous examples</span>
+<span class="n">spectra_creator_total</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">output_mode</span><span class="o">=</span><span class="s2">&quot;total&quot;</span>
+<span class="p">)</span>
+<span class="n">spectrum_total</span> <span class="o">=</span> <span class="n">spectra_creator_total</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+
+<span class="c1"># Compute spectrum in &quot;transitions&quot; mode</span>
+<span class="n">spectra_creator_trans</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">output_mode</span><span class="o">=</span><span class="s2">&quot;transitions&quot;</span>
+<span class="p">)</span>
+
+
+<span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">,</span> <span class="n">spectrum_trans</span> <span class="o">=</span> <span class="n">spectra_creator_trans</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+<span class="c1"># lvl_down: indices of lower energy levels involved in each transition,</span>
+<span class="c1"># lvl_up: indices of upper energy levels,</span>
+<span class="c1"># spectrum: a tensor where each slice corresponds to the spectral contribution of a single transition.</span>
+
+<span class="c1"># Select transitions</span>
+<span class="c1"># Transition indexing follows the eigenbasis ordering of the Hamiltonian</span>
+<span class="n">trans_0</span> <span class="o">=</span> <span class="n">spectrum_trans</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># transition from lvl_down[0] → lvl_up[0]</span>
+<span class="n">trans_1</span> <span class="o">=</span> <span class="n">spectrum_trans</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># transition from lvl_down[1] → lvl_up[1]</span>
+
+<span class="c1"># Verify that the sum over transitions equals the total spectrum</span>
+<span class="n">spectrum_reconstructed</span> <span class="o">=</span> <span class="n">spectrum_trans</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s plot it</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum_total</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s2">&quot;k-&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Total Spectrum&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">trans_0</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s2">&quot;b--&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Transition </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">lvl_down</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">lvl_up</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">trans_1</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s2">&quot;r--&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Transition </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">lvl_down</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">lvl_up</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum_reconstructed</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s2">&quot;go&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Sum of Transitions&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity (a.u.)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Output Format: Total vs. Individual Transitions&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_41_0.png" src="../../_images/examples_examples_for_documentation_example_1_41_0.png" />
+</div>
+</div>
+<p>MarS also includes several functions for generating specialized plots. Let’s plot the transition levels of the sample. This plot will produce the zero-orientation plot.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mars</span><span class="o">.</span><span class="n">visualization</span><span class="o">.</span><span class="n">plot_energy_system</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">B_range</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">),</span>
+    <span class="n">levels</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># plot all levels</span>
+    <span class="n">energy_units</span> <span class="o">=</span> <span class="s2">&quot;cm-1&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_43_0.png" src="../../_images/examples_examples_for_documentation_example_1_43_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="4.-Spectra-Creation-Examples">
+<h1>4. Spectra Creation Examples<a class="headerlink" href="#4.-Spectra-Creation-Examples" title="Link to this heading"></a></h1>
+<p>This section demonstrates practical applications of the Mars library for simulating EPR spectra of different spin systems.</p>
+<p>This example models a system of two dipolar-coupled electron spins (S = 1/2), where each electron interacts with a separate nitrogen-14 nucleus (I = 1) through anisotropic hyperfine coupling. Such systems are common in biradicals or coupled transition metal complexes with nitrogen ligands.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span>  <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="c1"># set device cuda if it is possible</span>
+
+<span class="c1"># Define g-tensor for electrons</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.06</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Define hyperfine coupling tensor for 14N nuclei (I=1)</span>
+<span class="c1"># Values in Hz: Ax = 20 MHz, Ay = 20 MHz, Az = 70 MHz</span>
+<span class="n">A_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">20e6</span><span class="p">,</span> <span class="mf">20e6</span><span class="p">,</span> <span class="mf">70e6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 20 MHz, 20 MHz, 70 MHz</span>
+
+<span class="c1"># Define Dipolar interaction</span>
+<span class="n">dipolar_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">100e6</span><span class="p">,</span> <span class="mf">10e6</span><span class="p">])</span>  <span class="c1"># D=100 MHz, E=10 MHz</span>
+
+<span class="c1"># Create the spin system with two electrons</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>     <span class="c1"># Two spin-1/2 electrons</span>
+    <span class="n">nuclei</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;14N&quot;</span><span class="p">,</span> <span class="s2">&quot;14N&quot;</span><span class="p">],</span>    <span class="c1"># Two nitrogen-14 nuclei (I=1)</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">,</span> <span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># Identical g-tensors for both electrons</span>
+    <span class="n">electron_nuclei</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">A_interaction</span><span class="p">),</span>  <span class="c1"># First electron coupled to first nitrogen</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">A_interaction</span><span class="p">)</span>   <span class="c1"># Second electron coupled to second nitrogen</span>
+    <span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dipolar_interaction</span><span class="p">)</span>  <span class="c1"># Dipolar coupling between electrons</span>
+    <span class="p">],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">1e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+<span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+<span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of Two Coupled Electrons with Hyperfine Interactions to Nitrogen Nuclei&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_46_0.png" src="../../_images/examples_examples_for_documentation_example_1_46_0.png" />
+</div>
+</div>
+<p>This example simulates the EPR spectrum of a manganese(II) ion (S = 5/2, I = 5/2 for ⁵⁵Mn) at liquid helium temperature (4 K). Mn(II) often shows complex spectra due to the combination of electron Zeeman, zero-field splitting, and hyperfine interactions.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span>  <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="c1"># set device cuda if it is possible</span>
+
+<span class="c1"># Define anisotropic g-tensor for Mn(II) ion</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.04</span><span class="p">,</span> <span class="mf">2.12</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Define isotropic hyperfine coupling for ⁵⁵Mn nucleus (I = 5/2)</span>
+<span class="c1"># Magnitude is 300 MHz</span>
+<span class="n">A_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mi">300</span><span class="o">*</span><span class="mf">1e6</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># 300 MHz, isotropic</span>
+
+<span class="c1"># Define Zero Field splitting</span>
+<span class="n">zero_field_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">])</span>  <span class="c1"># D=500 MHz, E=100 MHz</span>
+
+<span class="c1"># Create the spin system with two electrons</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>  <span class="c1"># Single electron with S = 5/2</span>
+    <span class="n">nuclei</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;55Mn&quot;</span><span class="p">],</span> <span class="c1"># ⁵⁵Mn nucleus with I = 5/2</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># g-tensor for the electron</span>
+    <span class="n">electron_nuclei</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">A_interaction</span><span class="p">)],</span> <span class="c1"># Hyperfine coupling between electron and nucleus</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zero_field_interaction</span><span class="p">)]</span>  <span class="c1"># Zero-Field parameter</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">5e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">mesh</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">),</span> <span class="c1"># Here we add some interpolation to get better spectrum</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+<span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>   <span class="c1"># Set the temperature equel to 4 K</span>
+<span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Simulated EPR Spectrum of Mn Ion&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_49_0.png" src="../../_images/examples_examples_for_documentation_example_1_49_0.png" />
+</div>
+</div>
+<p>This example demonstrates the simulation of two exchange-coupled S = 1 ions where one ion has a rotated g-tensor relative to the other ion g-tensor. Exchange coupling between high-spin ions is common in binuclear transition metal complexes. The rotation of one ion’s g-tensor simulates a scenario where the local symmetry axes of the two metal centers are misaligned.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span>  <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="c1"># set device cuda if it is possible</span>
+
+<span class="c1"># Define g-tensor for electrons</span>
+<span class="c1">#First ion: Standard orientation with orthorhombic g-tensor</span>
+<span class="n">g_tensor_first</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.07</span><span class="p">,</span> <span class="mf">2.20</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Second ion: Same principal values but rotated by Euler angles (α=0.0, β=0.1, γ=0.7 radians)</span>
+<span class="c1"># This simulates a physical rotation of the ion&#39;s local coordinate system</span>
+<span class="n">g_tensor_second</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.07</span><span class="p">,</span> <span class="mf">2.20</span><span class="p">),</span> <span class="n">frame</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+
+<span class="c1"># Define isotropic exchange interaction between the two ions</span>
+<span class="n">exachange_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">))</span>  <span class="c1"># 1 cm^-1</span>
+
+<span class="c1"># Create the spin system with two electrons</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># Two spin-1 systems</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor_first</span><span class="p">,</span> <span class="n">g_tensor_second</span><span class="p">],</span>  <span class="c1"># Different orientations for each ion</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">exachange_interaction</span><span class="p">)]</span>  <span class="c1"># Exchange coupling between ion 0 and ion 1</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">7e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+<span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>   <span class="c1"># Set the temperature equel to 4 K</span>
+<span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Exchange-Coupled High-Spin Ions with Rotated g-Tensors&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_52_0.png" src="../../_images/examples_examples_for_documentation_example_1_52_0.png" />
+</div>
+</div>
+<p>Spectral broadening in EPR spectroscopy arises from various mechanisms, with Hamiltonian parameters strain being particularly important for disordered systems like powders, frozen solutions, or amorphous solids. Hamiltonian parameters strain refers to the distribution of spin Hamiltonian parameters (g-values, zero-field splitting parameters, hyperfine couplings) due to structural variations in the sample environment.</p>
+<p>This example demonstrates how to model a high-spin system (S = 3/2) with explicit strain distributions in its zero-field splitting parameters.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span>  <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="c1"># set device cuda if it is possible</span>
+
+<span class="c1"># Define g-tensor for the S=3/2 ion</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">((</span><span class="mf">2.02</span><span class="p">,</span> <span class="mf">2.07</span><span class="p">,</span> <span class="mf">2.10</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Define zero-field splitting interaction with explicit strain parameters</span>
+<span class="c1"># D = 500 MHz (axial parameter), E = 100 MHz (rhombic parameter)</span>
+<span class="c1"># Strain values: 50 MHz for D-parameter distribution, 10 MHz for E-parameter distribution</span>
+<span class="n">zero_field_interaction</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">],</span> <span class="n">strain</span><span class="o">=</span><span class="p">[</span><span class="mf">200e6</span><span class="p">,</span> <span class="mf">40e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+
+<span class="c1"># Create the spin system with one electron</span>
+<span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>  <span class="c1"># Two spins of 1.0</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># g-tensor for an electron spin</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zero_field_interaction</span><span class="p">)],</span>  <span class="c1"># Zero-field splitting interaction</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">0e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.000</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+    <span class="n">mesh</span> <span class="o">=</span> <span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+<span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>   <span class="c1"># Set the temperature equel to 4 K</span>
+<span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Strain Broadening Example&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_1_55_0.png" src="../../_images/examples_examples_for_documentation_example_1_55_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mars</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;.\example.mat&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">spectra_creator</span><span class="o">=</span><span class="n">spectra_creator</span><span class="p">,</span> <span class="n">field</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="n">format_type</span><span class="o">=</span><span class="s2">&quot;easyspin&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Let&#39;s save the spectra itself</span>
+<span class="n">data_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="n">fields</span><span class="p">,</span> <span class="s2">&quot;spec&quot;</span><span class="p">:</span> <span class="n">spectrum</span><span class="p">})</span>
+<span class="n">data_frame</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;.\qulity_spectra.csv&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../example_1.html" class="btn btn-neutral float-left" title="Continuous-Wave EPR Simulation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../example_2.html" class="btn btn-neutral float-right" title="Polarized Radiation EPR Simulation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

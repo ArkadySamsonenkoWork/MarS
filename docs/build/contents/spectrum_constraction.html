@@ -1,0 +1,247 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPR Spectrum Construction &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fitting Spectroscopic Data" href="fitting_tutorial.html" />
+    <link rel="prev" title="Sample Representation" href="sample.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Representation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">EPR Spectrum Construction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/contents/spectrum_constraction.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="epr-spectrum-construction">
+<span id="id1"></span><h1>EPR Spectrum Construction<a class="headerlink" href="#epr-spectrum-construction" title="Link to this heading"></a></h1>
+<a class="reference internal image-reference" href="../_images/mars_structure.png"><img alt="addition context" class="align-center" src="../_images/mars_structure.png" style="width: 100%;" />
+</a>
+<p>The construction of an EPR spectrum in MarS follows a sequence of computational steps:</p>
+<ol class="arabic">
+<li><p><strong>Define spin particles</strong>
+The spin system consists of particles: electrons and nuclei - each specified by its spin quantum number and intrinsic magnetic parameters.</p></li>
+<li><p><strong>Specify interactions</strong>
+Interactions (e.g., hyperfine, zero-field splitting, nuclear-nuclear couplings) are defined using the <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spin_model.Interaction</span></code> class.
+(See <a class="reference internal" href="interactions/index.html#interaction-in-mars"><span class="std std-ref">Interactions in MarS</span></a> for details).</p></li>
+<li><p><strong>Assemble the spin system and sample</strong>
+Particles and interactions are combined into a <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem</span></code>.
+Disordered (powder) samples are represented by <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spin_model.MultiOrientedSample</span></code>.
+The next workflow is managed by the abstract class <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spectra_manager.spectra_manager.BaseSpectra</span></code>.</p></li>
+<li><p><strong>Construct Hamiltonian matrices</strong>
+MarS computes four matrices that define the spin Hamiltonian under an external magnetic field <strong>B</strong> = (Bx, By, Bz):</p>
+<div class="math notranslate nohighlight">
+\[\hat{H} = \hat{F} + B_x \hat{G}_x + B_y \hat{G}_y + B_z \hat{G}_z\]</div>
+<ul>
+<li><p><strong>F</strong>: Field-independent term (zero-field splitting, hyperfine, nuclear couplings, etc.)</p></li>
+<li><p><strong>Gx, Gy, Gz</strong>: Zeeman coupling operators, defined explicitly as:</p>
+<div class="math notranslate nohighlight">
+\[\hat{G}_\alpha = \mu_B \sum_{e} \sum_{\beta} g^{(e)}_{\alpha\beta} \hat{S}^{(e)}_\beta
+                + \sum_{n} \gamma_n \hat{I}^{(n)}_\alpha, \quad \alpha \in \{x, y, z\}\]</div>
+<dl class="simple">
+<dt>where:</dt><dd><ul class="simple">
+<li><p>The first sum runs over all electrons (<em>e</em>), with <span class="math notranslate nohighlight">\(g^{(e)}_{\alpha\beta}\)</span> the components of the electron g-tensor,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{S}^{(e)}_\beta\)</span> is the β-component of the electron spin operator,</p></li>
+<li><p>The second sum runs over all nuclei (<em>n</em>),</p></li>
+<li><p><span class="math notranslate nohighlight">\(\gamma_n = g_n \mu_N / \hbar\)</span> is the gyromagnetic ratio of nucleus <em>n</em>, expressed via its g-factor <span class="math notranslate nohighlight">\(g_n\)</span> and the nuclear magneton <span class="math notranslate nohighlight">\(\mu_N\)</span>,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{I}^{(n)}_\alpha\)</span> is the α-component of the nuclear spin operator.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</li>
+<li><p><strong>Determine resonance conditions</strong>
+MarS offers three algorithms:</p>
+<dl>
+<dt>5.1. <strong>Resonance-field search</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">mars.res_field_algorithm.ResField</span></code>)</dt><dd><p>This method solves <span class="math notranslate nohighlight">\(\hbar \omega = E_i(B_{ij}) - E_j(B_{ij})\)</span> for resonance fields <span class="math notranslate nohighlight">\(B_{ij}\)</span> at fixed frequency.
+This is a batched, GPU-accelerated implementation of the method used in EasySpin [doi:10.1016/j.jmr.2005.08.013]. In MarS this method is default for solid-state simulations.</p>
+</dd>
+<dt>5.2. <strong>Secular approximation</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">mars.secular_approximation.ResSecular</span></code>)</dt><dd><p>This method applies a two-step approximation to the spin Hamiltonian:</p>
+<ol class="arabic simple">
+<li><p>Zeeman term projection: Modifies <span class="math notranslate nohighlight">\(G_x, G_y, G_z\)</span> to zero matrix elements where the corresponding total spin projection (<span class="math notranslate nohighlight">\(S_x, S_y, S_z\)</span>) has magnitude below threshold. Enforces <span class="math notranslate nohighlight">\([G_\alpha, S_\alpha] \approx 0\)</span>.</p></li>
+<li><p>Zero-field term projection: Modifies <span class="math notranslate nohighlight">\(F\)</span> to zero elements connecting states with different Zeeman energies (<span class="math notranslate nohighlight">\(|(G_z)_{ii} - (G_z)_{jj}| &gt; \varepsilon\)</span>), enforcing <span class="math notranslate nohighlight">\([F, G_z] \approx 0\)</span>.</p></li>
+</ol>
+<p>This method is udsed by default in <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spectra_manager.spectra_manager.DensityTimeSpectra</span></code> for time-resolved EPR.</p>
+</dd>
+<dt>5.3. <strong>Resonance-frequency search</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">mars.res_freq_algorithm.ResFreq</span></code>)</dt><dd><p>This method finds resonant frequencies in a given interval at fixed magnetic field. It requires only one matrix eigenvalues and eigenvectors computation</p>
+</dd>
+</dl>
+</li>
+<li><p><strong>Compute transition intensities</strong>
+Intensities are computed by <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spectra_manager.spectra_manager.BaseIntensityCalculator</span></code>.</p>
+<p>Assuming the quantization axis aligns with the magnetic field direction (e.g., <span class="math notranslate nohighlight">\(\mathbf{B} \parallel z\)</span>), the intensity of a transition in stationart EPR spectroscopy between eigenstates <span class="math notranslate nohighlight">\(|i\rangle\)</span> and <span class="math notranslate nohighlight">\(|j\rangle\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 (p_j - p_i)\]</div>
+<p>where the population of state <em>k</em> for the equilibrium case is:</p>
+<div class="math notranslate nohighlight">
+\[p_k = \frac{e^{-E_k / k_B T}}{Z}, \quad Z = \sum_k e^{-E_k / k_B T}\]</div>
+<p>In the crystal case, <span class="math notranslate nohighlight">\(I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 \cdot (p_j - p_i)\)</span>.</p>
+<p>In disordered (powder) systems, the signal must be averaged over all molecular orientations.
+This is typically done by sampling three Euler angles (:math:alpha,beta,gamma) that define the rotation from the molecular frame to the lab frame.
+However, due to cylindrical symmetry of the microwave magnetic field around :math:mathbf{B}_0, the final averaging over the third Euler angle (:math:gamma) can be performed analytically, reducing computational cost:</p>
+<div class="math notranslate nohighlight">
+\[I_{ij} \propto \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)\]</div>
+<p>In <strong>time-resolved</strong> or <strong>non-equilibrium</strong> simulations (e.g., photoexcited states), populations <span class="math notranslate nohighlight">\(p_i(t)\)</span> are not thermal and are managed via Context tool: see <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.Context</span></code>.</p>
+<p>For density matrix-based time dependant methods, the signal is computed directly as <span class="math notranslate nohighlight">\(\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))\)</span>,
+where <span class="math notranslate nohighlight">\(\hat{G}_{\perp}\)</span> is the detected transverse spin component (e.g., <span class="math notranslate nohighlight">\(\hat{G}_x\)</span>, <span class="math notranslate nohighlight">\(\hat{G}_y\)</span>, or circular combinations depending on detection computation method)</p>
+</li>
+<li><p><strong>Account for line broadening</strong>
+The total Gaussian linewidth is computed as the square root of the sum of squares of all independent broadening contributions:</p>
+<div class="math notranslate nohighlight">
+\[\Gamma_{\text{Gauss}} = \sqrt{
+    \Gamma_{\text{residual}}^2
+    + \sum_{k} \Gamma_{\text{strain},k}^2
+}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{\text{residual}}\)</span> is the residual broadening due to unresolved interactions. It may be anisotropic and is specified as a full width at half maximum (FWHM) in <em>Hz</em>.</p></li>
+<li><p>sum over strain contributions <span class="math notranslate nohighlight">\(\sum_{k} \Gamma_{\text{strain},k}^2\)</span> arising from distributions in Hamiltonian parameters (e.g., g-tensor, zero-field splitting D/E, hyperfine tensors). Each <span class="math notranslate nohighlight">\(\Gamma_{\text{strain},k}\)</span> is provided as FWHM in the natural units of the corresponding parameter:
+- dimensionless for the g-tensor,
+- in Hz for zero-field splitting parameters (D/E),</p></li>
+</ul>
+</li>
+<li><p><strong>Field-sweep Jacobian correction</strong>
+When converting from frequency-domain to field-swept spectra, intensities are scaled by <span class="math notranslate nohighlight">\(|d\nu/dB|\)</span> to preserve spectral weight, consistent with standard EPR theory.</p></li>
+<li><p><strong>Powder averaging with operation parallelism</strong>
+For powder samples, all matrix operations act on a batched tensor that combines orientation and sample dimensions. This enables full GPU parallelism across orientations without explicit loops.</p></li>
+<li><p><strong>Interpolation to refined orientation grid</strong>
+Resonance positions, intensities, and linewidths are interpolated from a coarse to a fine spatial orientation grid to improve spectral resolution.</p></li>
+<li><p><strong>Assemble stick spectrum</strong>
+A discrete spectrum is built from resonance lines with computed positions, intensities, and intrinsic widths.</p></li>
+<li><p><strong>Apply lineshape convolution</strong>
+The final spectrum is obtained by convolving the stick spectrum with a Gaussian, Lorentzian, or Pseudo-Voigt profile.</p>
+<p>Both Gaussian and Lorentzian broadening parameters are specified as full width at half maximum (FWHM) and measured according to the spectral domain:</p>
+<ul class="simple">
+<li><p>In field-dependent (magnetic field sweep) simulations: widths are given in <em>tesla (T)</em>.</p></li>
+<li><p>In frequency-dependent simulations: widths are given in <em>hertz (Hz)</em>.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sample.html" class="btn btn-neutral float-left" title="Sample Representation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fitting_tutorial.html" class="btn btn-neutral float-right" title="Fitting Spectroscopic Data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

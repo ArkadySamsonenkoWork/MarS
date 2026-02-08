@@ -1,0 +1,1338 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. Problem Statement &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Time-Resolved Fitting Procedures" href="../example_7.html" />
+    <link rel="prev" title="Multi-System Kinetic" href="../example_6.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../example_6.html">Multi-System Kinetic</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1. Problem Statement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#2.-Sample-Definition">2. Sample Definition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#3.-Relaxation-Definition-Approach">3. Relaxation Definition Approach</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#3.1.-Theoretical-Description-of-the-Relaxation-Process">3.1. Theoretical Description of the Relaxation Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.2-MarS-Native-Implementation.">3.2 MarS Native Implementation.</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#4.-MarS-Modified-Implementation">4. MarS Modified Implementation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#4.1.-MarS-General-Relaxation-Description">4.1. MarS General Relaxation Description</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.2.-MarS-MatrixGenerator-Definition">4.2. MarS MatrixGenerator Definition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.3.-MarS-Populator-Definition">4.3. MarS Populator Definition</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#5.-Spectra-Building-Procedures">5. Spectra Building Procedures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#5.1-Settung-up-the-Relaxation-Parameters">5.1 Settung up the Relaxation Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.2-Settung-up-the-Spectra-Creation">5.2 Settung up the Spectra Creation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.3.-Plot-the-Results">5.3. Plot the Results</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../example_6.html">Multi-System Kinetic</a></li>
+      <li class="breadcrumb-item active">1. Problem Statement</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/examples_for_documentation/example_6.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>Multi System Kynetic Transitions</p>
+<p>This notebook demonstrates how to create complex approaches for fitting non-standard time-resolved dimensions. We strongly recommend that you first review Example 1, then Example 5, and then begin working with this notebook.</p>
+<p>We’ll explore:</p>
+<ol class="arabic simple">
+<li><p>How to set transitions between different subsistems</p></li>
+<li><p>The general logic of matrix generators</p></li>
+<li><p>The ways of rewriting the population dynamics for our particular case</p></li>
+<li><p>Internal logic of the context</p></li>
+</ol>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">For any questions, please contact Arkady Samsonenko via:</div>
+<div class="line">Telegram: &#64;Arkady_Samsonenko</div>
+<div class="line">Email: a.samsonenko.tomo.nsc.ru</div>
+<div class="line">The last notebook update: 2026.01.27</div>
+<div class="line">Please, if you want to download this notebook to your computer visit <a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples">https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples</a></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import necessary libraries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c1"># Import Mars library components</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mars</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">spectra_manager</span><span class="p">,</span> <span class="n">mesher</span><span class="p">,</span> <span class="n">constants</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">visualization</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="1.-Problem-Statement">
+<h1>1. Problem Statement<a class="headerlink" href="#1.-Problem-Statement" title="Link to this heading"></a></h1>
+<p>We consider the following task: modeling transitions between two systems between which population transfer occurs. A schematic illustration is shown in the figure below.</p>
+<p>There are two distinct spin systems:</p>
+<ul class="simple">
+<li><p><strong>System 1</strong> (the <em>reservoir</em>)</p></li>
+<li><p><strong>System 2</strong> (the <em>probe</em>)</p></li>
+</ul>
+<p>Each system has its own internal relaxation behavior. Populations transfer from the reservoir to the probe according to a defined kinetic matrix. We assume that only the probe system contributes to the observable signal, because the reservoir produces a broad, unresolvable signal that cannot be detected.</p>
+<p><img alt="Drawing" src="../../_images/multi_systems_transitions.png" /> Illustration of two spin systems: reservoir and probe, with different relaxation parameters</p>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">To model this scenario, we break the relaxation process into the following steps:</div>
+</div>
+<ol class="arabic simple">
+<li><p><strong>Formation of the reservoir</strong>: The reservoir is populated from an initial (low-energy) state. The initial population is formed</p></li>
+<li><p><strong>Transfer to the probe</strong>: Populations move from the reservoir to the probe with certain <em>transfer probabilities</em> (<code class="docutils literal notranslate"><span class="pre">chem_probs</span></code>).</p></li>
+<li><p><strong>Loss from the probe</strong>: The probe system loses population with specified <em>output probabilities</em> (<code class="docutils literal notranslate"><span class="pre">out_probs</span></code>).</p></li>
+<li><p><strong>Internal relaxation</strong>: Both systems undergo their own internal spin relaxation, which can be described using standard MarS relaxation contexts.</p></li>
+<li><p><strong>Signal formation</strong>: The observed signal is proportional to the population difference between resonant states of the probe system. We model this by tracking the time evolution of the probabilities.</p></li>
+</ol>
+<p>In this framework, the reservoir acts as a hidden source that feeds the observable probe system—it is part of the overall relaxation pathway but does not produce a detectable signal itself.</p>
+</section>
+<section id="2.-Sample-Definition">
+<h1>2. Sample Definition<a class="headerlink" href="#2.-Sample-Definition" title="Link to this heading"></a></h1>
+<p>Let us define two triplet systems with different splitting parameters in zero field, as was done in previous examples (e.g. Example 1).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Function to create triplet systems</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_triplet_sample</span><span class="p">(</span><span class="n">D</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">ham_strain</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lorentz</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">energy_shift</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+
+    <span class="c1"># Define isotropic g-tensor</span>
+    <span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">)</span>
+
+    <span class="c1"># Define zero-field interaction</span>
+    <span class="n">zfs</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="n">D</span><span class="p">,</span> <span class="n">E</span><span class="p">])</span>
+
+    <span class="c1"># Create the spin system with one spin S=1</span>
+    <span class="n">base_spin_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+        <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>  <span class="c1"># One spin = 1</span>
+        <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>  <span class="c1"># g-tensor for this spin</span>
+        <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs</span><span class="p">)],</span>
+        <span class="n">energy_shift</span><span class="o">=</span><span class="n">energy_shift</span><span class="p">,</span> <span class="c1"># define some energy_shift to separate levels by energy</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+    <span class="p">)</span>
+
+    <span class="c1"># create the sample</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+        <span class="n">base_spin_system</span><span class="o">=</span><span class="n">base_spin_system</span><span class="p">,</span>
+        <span class="n">ham_strain</span><span class="o">=</span><span class="n">ham_strain</span><span class="p">,</span>
+        <span class="n">lorentz</span><span class="o">=</span><span class="n">lorentz</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sample</span>
+
+<span class="c1"># Create probe sample</span>
+
+<span class="n">D</span> <span class="o">=</span> <span class="mf">200e6</span>  <span class="c1"># 200 MHz</span>
+<span class="n">E</span> <span class="o">=</span> <span class="mf">50e6</span>  <span class="c1"># 50 MHz</span>
+<span class="n">ham_strain</span> <span class="o">=</span> <span class="mf">4e7</span>  <span class="c1"># 40 MHz</span>
+<span class="n">lorentz</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 1mT</span>
+<span class="n">energy_shift</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># low-lying sample</span>
+<span class="n">probe_sample</span> <span class="o">=</span> <span class="n">get_triplet_sample</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">ham_strain</span><span class="p">,</span> <span class="n">lorentz</span><span class="p">,</span> <span class="n">energy_shift</span><span class="o">=</span><span class="n">energy_shift</span><span class="p">)</span>
+
+
+<span class="c1"># Create reservoir sample</span>
+<span class="n">D</span> <span class="o">=</span> <span class="mf">1_000e6</span>  <span class="c1"># 200 MHz</span>
+<span class="n">E</span> <span class="o">=</span> <span class="mf">100e6</span>  <span class="c1"># 50 MHz</span>
+<span class="n">ham_strain</span> <span class="o">=</span> <span class="mf">4e7</span>  <span class="c1"># 40 MHz. It could be anything, since we don&#39;t need the spectrum itself, just its eigen basis in magnetic field</span>
+<span class="n">lorentz</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 1mT. It could be anything, since we don&#39;t need the spectrum itself, just its eigen basis in magnetic field</span>
+<span class="n">energy_shift</span> <span class="o">=</span> <span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">)</span>  <span class="c1"># high-lying sample</span>
+<span class="n">reservoir_sample</span> <span class="o">=</span> <span class="n">get_triplet_sample</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">ham_strain</span><span class="p">,</span> <span class="n">lorentz</span><span class="p">,</span> <span class="n">energy_shift</span><span class="o">=</span><span class="n">energy_shift</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="3.-Relaxation-Definition-Approach">
+<h1>3. Relaxation Definition Approach<a class="headerlink" href="#3.-Relaxation-Definition-Approach" title="Link to this heading"></a></h1>
+<section id="3.1.-Theoretical-Description-of-the-Relaxation-Process">
+<h2>3.1. Theoretical Description of the Relaxation Process<a class="headerlink" href="#3.1.-Theoretical-Description-of-the-Relaxation-Process" title="Link to this heading"></a></h2>
+<p>We consider the coupled relaxation dynamics of two spin systems: the <strong>probe</strong> and the <strong>reservoir</strong>. Let $ N_p(t) $ and $ N_r(t) $ denote the population vectors of the probe and reservoir systems, respectively.</p>
+<p>The time evolution of these populations is governed by the following system of differential equations:</p>
+<div class="math notranslate nohighlight">
+\[\frac{dN_p}{dt} = K_p \, N_p + C \, N_r\]</div>
+<div class="math notranslate nohighlight">
+\[\frac{dN_r}{dt} = K_r \, N_r - D \, N_r\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p>$ K_p $ and $ K_r $ are the kinetic (relaxation) matrices describing internal transitions (<em>including output probabilities</em>) within the probe and reservoir, respectively,</p></li>
+<li><p>$ C $ is the transition-probabilites matrix that couples the flow of probabilities from reservoir system to the probe system</p></li>
+<li><p>$ D $ is a diagonal matrix representing the total out flow from each reservoir state due to transfer to the probe. Its diagonal entries are the row sums of $ C $, i.e., $ D_{ii} = <span class="math">\sum</span><em>j C</em>{ji} $</p></li>
+</ul>
+<p>This ensures that every population unit transferred to the probe is removed from the reservoir, preserving mass balance.</p>
+<p>To solve this system using standard linear ODE techniques - as implemented in the “MarS” we combine both subsystems into a single state vector:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}N = \begin{bmatrix} N_p \\ N_r \end{bmatrix}\end{split}\]</div>
+<p>The full dynamics can then be written compactly as:</p>
+<div class="math notranslate nohighlight">
+\[\frac{dN}{dt} = \mathcal{K} \, N\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{K}\)</span> is …the combined kinetic matrix:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathcal{K} =
+\begin{bmatrix}
+K_p &amp; C \\
+0   &amp; K_r - D \\
+\end{bmatrix}\end{split}\]</div>
+<p>To align this formulation with “MarS”-notation, the decomposition into <code class="docutils literal notranslate"><span class="pre">free_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>, and <code class="docutils literal notranslate"><span class="pre">out_probs</span></code> is expressed via the total kinetic matrix as a sum of contributions:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">free_probs</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathcal{K}^{\text{free}} =
+\begin{bmatrix}
+K_p^{\text{free}} &amp; 0 \\
+0 &amp; K_r^{\text{free}} \\
+\end{bmatrix}\end{split}\]</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">out_probs</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathcal{K}^{\text{out}} =
+\begin{bmatrix}
+K_p^{\text{out}} &amp; 0 \\
+0 &amp; K_r^{\text{out}} \\
+\end{bmatrix}\end{split}\]</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathcal{K}^{\text{driven}} =
+\begin{bmatrix}
+K_p^{\text{driven}} &amp; 0 \\
+0 &amp; K_r^{\text{driven}} \\
+\end{bmatrix}
++
+\begin{bmatrix}
+0 &amp; C \\
+0 &amp; 0 \\
+\end{bmatrix}\end{split}\]</div>
+</li>
+</ul>
+<p>In “MarS”, the diagonal loss matrix $ D $ is constructed automatically from the coupling matrix $ C $. Therefore, it does not need to be specified explicitly in the model definition.</p>
+<p>Additionally, depending on the physical interpretation, the coupling matrix $ C $ may be classified either as part of the driven processes (as shown above) or incorporated into the free dynamics. We will implement the first variant.</p>
+<p>In the following section, we construct this combined system explicitly and demonstrate its implementation.</p>
+</section>
+<section id="3.2-MarS-Native-Implementation.">
+<h2>3.2 MarS Native Implementation.<a class="headerlink" href="#3.2-MarS-Native-Implementation." title="Link to this heading"></a></h2>
+<p>It is possible to use concatenation as in the example_5 to implement such type of relaxation. Let’s try to do it</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define the sample</span>
+<span class="n">complex_sample</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">reservoir_sample</span><span class="p">))</span>  <span class="c1"># Create complex spin system of 6 levels</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\spin_model.py:258: UserWarning: You are creating a block-diagonal (non-interacting) composite spin system via direct sum. This does NOT represent a true multi-particle quantum system (which would require a tensor-product space). Only use this if you are modeling effectively isolated subsystems (e.g., for polarized or time-resolved EPR). For physical spin clusters (diradicals, etc.), build a single SpinSystem with explicit couplings instead.
+  concatenated_spin_system = concat_spin_systems(spin_systems)
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\spin_model.py:2042: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  width = torch.tensor(width, device=device, dtype=dtype)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define the relaxation</span>
+
+<span class="c1">#............PROBE BLOCK.........................</span>
+<span class="n">init_populations_p</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>  <span class="c1"># let&#39;s set zero initial population</span>
+<span class="n">out_probs_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2</span>
+<span class="n">free_probs_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+<span class="n">driven_probs_p</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+
+<span class="c1">#............RESERVOIR BLOCK.........................</span>
+<span class="n">init_populations_r</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+<span class="n">out_probs_r</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2</span>
+<span class="n">free_probs_r</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+<span class="n">driven_probs_r</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+
+<span class="c1">#............COUPLE MATRIX.........................</span>
+
+<span class="c1"># Define coupling matrix: transitions from reservoir states (-1, 0, +1)</span>
+<span class="c1"># to corresponding probe states (-1, 0, +1) with equal rate.</span>
+<span class="n">couple_matrix</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+
+<span class="n">dim</span> <span class="o">=</span> <span class="mi">6</span>  <span class="c1"># the full dimension of the system</span>
+<span class="n">couple_matrix_expanded</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">probe_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># probe inedexes in expended system</span>
+<span class="n">reserv_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># reservoir inedexes in expended system</span>
+<span class="n">couple_matrix_expanded</span><span class="o">.</span><span class="n">index_put_</span><span class="p">((</span><span class="n">probe_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">reserv_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)),</span> <span class="n">couple_matrix</span><span class="p">)</span>
+
+
+<span class="c1"># Some parameters are defined in zfs basis, some in eigen as usual</span>
+<span class="n">probe_context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_p</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs_p</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span>\
+                <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs_p</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="n">reservoir_context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">reservoir_sample</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_r</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs_r</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span>\
+                    <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">reservoir_sample</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs_r</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">kynetic_context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">complex_sample</span><span class="p">,</span> <span class="n">driven_probs</span><span class="o">=</span><span class="n">couple_matrix_expanded</span><span class="p">)</span>
+<span class="c1"># Create kynetic context</span>
+
+<span class="n">full_relaxation_context</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">probe_context</span><span class="p">,</span> <span class="n">reservoir_context</span><span class="p">))</span> <span class="o">+</span> <span class="n">kynetic_context</span>  <span class="c1"># Write our full complex realaxation context</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\population\concatination.py:135: UserWarning: Concatenation with context with the default (eigen or None) basismay lead to unexpected behavior.
+In this configuration, relaxation parameters for subsystems with basis=None` are interpreted directly in the final (field-dependent eigen) basisthey will NOT be transformed from any other representation.
+This is only physically meaningful if:
+(1) there is no coupling between subsystems, OR
+(2) you intentionally define relaxation rates in the eigenbasis of the full Hamiltonian.
+To avoid ambiguity, consider explicitly specifying a consistent basis(e.g., &#39;zfs&#39;, &#39;xyz&#39;, or &#39;multiplet&#39;) for all subsystems.
+  warnings.warn(
+</pre></div></div>
+</div>
+<p>Let’s define spectra creator</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">temperature</span> <span class="o">=</span> <span class="mf">300.0</span>
+
+<span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>
+    <span class="n">output_mode</span><span class="o">=</span><span class="s2">&quot;transitions&quot;</span><span class="p">,</span>  <span class="c1"># Now we need to get separate spectra of each transition levels becasue we need only probe (low-lying in our definition)</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">complex_sample</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">full_relaxation_context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.335</span><span class="p">,</span> <span class="mf">0.365</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+<span class="n">tot_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, long time scale, up to 20ms</span>
+
+<span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">,</span> <span class="n">spectrum</span> <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">complex_sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">spectrum</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># First two transitions are probe sample, the second two transitions is reservoir sample. We just need to get probe sample</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">spectrum</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+torch.Size([4, 800, 1000])
+</pre></div></div>
+</div>
+<p>and plot the results</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spectrum_np</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">spectrum_np</span> <span class="o">=</span> <span class="n">spectrum_np</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_np</span><span class="p">))</span>
+
+<span class="n">time_points</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">,</span> <span class="mf">5.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">,</span> <span class="mf">15.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">]</span> <span class="c1"># times (s) to plot field-dependant spectra at the given time</span>
+<span class="n">field_points</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.345</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.355</span><span class="p">]</span>  <span class="c1"># fields (T) to plot kynetics at the given times</span>
+
+<span class="c1"># --- Create mosaic layout: heat map + kinetics on left, field dependence on right ---</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot_mosaic</span><span class="p">([[</span><span class="s1">&#39;one&#39;</span><span class="p">,</span> <span class="s1">&#39;three&#39;</span><span class="p">],</span>
+                                <span class="p">[</span><span class="s1">&#39;two&#39;</span><span class="p">,</span> <span class="s1">&#39;three&#39;</span><span class="p">]],</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># 1.</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;one&quot;</span><span class="p">])</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">,</span> <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Time (ms)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum&quot;</span><span class="p">)</span>
+
+<span class="c1"># 2. Kinetic traces (bottom-left)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;two&quot;</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">b_val</span> <span class="ow">in</span> <span class="n">field_points</span><span class="p">:</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_kinetic</span><span class="p">(</span><span class="n">b_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">,</span> <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Time (ms)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity (arb. units)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Kinetics at Selected Fields&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;B = </span><span class="si">{</span><span class="n">b</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> T&quot;</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">field_points</span><span class="p">])</span>
+
+<span class="c1"># 3. Field-dependent spectra (right)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;three&quot;</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">t_val</span> <span class="ow">in</span> <span class="n">time_points</span><span class="p">:</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span><span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity (arb. units)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Field Dependence&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;t = </span><span class="si">{</span><span class="n">t</span><span class="o">*</span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ms&quot;</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">time_points</span><span class="p">])</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_6_14_0.png" src="../../_images/examples_examples_for_documentation_example_6_14_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="4.-MarS-Modified-Implementation">
+<h1>4. MarS Modified Implementation<a class="headerlink" href="#4.-MarS-Modified-Implementation" title="Link to this heading"></a></h1>
+<p>MarS Native Implementation which we used in the previous chapter has several time-computational drawbacks:</p>
+<ol class="arabic simple">
+<li><p>We calculate the eigenvalues, eigenvectors, and transformation kinetics for 6 x 6 matrices that are strictly block diagonal. This is redundant, we can transform 3 x 3 matrices for two contexts separatly</p></li>
+<li><p>We do not really need the EPR data (fields, Intenisties) for the high-lying triplet. We can not compute it.</p></li>
+</ol>
+<p>To overcome these problems, let’s try to create our own populator, specifically for this task, and understand the structure of Mars.</p>
+<section id="4.1.-MarS-General-Relaxation-Description">
+<h2>4.1. MarS General Relaxation Description<a class="headerlink" href="#4.1.-MarS-General-Relaxation-Description" title="Link to this heading"></a></h2>
+<p>The workflow for time-resolved simulations in “MarS” is organized into several steps, each implemented by a dedicated class:</p>
+<ol class="arabic">
+<li><div class="line-block">
+<div class="line"><strong>Relaxation parameter definition in a given basis</strong></div>
+<div class="line">This is handled by the <code class="docutils literal notranslate"><span class="pre">mars.population.contexts.BaseContext</span></code> class, which stores physical parameters such as transition rates, temperatures, and other context-dependent quantities.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Retrieval of relaxation (or Hamiltonian) matrices from context</strong></div>
+<div class="line">The logic for generating time-dependent matrices is encapsulated in subclasses of <code class="docutils literal notranslate"><span class="pre">mars.population.matrix_generators.BaseGenerator</span></code>.</div>
+</div>
+<ul class="simple">
+<li><p>For density-based approaches, generators return Hamiltonians and Liouvillian superoperators.</p></li>
+<li><p>For level-based population dynamics, the <code class="docutils literal notranslate"><span class="pre">mars.population.matrix_generators.LevelBasedGenerator</span></code> is used. It provides key quantities at a given time: temperature, <code class="docutils literal notranslate"><span class="pre">free_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>, and <code class="docutils literal notranslate"><span class="pre">out_probs</span></code>.</p></li>
+</ul>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Assembly of relaxation data into a single evolution matrix</strong></div>
+<div class="line">The <code class="docutils literal notranslate"><span class="pre">mars.population.tr_utils.EvolutionMatrix</span></code> modifier combines the individual probability components (<code class="docutils literal notranslate"><span class="pre">free_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">out_probs</span></code>) into a unified kinetic matrix (for populations) or superoperator (for density matrices).</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Formulation of the full relaxation problem</strong></div>
+<div class="line">The <code class="docutils literal notranslate"><span class="pre">mars.population.populators.BasePopulator</span></code> subclass integrates the evolution matrix with initial conditions such as initial populations or density matrices and other time-dependent parameters to construct the differential equation system.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Numerical solution of the differential equations</strong></div>
+<div class="line">Finally, the <code class="docutils literal notranslate"><span class="pre">mars.population.tr_utils.EvolutionPopulationSolver</span></code> class solves the resulting ODE system and returns the time evolution of populations or density matrices.</div>
+</div>
+</li>
+</ol>
+<p>In the next section, we implement a custom <code class="docutils literal notranslate"><span class="pre">MatrixGenerator</span></code> and <code class="docutils literal notranslate"><span class="pre">Populator</span></code> tailored to our reservoir–probe relaxation problem.</p>
+</section>
+<section id="4.2.-MarS-MatrixGenerator-Definition">
+<h2>4.2. MarS MatrixGenerator Definition<a class="headerlink" href="#4.2.-MarS-MatrixGenerator-Definition" title="Link to this heading"></a></h2>
+<p>To implement the reservoir–probe relaxation model within the MarS library, we extend two core components:</p>
+<ul class="simple">
+<li><p>A custom <strong>matrix generator</strong> that combines relaxation parameters from both the probe and reservoir systems.</p></li>
+<li><p>A corresponding <strong>populator</strong> that assembles the joint state vector (energies, populations, basis).</p></li>
+</ul>
+<p>For the <code class="docutils literal notranslate"><span class="pre">mars.population.matrix_generators.LevelBasedGenerator</span></code>, we need to:</p>
+<ol class="arabic simple">
+<li><p>Compute the reservoir eigenbasis at the probe-sample resonance fields.</p></li>
+<li><p>Merge the transition probability matrices (<code class="docutils literal notranslate"><span class="pre">free_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">driven_probs</span></code>, <code class="docutils literal notranslate"><span class="pre">out_probs</span></code>) of both subsystems into a single block-structured matrix.</p></li>
+</ol>
+<div class="line-block">
+<div class="line">For the <code class="docutils literal notranslate"><span class="pre">mars.population.populators.LevelBasedPopulator</span></code>, we need to:</div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Evaluate the reservoir energy levels and eigenvectors at the probe resonance fields.</p></li>
+<li><p>Concatenate the energy vectors of probe and reservoir.</p></li>
+<li><p>Concatenate their initial populations into a unified initial state.</p></li>
+</ol>
+<p>Below, we define a custom generator that inherits from <code class="docutils literal notranslate"><span class="pre">LevelBasedGenerator</span></code> and overrides the <code class="docutils literal notranslate"><span class="pre">__call__</span></code> and <code class="docutils literal notranslate"><span class="pre">__init__</span></code> methods to return the combined relaxation data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReservoirProbeGenerator</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">matrix_generators</span><span class="o">.</span><span class="n">LevelBasedGenerator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Matrix generator for coupled reservoir–probe spin systems.</span>
+
+<span class="sd">    This class extends the MarS level-based generator to support two interacting</span>
+<span class="sd">    subsystems: a detectable *probe* and a hidden *reservoir*. It constructs combined</span>
+<span class="sd">    relaxation matrices by merging the individual `free_probs`, `driven_probs`, and</span>
+<span class="sd">    `out_probs` from both contexts</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">context</span><span class="p">:</span> <span class="n">population</span><span class="o">.</span><span class="n">BaseContext</span><span class="p">,</span>
+                 <span class="n">init_temperature</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                 <span class="n">res_fields</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+                 <span class="n">full_system_vectors</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+
+                 <span class="n">reservoir_vectors</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>  <span class="c1"># Add reservoir eigen basis</span>
+                 <span class="n">reservoir_context</span><span class="p">:</span> <span class="n">population</span><span class="o">.</span><span class="n">BaseContext</span><span class="p">,</span>  <span class="c1"># Add reservoir_context</span>
+                 <span class="n">couple_matrix</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>  <span class="c1"># Add couple_matrix C</span>
+
+                 <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+                 <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param context: Context object instance</span>
+<span class="sd">        :param init_temperature:  initial temperature of process.</span>
+<span class="sd">        -It can be constant during the process</span>
+<span class="sd">        -It can be skipped if the temperature defines from profile</span>
+<span class="sd">        :param res_fields:</span>
+<span class="sd">            Resonance fields of transitions.</span>
+<span class="sd">            Shape: [..., M], where M is the number of resonance energies</span>
+
+
+<span class="sd">        :param full_system_vectors:</span>
+<span class="sd">            Eigenvectors of the full set of energy levels. The shape i [...., M, N, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+<span class="sd">            For some cases it can be None. The parameter of the creator &#39;output_eigenvector- == True&#39;</span>
+<span class="sd">            make the creator to compute these vectors.</span>
+<span class="sd">            The default behavior, whether to calculate vectors or not,</span>
+<span class="sd">            depends on the specific Spectra Manager and its settings.</span>
+
+<span class="sd">        :param reservoir_vectors: Eigenvectors of reservoir sample. The shape is  [...., M, Nr, Nr],</span>
+<span class="sd">            where  Nr is spin system dimension of reservoir sample, M is number of resonance transitions.</span>
+
+<span class="sd">        :param reservoir_context:</span>
+<span class="sd">            Context object of the reservoir sample</span>
+
+<span class="sd">        :param couple_matrix: Kynetic matrix &#39;C&#39; with the probabilities of transitions form reservoir sample to probe sample. The shape is [Np, Nr], where</span>
+<span class="sd">            Np is spin system dimension of probe sample, Nr is spin system dimension of reservoir sample</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">init_temperature</span><span class="p">,</span> <span class="n">res_fields</span><span class="p">,</span> <span class="n">full_system_vectors</span><span class="p">)</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_vectors</span> <span class="o">=</span> <span class="n">reservoir_vectors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span> <span class="o">=</span> <span class="n">reservoir_context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">couple_matrix</span> <span class="o">=</span> <span class="n">couple_matrix</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_insert_coupling_into_block</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base_matrix</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">Np</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">Nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert the coupling matrix C into the top-right block of a (Np+Nr, Np+Nr) matrix.</span>
+<span class="sd">        :param base_matrix: Combined matrix with diagonal blocks already set. Shape: [..., Np+Nr, Np+Nr]</span>
+<span class="sd">        :param Np: Dimension of probe system</span>
+<span class="sd">        :param Nr: Dimension of reservoir system</span>
+<span class="sd">        :return: Matrix with coupling inserted in top-right block</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">base_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">base_matrix</span><span class="o">.</span><span class="n">device</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">base_matrix</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="n">C_expanded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">couple_matrix</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">base_matrix</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">Np</span><span class="p">,</span> <span class="n">Np</span><span class="p">:</span><span class="n">Np</span><span class="o">+</span><span class="n">Nr</span><span class="p">]</span> <span class="o">=</span> <span class="n">C_expanded</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_transition_matrices</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">probs_p</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">probs_r</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">Np</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">Nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">add_coupling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Combine two transition probability matrices into a block matrix.</span>
+
+<span class="sd">        :param probs_p: Transition matrix for probe system or None. Shape: [..., Np, Np]</span>
+<span class="sd">        :param probs_r: Transition matrix for reservoir system or None. Shape: [..., Nr, Nr]</span>
+<span class="sd">        :param Np: Dimension of probe system</span>
+<span class="sd">        :param Nr: Dimension of reservoir system</span>
+<span class="sd">        :param add_coupling: If True, insert coupling matrix C in top-right block</span>
+<span class="sd">        :return: Combined matrix of shape [..., Np+Nr, Np+Nr] or None if both inputs and add_coupling are None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">add_coupling</span> <span class="ow">and</span> <span class="n">probs_p</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">probs_r</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">probs_p</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ref_tensor</span> <span class="o">=</span> <span class="n">probs_p</span>
+        <span class="k">elif</span> <span class="n">probs_r</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ref_tensor</span> <span class="o">=</span> <span class="n">probs_r</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ref_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">couple_matrix</span>
+
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">()</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">device</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">dtype</span>
+
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+        <span class="n">P_p</span> <span class="o">=</span> <span class="n">_ensure_matrix</span><span class="p">(</span><span class="n">probs_p</span><span class="p">,</span> <span class="n">Np</span><span class="p">)</span>
+        <span class="n">P_r</span> <span class="o">=</span> <span class="n">_ensure_matrix</span><span class="p">(</span><span class="n">probs_r</span><span class="p">,</span> <span class="n">Nr</span><span class="p">)</span>
+
+        <span class="n">zeros_pr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">Np</span><span class="p">,</span> <span class="n">Nr</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">zeros_rp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">Nr</span><span class="p">,</span> <span class="n">Np</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">top_row</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">P_p</span><span class="p">,</span> <span class="n">zeros_pr</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">bottom_row</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">zeros_rp</span><span class="p">,</span> <span class="n">P_r</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">top_row</span><span class="p">,</span> <span class="n">bottom_row</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">add_coupling</span><span class="p">:</span>
+            <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_insert_coupling_into_block</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="n">Np</span><span class="p">,</span> <span class="n">Nr</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">combined</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_out_probs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">out_p</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">out_r</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">Np</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">Nr</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Concatenate out-probability vectors for probe and reservoir.</span>
+
+<span class="sd">        :param out_p: Out probabilities for probe or None. Shape: [..., Np]</span>
+<span class="sd">        :param out_r: Out probabilities for reservoir or None. Shape: [..., Nr]</span>
+<span class="sd">        :param Np: Dimension of probe system</span>
+<span class="sd">        :param Nr: Dimension of reservoir system</span>
+<span class="sd">        :return: Concatenated vector of shape [..., Np+Nr] or None if both inputs are None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">out_p</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">out_r</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">ref_tensor</span> <span class="o">=</span> <span class="n">out_p</span> <span class="k">if</span> <span class="n">out_p</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">out_r</span>
+        <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">device</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">ref_tensor</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_vector</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">size</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+        <span class="n">v_p</span> <span class="o">=</span> <span class="n">_ensure_vector</span><span class="p">(</span><span class="n">out_p</span><span class="p">,</span> <span class="n">Np</span><span class="p">)</span>
+        <span class="n">v_r</span> <span class="o">=</span> <span class="n">_ensure_vector</span><span class="p">(</span><span class="n">out_r</span><span class="p">,</span> <span class="n">Nr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">v_p</span><span class="p">,</span> <span class="n">v_r</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tp</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span>
+        <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
+    <span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate combined relaxation probabilities at given times.</span>
+<span class="sd">        This method returns the unified relaxation data for the joint probe–reservoir system.</span>
+
+<span class="sd">        :param time: torch.Tensor</span>
+<span class="sd">        :return: tuple</span>
+<span class="sd">            (temperature, base_probs, induced_probs, outgoing_probs)</span>
+<span class="sd">            - temperature : torch.Tensor or None</span>
+<span class="sd">                System temperature(s) at the given time(s).</span>
+<span class="sd">            - free_probs : torch.Tensor [..., N, N]</span>
+<span class="sd">                Thermal equilibrium (Boltzmann-weighted) transition probabilities.</span>
+
+<span class="sd">            Example in symmetry form:</span>
+<span class="sd">                free_probs = [[0,  k&#39;],</span>
+<span class="sd">                            [k&#39;, 0]]</span>
+
+<span class="sd">            - induced_probs : torch.Tensor [..., N, N] or None</span>
+<span class="sd">                Probabilities of driven transitions (e.g. due to external driving).</span>
+
+<span class="sd">                Ind matrix is always symmetry: [[0,  i],</span>
+<span class="sd">                                                [i, 0]]</span>
+
+<span class="sd">            - out_probs : torch.Tensor [..., N]  or None</span>
+<span class="sd">                Out-of-system transition probabilities (loss terms).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get probe relaxation data from parent</span>
+        <span class="n">temp_out</span><span class="p">,</span> <span class="n">free_probs_p</span><span class="p">,</span> <span class="n">driven_probs_p</span><span class="p">,</span> <span class="n">out_probs_p</span>  <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+
+        <span class="c1"># Time-dependent values (not used in this model)</span>
+        <span class="n">time_dep_values</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># In the general case MarS can work with time-dependant relaxation parameters. For this task it is just None</span>
+
+        <span class="c1"># Get reservoir relaxation parameters via context</span>
+        <span class="n">free_probs_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span><span class="o">.</span><span class="n">get_transformed_free_probs</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_vectors</span><span class="p">,</span> <span class="n">time_dep_values</span>
+        <span class="p">)</span>
+        <span class="n">driven_probs_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span><span class="o">.</span><span class="n">get_transformed_driven_probs</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_vectors</span><span class="p">,</span> <span class="n">time_dep_values</span>
+        <span class="p">)</span>
+        <span class="n">out_probs_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span><span class="o">.</span><span class="n">get_transformed_out_probs</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_vectors</span><span class="p">,</span> <span class="n">time_dep_values</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Take the dimensions of spin-systems:</span>
+        <span class="n">Np</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_system_vectors</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># probe dimension</span>
+        <span class="n">Nr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_vectors</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>    <span class="c1"># reservoir dimension</span>
+
+        <span class="c1"># --- Combine into block matrices ---</span>
+
+        <span class="c1"># Combine transition matrices (free and driven)</span>
+        <span class="n">free_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_transition_matrices</span><span class="p">(</span><span class="n">free_probs_p</span><span class="p">,</span> <span class="n">free_probs_r</span><span class="p">,</span> <span class="n">Np</span><span class="p">,</span> <span class="n">Nr</span><span class="p">,</span> <span class="n">add_coupling</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Add coupling to driven matrix</span>
+        <span class="n">driven_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_transition_matrices</span><span class="p">(</span><span class="n">driven_probs_p</span><span class="p">,</span> <span class="n">driven_probs_r</span><span class="p">,</span> <span class="n">Np</span><span class="p">,</span> <span class="n">Nr</span><span class="p">,</span> <span class="n">add_coupling</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Combine out probabilities</span>
+        <span class="n">out_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_out_probs</span><span class="p">(</span><span class="n">out_probs_p</span><span class="p">,</span> <span class="n">out_probs_r</span><span class="p">,</span> <span class="n">Np</span><span class="p">,</span> <span class="n">Nr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">temp_out</span><span class="p">,</span> <span class="n">free_probs</span><span class="p">,</span> <span class="n">driven_probs</span><span class="p">,</span> <span class="n">out_probs</span>
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="4.3.-MarS-Populator-Definition">
+<h2>4.3. MarS Populator Definition<a class="headerlink" href="#4.3.-MarS-Populator-Definition" title="Link to this heading"></a></h2>
+<p>We extend <code class="docutils literal notranslate"><span class="pre">mars.population.populators.LevelBasedPopulator</span></code> to support coupled reservoir–probe dynamics. The following modifications are required:</p>
+<ol class="arabic simple">
+<li><p>Add reservoir context and sample to <code class="docutils literal notranslate"><span class="pre">__init__</span></code>.</p></li>
+<li><p>Override <code class="docutils literal notranslate"><span class="pre">_init_tr_matrix_generator</span></code> to use our custom <code class="docutils literal notranslate"><span class="pre">ReservoirProbeGenerator</span></code>.</p></li>
+<li><p>In <code class="docutils literal notranslate"><span class="pre">forward</span></code>, compute the reservoir eigenbasis at the probe resonance fields.</p></li>
+<li><p>Concatenate energies and initial populations of both subsystems.</p></li>
+</ol>
+<p>Below is the implementation.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReservoirProbePopulator</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">LevelBasedPopulator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Populator for coupled reservoir–probe spin systems.</span>
+
+<span class="sd">    This class extends the standard level-based population model to handle two interacting subsystems:</span>
+<span class="sd">    - A detectable probe system</span>
+<span class="sd">    - A hidden reservoir system</span>
+
+<span class="sd">    The total state vector is formed by concatenating probe and reservoir levels.</span>
+<span class="sd">    Transitions between them are governed by a coupling matrix C, implemented in the</span>
+<span class="sd">    `ReservoirProbeGenerator`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">context</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">population</span><span class="o">.</span><span class="n">BaseContext</span><span class="p">],</span>
+
+                 <span class="c1"># 3 new parameters in initialization</span>
+                 <span class="n">reservoir_context</span><span class="p">:</span> <span class="n">population</span><span class="o">.</span><span class="n">BaseContext</span><span class="p">,</span>  <span class="c1"># Add reservoir_context</span>
+                 <span class="n">reservoir_sample</span><span class="p">:</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">,</span>  <span class="c1"># Add reservoir sample</span>
+                 <span class="n">couple_matrix</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>  <span class="c1"># Add couple_matrix C</span>
+
+                 <span class="n">tr_matrix_generator_cls</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Type</span><span class="p">[</span><span class="n">population</span><span class="o">.</span><span class="n">matrix_generators</span><span class="o">.</span><span class="n">BaseGenerator</span><span class="p">]</span>
+                 <span class="o">=</span> <span class="n">ReservoirProbeGenerator</span><span class="p">,</span>   <span class="c1"># Change here to our impemented ReservoirProbeGenerator</span>
+                 <span class="n">solver</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">population</span><span class="o">.</span><span class="n">tr_utils</span><span class="o">.</span><span class="n">EvolutionSolver</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">init_temperature</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="mf">293.0</span><span class="p">,</span>
+                 <span class="n">difference_out</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param context: context is a dataclass / Dict with any objects that are used to compute relaxation matrix.</span>
+<span class="sd">        :param tr_matrix_generator_cls: class of Matrix Generator</span>
+<span class="sd">            that will be used to compute probabilities of transitions</span>
+
+<span class="sd">        :param reservoir_vectors: eigen basis of reservoir sample. The shape is  [...., M, Nr, Nr],</span>
+<span class="sd">        where  Nr is spin system dimension of reservoir-sample, M is number of resonance transitions.</span>
+
+<span class="sd">        :param reservoir_context:</span>
+<span class="sd">            Context object of reservoir sample</span>
+
+<span class="sd">        :param reservoir_vectors: eigen basis of reservoir sample. The shape is  [...., M, Nr, Nr],</span>
+<span class="sd">        where  Nr is spin system dimension of reservoir-sample, M is number of resonance transitions.</span>
+
+<span class="sd">        :param couple_matrix: Kynetic matrix &#39;C&#39; with the probabilities of transitions form reservoir sample to probe sample. The shape is [Np, Nr], where</span>
+<span class="sd">        Np is spin system dimension of probe-sample, Nr is spin system dimension of reservoir-sample</span>
+
+
+<span class="sd">        :param solver: It solves the general equation dn/dt = A(n,t) @ n.</span>
+<span class="sd">            The following solvers are available:</span>
+<span class="sd">            - odeint_solver:  Default solver.</span>
+<span class="sd">            It uses automatic control of time-steps. If you are not sure about the correct time-steps use it</span>
+<span class="sd">            - stationary_rate_solver. When A does not depend on time use it.</span>
+<span class="sd">            It just uses that in this case n(t) = exp(At) @ n0</span>
+<span class="sd">            - exponential_solver. When A does depend on time but does not depend on n,</span>
+<span class="sd">            It is possible to precompute A and exp(A) in all points.</span>
+<span class="sd">            In this case the solution is n_i+1 = exp(A_idt) @ ni</span>
+
+<span class="sd">            If solver is None than it will be initialized as odeint solver or stationary solver according to the context</span>
+<span class="sd">        :param init_temperature: initial temperature. In default case it is used to find initial population</span>
+
+<span class="sd">        :param difference_out: If True, the output intensity is expressed as the difference relative</span>
+<span class="sd">               to the initial signal:</span>
+<span class="sd">                       intensity(t) = intensity(t) - intensity(t=0).</span>
+<span class="sd">                       This is useful for simulating differential or transient absorption spectra.</span>
+
+<span class="sd">        :param device: device to compute (cpu / gpu)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">tr_matrix_generator_cls</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">init_temperature</span><span class="p">,</span> <span class="n">difference_out</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span> <span class="o">=</span> <span class="n">reservoir_context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_sample</span> <span class="o">=</span> <span class="n">reservoir_sample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">couple_matrix</span> <span class="o">=</span> <span class="n">couple_matrix</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_tr_matrix_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                  <span class="n">time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">res_fields</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">full_system_vectors</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+                                  <span class="n">reservoir_vectors</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>  <span class="c1"># add reservoir vector here</span>
+                                  <span class="n">lvl_down</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">lvl_up</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">energies</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">vector_down</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">vector_up</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">population</span><span class="o">.</span><span class="n">matrix_generators</span><span class="o">.</span><span class="n">BaseGenerator</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.</span>
+<span class="sd">        ----------</span>
+<span class="sd">        :param time:</span>
+<span class="sd">            Time points of measurements.</span>
+
+<span class="sd">        :param res_fields:</span>
+<span class="sd">            Resonance fields of transitions.</span>
+<span class="sd">            Shape: [..., M], where M is the number of resonance energies.</span>
+
+<span class="sd">        :param full_system_vectors:</span>
+<span class="sd">            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+<span class="sd">            For some cases it can be None. The parameter of the creator &#39;output_eigenvector- == True&#39;</span>
+<span class="sd">            make the creator to compute these vectors.</span>
+<span class="sd">            The default behavior, whether to calculate vectors or not,</span>
+<span class="sd">            depends on the specific Spectra Manager and its settings.</span>
+
+<span class="sd">        :param reservoir_vectors: eigen basis of reservoir sample. The shape is  [...., M, Nr, Nr],</span>
+<span class="sd">            where  Nr is spin system dimension of reservoir-sample, M is number of resonance transitions.</span>
+
+<span class="sd">        :param lvl_down:</span>
+<span class="sd">            Energy levels of lower states from which transitions occur.</span>
+<span class="sd">            Shape: [time, ..., N], where time is the time dimension and</span>
+<span class="sd">            N is the number of energy levels.</span>
+
+<span class="sd">        :param lvl_up:</span>
+<span class="sd">            Energy levels of upper states to which transitions occur.</span>
+<span class="sd">            Shape: [time, ..., N], where time is the time dimension and</span>
+<span class="sd">            N is the number of energy levels.</span>
+
+<span class="sd">        :param energies:</span>
+<span class="sd">            The energies of spin states. The shape is [..., N]</span>
+
+<span class="sd">        :param vector_down:</span>
+<span class="sd">            Eigenvectors of the lower energy states. The shape is [...., M, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+
+<span class="sd">        :param vector_up:</span>
+<span class="sd">            Eigenvectors of the upper energy states.The shape is [...., M, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+
+<span class="sd">        :param args: tuple, optional.</span>
+<span class="sd">        :param kwargs : dict, optional</span>
+
+<span class="sd">        :param return:</span>
+<span class="sd">        -------</span>
+<span class="sd">        TransitionMatrixGenerator instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tr_matrix_generator_cls</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span>
+            <span class="n">init_temperature</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_temperature</span><span class="p">,</span>
+            <span class="n">res_fields</span><span class="o">=</span><span class="n">res_fields</span><span class="p">,</span>
+            <span class="n">full_system_vectors</span><span class="o">=</span><span class="n">full_system_vectors</span><span class="p">,</span>
+            <span class="n">reservoir_vectors</span><span class="o">=</span><span class="n">reservoir_vectors</span><span class="p">,</span>
+            <span class="n">reservoir_context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span><span class="p">,</span>
+            <span class="n">couple_matrix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">couple_matrix</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_reservoir_eigenbasis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res_fields</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute reservoir Hamiltonian and diagonalize it at given resonance fields.</span>
+
+<span class="sd">        :param res_fields: Resonance fields (magnetic field values). Shape: [..., M]</span>
+<span class="sd">        :return: Tuple of (energies, eigenvectors) for reservoir. Shapes: [..., M, Nr], [..., M, Nr, Nr]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">F</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">Gz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_sample</span><span class="o">.</span><span class="n">get_hamiltonian_terms</span><span class="p">()</span>  <span class="c1"># F, Gx, Gy, Gz; shape: [orient, Nr, Nr]</span>
+
+        <span class="c1"># Expand to match res_fields dimensions: [..., M, Nr, Nr]</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>          <span class="c1"># [..., 1, Nr, Nr]</span>
+        <span class="n">Gz</span> <span class="o">=</span> <span class="n">Gz</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># [..., 1, Nr, Nr]</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">res_fields</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [..., M, 1, 1]</span>
+
+        <span class="n">H</span> <span class="o">=</span> <span class="n">F</span> <span class="o">+</span> <span class="n">B</span> <span class="o">*</span> <span class="n">Gz</span>  <span class="c1"># [..., M, Nr, Nr]</span>
+        <span class="n">energies</span><span class="p">,</span> <span class="n">vectors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>  <span class="c1"># energies in Hz</span>
+        <span class="k">return</span> <span class="n">energies</span><span class="p">,</span> <span class="n">vectors</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initial_populations</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">energies</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">lvl_down</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+            <span class="n">full_system_vectors</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+            <span class="n">reservoir_vectors</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>  <span class="c1"># Add new parameter reservoir_vectors to work with it</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param energies:</span>
+<span class="sd">            The energies of spin states. The shape is [..., R, N], where R is number of resonance transitions</span>
+<span class="sd">        :param lvl_down : array-like</span>
+<span class="sd">            Indexes of energy levels of lower states from which transitions occur.</span>
+<span class="sd">            Shape: [R], where R is number of resonance transitions</span>
+<span class="sd">            N is the number of energy levels.</span>
+<span class="sd">        :param lvl_up : array-like</span>
+<span class="sd">            Indexes of energy levels of upper states to which transitions occur.</span>
+<span class="sd">            Shape: [R], where R is number of resonance transitions</span>
+
+<span class="sd">        :param full_system_vectors: Eigen vector of each level of a spin system. The shape is [..., Np, Np].</span>
+<span class="sd">        For some cases it can be None</span>
+
+<span class="sd">        :param reservoir_vectors: eigen basis of reservoir sample. The shape is  [...., M, Nr, Nr],</span>
+<span class="sd">        where  Nr is spin system dimension of reservoir-sample, M is number of resonance transitions.</span>
+
+<span class="sd">        :param args:</span>
+<span class="sd">        :param kwargs:</span>
+<span class="sd">        :return: Concatenated initial populations. Shape: [..., Np + Nr]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">initial_populations_p</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_initial_populations</span><span class="p">(</span><span class="n">energies</span><span class="p">,</span> <span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">,</span> <span class="n">full_system_vectors</span><span class="p">)</span>
+        <span class="n">initial_populations_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reservoir_context</span><span class="o">.</span><span class="n">get_transformed_init_populations</span><span class="p">(</span><span class="n">reservoir_vectors</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">initial_populations_p</span><span class="p">,</span> <span class="n">initial_populations_r</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">res_fields</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                <span class="n">lvl_down</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                <span class="n">energies</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">vector_down</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                <span class="n">vector_up</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                <span class="n">full_system_vectors</span><span class="p">:</span> <span class="n">tp</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+                <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param time:</span>
+<span class="sd">            Time points of measurements. The shape is [T], where T is number of time-steps</span>
+
+<span class="sd">        :param res_fields:</span>
+<span class="sd">            Resonance fields of transitions.</span>
+<span class="sd">            Shape: [..., M], where M is the number of resonance energies.</span>
+
+<span class="sd">        :param lvl_down:</span>
+<span class="sd">            Energy levels of lower states from which transitions occur.</span>
+<span class="sd">            Shape: [time, ..., N], where time is the time dimension and</span>
+<span class="sd">            N is the number of energy levels.</span>
+
+<span class="sd">        :param lvl_up:</span>
+<span class="sd">            Energy levels of upper states to which transitions occur.</span>
+<span class="sd">            Shape: [time, ..., N], where time is the time dimension and</span>
+<span class="sd">            N is the number of energy levels.</span>
+
+<span class="sd">        :param energies:</span>
+<span class="sd">            The energies of spin states. The shape is [..., N]</span>
+
+<span class="sd">        :param vector_down:</span>
+<span class="sd">            Eigenvectors of the lower energy states. The shape is [...., M, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+
+<span class="sd">        :param vector_up:</span>
+<span class="sd">            Eigenvectors of the upper energy states.The shape is [...., M, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+
+<span class="sd">        :param full_system_vectors:</span>
+<span class="sd">            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],</span>
+<span class="sd">            where M is number of transitions, N is number of levels</span>
+<span class="sd">            For some cases it can be None. The parameter of the creator &#39;output_eigenvector- == True&#39;</span>
+<span class="sd">            make the creator to compute these vectors</span>
+<span class="sd">            The default behavior, whether to calculate vectors or not,</span>
+<span class="sd">            depends on the specific Spectra Manager and its settings.</span>
+
+<span class="sd">        :param args: additinal args from spectra creator.</span>
+
+<span class="sd">        :param kwargs:</span>
+<span class="sd">        :return: Part of the transition intensity that depends on the population of the levels.</span>
+<span class="sd">        The shape is [T, ...., Tr]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Compute reservoir eigenbasis at probe resonance fields</span>
+        <span class="n">reservoir_energies</span><span class="p">,</span> <span class="n">reservoir_vectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_reservoir_eigenbasis</span><span class="p">(</span><span class="n">res_fields</span><span class="p">)</span>
+
+        <span class="c1"># Build combined initial populations</span>
+        <span class="n">initial_populations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_populations</span><span class="p">(</span><span class="n">energies</span><span class="p">,</span> <span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">,</span> <span class="n">full_system_vectors</span><span class="p">,</span> <span class="n">reservoir_vectors</span><span class="p">)</span>
+
+        <span class="c1"># Initialize custom generator</span>
+        <span class="n">tr_matrix_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_tr_matrix_generator</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">res_fields</span><span class="p">,</span> <span class="n">full_system_vectors</span><span class="p">,</span> <span class="n">reservoir_vectors</span><span class="p">,</span>
+                                                             <span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">,</span> <span class="n">energies</span><span class="p">,</span> <span class="n">vector_down</span><span class="p">,</span>
+                                                             <span class="n">vector_up</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">energies</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">energies</span><span class="p">,</span> <span class="n">reservoir_energies</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Update energies</span>
+
+        <span class="c1"># The same code as in the parent Class</span>
+        <span class="n">evo</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">tr_utils</span><span class="o">.</span><span class="n">EvolutionMatrix</span><span class="p">(</span><span class="n">energies</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">initial_populations</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">initial_populations</span> <span class="o">=</span> <span class="n">initial_populations</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">pop_difference</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="p">(</span>
+            <span class="n">time</span><span class="p">,</span> <span class="n">initial_populations</span><span class="p">,</span> <span class="n">evo</span><span class="p">,</span> <span class="n">tr_matrix_generator</span><span class="p">,</span> <span class="n">lvl_down</span><span class="p">,</span> <span class="n">lvl_up</span><span class="p">)</span>
+        <span class="n">pop_difference</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_compute</span><span class="p">(</span><span class="n">pop_difference</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pop_difference</span>
+<br/></pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="5.-Spectra-Building-Procedures">
+<h1>5. Spectra Building Procedures<a class="headerlink" href="#5.-Spectra-Building-Procedures" title="Link to this heading"></a></h1>
+<p>Let’s compute some time-resolved spectra</p>
+<section id="5.1-Settung-up-the-Relaxation-Parameters">
+<h2>5.1 Settung up the Relaxation Parameters<a class="headerlink" href="#5.1-Settung-up-the-Relaxation-Parameters" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># This is the same relaxation as in the chapter 3.2</span>
+
+<span class="c1">#............PROBE BLOCK.........................</span>
+<span class="n">init_populations_p</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>  <span class="c1"># let&#39;s set zero initial population</span>
+<span class="n">out_probs_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2</span>
+<span class="n">free_probs_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+<span class="n">driven_probs_p</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+
+<span class="c1">#............RESERVOIR BLOCK.........................</span>
+<span class="n">init_populations_r</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+<span class="n">out_probs_r</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+<span class="c1"># Level 0 ↔ Level 1 and Level 1 ↔ Level 2</span>
+<span class="n">free_probs_r</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+<span class="n">driven_probs_r</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Do not consider it here.</span>
+
+<span class="c1">#............COUPLE MATRIX.........................</span>
+
+<span class="c1"># Define coupling matrix: transitions from reservoir states (-1, 0, +1)</span>
+<span class="c1"># to corresponding probe states (-1, 0, +1) with equal rate.</span>
+<span class="n">couple_matrix</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.0</span>
+
+<span class="c1"># Some parameters are defined in zfs basis, some in eigen as usual</span>
+<span class="n">probe_context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_p</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs_p</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span>\
+                <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs_p</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="n">reservoir_context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">reservoir_sample</span><span class="p">,</span> <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations_r</span><span class="p">,</span> <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs_r</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span>\
+                    <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">reservoir_sample</span><span class="p">,</span> <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs_r</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="5.2-Settung-up-the-Spectra-Creation">
+<h2>5.2 Settung up the Spectra Creation<a class="headerlink" href="#5.2-Settung-up-the-Spectra-Creation" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">temperature</span> <span class="o">=</span> <span class="mf">300.0</span>
+
+<span class="n">populator_couple</span> <span class="o">=</span> <span class="n">ReservoirProbePopulator</span><span class="p">(</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">probe_context</span><span class="p">,</span>
+    <span class="n">reservoir_context</span><span class="o">=</span><span class="n">reservoir_context</span><span class="p">,</span>
+    <span class="n">reservoir_sample</span><span class="o">=</span><span class="n">reservoir_sample</span><span class="p">,</span>
+    <span class="n">couple_matrix</span><span class="o">=</span><span class="n">couple_matrix</span><span class="p">,</span>
+    <span class="n">init_temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="c1"># Compute spectra</span>
+<span class="n">tr_spectra_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">CoupledTimeSpectra</span><span class="p">(</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">probe_sample</span><span class="p">,</span>
+    <span class="n">harmonic</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="n">probe_context</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+    <span class="n">populator</span><span class="o">=</span><span class="n">populator_couple</span><span class="p">,</span> <span class="c1"># Our predefined populator</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span>
+<span class="p">)</span>
+
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.335</span><span class="p">,</span> <span class="mf">0.365</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Field in Tesla</span>
+<span class="n">tot_points</span> <span class="o">=</span> <span class="mi">800</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">tot_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># time in seconds, long time scale, up to 20ms</span>
+
+<span class="n">spectrum</span>  <span class="o">=</span> <span class="n">tr_spectra_creator</span><span class="p">(</span><span class="n">probe_sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="5.3.-Plot-the-Results">
+<h2>5.3. Plot the Results<a class="headerlink" href="#5.3.-Plot-the-Results" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s define a few functions that will simplify plotting in the next chapter. We&#39;ll plot two-dimensional graphs and some intercepts at specific points in time.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">TwoSlopeNorm</span>
+
+<span class="c1"># It is quite experemental and used only here</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_heat_map</span><span class="p">(</span><span class="n">fields</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="n">full_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">delta_field</span> <span class="o">=</span> <span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">aspect</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">full_time</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span> <span class="n">delta_field</span><span class="p">))</span> <span class="o">+</span> <span class="mi">10</span>
+
+    <span class="n">cmap</span> <span class="o">=</span> <span class="s1">&#39;seismic&#39;</span>
+    <span class="n">abs_max</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">TwoSlopeNorm</span><span class="p">(</span>
+                <span class="n">vmin</span><span class="o">=-</span><span class="n">abs_max</span> <span class="o">-</span> <span class="mf">0.002</span><span class="p">,</span>
+                <span class="n">vcenter</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
+                <span class="n">vmax</span><span class="o">=</span><span class="n">abs_max</span> <span class="o">+</span> <span class="mf">0.002</span>
+    <span class="p">)</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bicubic&#39;</span><span class="p">,</span>
+            <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">full_time</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fields</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="p">],</span>
+            <span class="n">aspect</span><span class="o">=</span><span class="n">aspect</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span>
+            <span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;lower&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_kynetic</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">answer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_closest_uniform</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">fields</span><span class="p">):</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">fields</span> <span class="o">-</span> <span class="n">field</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">index</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="n">field_idx</span><span class="p">,</span> <span class="n">field_value</span> <span class="o">=</span>  <span class="n">find_closest_uniform</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">answer</span><span class="p">[</span><span class="n">field_idx</span><span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_fielddep</span><span class="p">(</span><span class="n">time_val</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">answer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_closest_uniform</span><span class="p">(</span><span class="n">time_val</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">time</span> <span class="o">-</span> <span class="n">time_val</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">index</span><span class="p">,</span> <span class="n">time</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">time_idx</span><span class="p">,</span> <span class="n">field_value</span> <span class="o">=</span>  <span class="n">find_closest_uniform</span><span class="p">(</span><span class="n">time_val</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">answer</span><span class="p">[:,</span> <span class="n">time_idx</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spectrum_np</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">spectrum_np</span> <span class="o">=</span> <span class="n">spectrum_np</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spectrum_np</span><span class="p">))</span>
+
+<span class="n">time_points</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">,</span> <span class="mf">5.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">,</span> <span class="mf">15.0</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="p">]</span> <span class="c1"># times (s) to plot field-dependant spectra at the given time</span>
+<span class="n">field_points</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.345</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.355</span><span class="p">]</span>  <span class="c1"># fields (T) to plot kynetics at the given times</span>
+
+<span class="c1"># --- Create mosaic layout: heat map + kinetics on left, field dependence on right ---</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot_mosaic</span><span class="p">([[</span><span class="s1">&#39;one&#39;</span><span class="p">,</span> <span class="s1">&#39;three&#39;</span><span class="p">],</span>
+                                <span class="p">[</span><span class="s1">&#39;two&#39;</span><span class="p">,</span> <span class="s1">&#39;three&#39;</span><span class="p">]],</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># 1.</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;one&quot;</span><span class="p">])</span>
+<span class="n">visualization</span><span class="o">.</span><span class="n">plot_2d_timeresolved</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">,</span> <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Time (ms)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Time-Resolved Spectrum&quot;</span><span class="p">)</span>
+
+<span class="c1"># 2. Kinetic traces (bottom-left)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;two&quot;</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">b_val</span> <span class="ow">in</span> <span class="n">field_points</span><span class="p">:</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_kinetic</span><span class="p">(</span><span class="n">b_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">,</span> <span class="n">time_unit</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Time (ms)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity (arb. units)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Kinetics at Selected Fields&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;B = </span><span class="si">{</span><span class="n">b</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> T&quot;</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">field_points</span><span class="p">])</span>
+
+<span class="c1"># 3. Field-dependent spectra (right)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="s2">&quot;three&quot;</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">t_val</span> <span class="ow">in</span> <span class="n">time_points</span><span class="p">:</span>
+    <span class="n">visualization</span><span class="o">.</span><span class="n">plot_field_dependence</span><span class="p">(</span><span class="n">t_val</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">spectrum_np</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Magnetic Field (T)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity (arb. units)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Field Dependence&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;t = </span><span class="si">{</span><span class="n">t</span><span class="o">*</span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ms&quot;</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">time_points</span><span class="p">])</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_6_27_0.png" src="../../_images/examples_examples_for_documentation_example_6_27_0.png" />
+</div>
+</div>
+<p>We get the same result as in chapter 3.2!!! But in 4-5 times quicker!!!</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../example_6.html" class="btn btn-neutral float-left" title="Multi-System Kinetic" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../example_7.html" class="btn btn-neutral float-right" title="Time-Resolved Fitting Procedures" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

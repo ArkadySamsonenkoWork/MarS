@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Base Spin System &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Sample Representation" href="sample.html" />
+    <link rel="prev" title="Quickstart" href="../quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Base Spin System</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#useful-features">Useful Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basis-and-operator-methods">Basis and Operator Methods</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#applying-frame-rotations">Applying Frame Rotations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#concatenating-spin-systems">Concatenating Spin Systems</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mathematical-formulation">Mathematical Formulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Base Spin System</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/contents/base_spin_system.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="base-spin-system">
+<h1>Base Spin System<a class="headerlink" href="#base-spin-system" title="Link to this heading"></a></h1>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem</span></code> class provides a flexible representation of spin systems commonly encountered in EPR spectroscopy. It supports arbitrary numbers of electron and nuclear spins, along with their mutual interactions (hyperfine, dipolar, exchange, zfs).</p>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
+<p><strong>1. Simple triplet system (S = 1) with axial zero-field splitting</strong></p>
+<p>Model a single electron with spin 1 and a D-tensor aligned with the lab frame:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">particles</span>
+
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">)</span>  <span class="c1"># g = 2.002</span>
+<span class="n">D_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="mf">0.35</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">)</span>  <span class="c1"># D = 0.35 GHz</span>
+<span class="n">triplet</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span><span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span> <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">D_tensor</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>This creates a three-level system with Hamiltonian <span class="math notranslate nohighlight">\(H = gβBSz + D(S_z^2 - S(S+1)/3)\)</span>.</p>
+<p><strong>2. Two coupled doublets with anisotropic g-tensors</strong></p>
+<p>Model two interacting S = 1/2 centers with distinct g-anisotropy and a dipolar coupling:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">2.002</span><span class="p">,</span> <span class="mf">2.004</span><span class="p">,</span> <span class="mf">2.008</span><span class="p">])</span>  <span class="c1"># gx, gy, gz</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">1.998</span><span class="p">,</span> <span class="mf">2.000</span><span class="p">,</span> <span class="mf">2.006</span><span class="p">])</span>
+
+<span class="n">anisotropic</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">0.01</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">,</span> <span class="mf">0.0</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">,</span> <span class="mf">0.02</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">])</span>  <span class="c1"># Dx, Dy, Dz</span>
+
+<span class="n">system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">anisotropic</span><span class="p">)]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The total Hilbert space dimension is 4, and the dipolar term is added via scalar product of spin operators.</p>
+<p><strong>3. Electron coupled to a nucleus (hyperfine interaction)</strong></p>
+<p>Model a nitroxide radical with isotropic hyperfine interaction with 14N nucleus (I = 1):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">g_el</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">2.006</span><span class="p">,</span> <span class="mf">2.006</span><span class="p">,</span> <span class="mf">2.002</span><span class="p">])</span>
+<span class="n">hyperfine</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">20.01</span> <span class="o">*</span> <span class="mf">1e6</span><span class="p">,</span> <span class="mf">20.0</span>  <span class="o">*</span> <span class="mf">1e6</span><span class="p">,</span> <span class="mf">80.0</span>  <span class="o">*</span> <span class="mf">1e6</span><span class="p">])</span> <span class="c1"># A-tensor in MHz</span>
+<span class="n">system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_el</span><span class="p">],</span>
+    <span class="n">nuclei</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;14N&quot;</span><span class="p">],</span>
+    <span class="n">electron_nuclei</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hyperfine</span><span class="p">)]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The resulting system has dimension <span class="math notranslate nohighlight">\((2S+1)(2I+1) = 6\)</span></p>
+</section>
+<section id="useful-features">
+<h2>Useful Features<a class="headerlink" href="#useful-features" title="Link to this heading"></a></h2>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem</span></code> provides several utility methods for advanced quantum-mechanical analysis, including access to key spin operators.
+These are especially useful when working with total spin manifolds or custom spectral models.</p>
+<section id="basis-and-operator-methods">
+<h3>Basis and Operator Methods<a class="headerlink" href="#basis-and-operator-methods" title="Link to this heading"></a></h3>
+<p>The following methods allow you to construct and switch between common representations of the spin Hilbert space.
+In MarS, all operators and vectors are initially defined in the product basis of individual spin projections, denoted as <span class="math notranslate nohighlight">\(|\alpha\rangle\)</span> and <span class="math notranslate nohighlight">\(|\beta\rangle\)</span>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Mz</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">get_electron_z_operator</span><span class="p">()</span>        <span class="c1"># Total electron S_z operator</span>
+<span class="n">S2</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">get_electron_squared_operator</span><span class="p">()</span>  <span class="c1"># Total electron S² operator</span>
+<span class="n">Me</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">get_electron_projections</span><span class="p">()</span>       <span class="c1"># Electron-only Mₑ per product state</span>
+<span class="n">Mt</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">get_total_projections</span><span class="p">()</span>          <span class="c1"># Total M = Σmₑ + Σmₙ per product state</span>
+</pre></div>
+</div>
+<ul>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem.get_electron_z_operator()</span></code>
+Returns the total electron spin projection operator along the <em>z</em>-axis:</p>
+<div class="math notranslate nohighlight">
+\[\hat{S}_z = \sum_{i \in \text{electrons}} \hat{S}_{i}^{(z)}\]</div>
+<ul class="simple">
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(spin_dim,</span> <span class="pre">spin_dim)</span></code></p></li>
+<li><p><strong>Example</strong>: For two spin-½ electrons, returns a 4×4 diagonal matrix with entries <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">0,</span> <span class="pre">0,</span> <span class="pre">-1]</span></code>.</p></li>
+</ul>
+</li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem.get_electron_squared_operator()</span></code>
+Returns the total electron spin-squared operator:</p>
+<div class="math notranslate nohighlight">
+\[\hat{S}^2 = \left( \sum_i \hat{\mathbf{S}}_i \right) \cdot \left( \sum_j \hat{\mathbf{S}}_j \right)
+          = \hat{S}_x^2 + \hat{S}_y^2 + \hat{S}_z^2\]</div>
+<ul class="simple">
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(spin_dim,</span> <span class="pre">spin_dim)</span></code></p></li>
+<li><p><strong>Eigenvalues</strong>: <span class="math notranslate nohighlight">\(S(S+1)\)</span>, where <span class="math notranslate nohighlight">\(S\)</span> is the total electron spin quantum number.</p></li>
+<li><p><strong>Example</strong>: For two spin-½ electrons, eigenvalues are <code class="docutils literal notranslate"><span class="pre">0</span></code> (singlet) and <code class="docutils literal notranslate"><span class="pre">2</span></code> (triplet).</p></li>
+</ul>
+</li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem.get_electron_projections()</span></code>
+Returns a 1D tensor containing the total electron magnetic quantum number <span class="math notranslate nohighlight">\(M_e = \sum_i m_{e_i}\)</span> for each product state.</p>
+<ul class="simple">
+<li><p><strong>Ignores nuclear spins</strong> (sets their projections to zero).</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(spin_dim,)</span></code></p></li>
+<li><p><strong>Example</strong>: For one electron (<span class="math notranslate nohighlight">\(S = \tfrac{1}{2}\)</span>) and one nucleus (<span class="math notranslate nohighlight">\(I = \tfrac{1}{2}\)</span>), returns <code class="docutils literal notranslate"><span class="pre">[0.5,</span> <span class="pre">0.5,</span> <span class="pre">-0.5,</span> <span class="pre">-0.5]</span></code>.</p></li>
+</ul>
+</li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem.get_total_projections()</span></code>
+Returns the total magnetic quantum number <span class="math notranslate nohighlight">\(M = \sum_i m_{e_i} + \sum_j m_{n_j}\)</span> for every product state.</p>
+<ul class="simple">
+<li><p><strong>Includes both electrons and nuclei</strong>.</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(spin_dim,)</span></code></p></li>
+<li><p><strong>Example</strong>: Same system as above → <code class="docutils literal notranslate"><span class="pre">[1.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">-1.0]</span></code>.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="applying-frame-rotations">
+<h3>Applying Frame Rotations<a class="headerlink" href="#applying-frame-rotations" title="Link to this heading"></a></h3>
+<p>Spin systems in MarS can be rotated as a whole relative to laboratory frame using the <code class="xref py py-meth docutils literal notranslate"><span class="pre">mars.spin_model.SpinSystem.apply_rotation()</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span>
+
+<span class="c1"># Define a spin system (e.g., nitroxide radical)</span>
+<span class="n">g_el</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">2.006</span><span class="p">,</span> <span class="mf">2.006</span><span class="p">,</span> <span class="mf">2.002</span><span class="p">])</span>
+<span class="n">A_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">([</span><span class="mf">20.0e6</span><span class="p">,</span> <span class="mf">20.0e6</span><span class="p">,</span> <span class="mf">80.0e6</span><span class="p">])</span>
+<span class="n">system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_el</span><span class="p">],</span>
+    <span class="n">nuclei</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;14N&quot;</span><span class="p">],</span>
+    <span class="n">electron_nuclei</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">A_tensor</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="c1"># Define a rotation matrix (e.g., 90° around y-axis)</span>
+<span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+                  <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+                  <span class="p">[</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]])</span>
+
+<span class="c1"># Apply rotation to all interaction tensors</span>
+<span class="n">system</span><span class="o">.</span><span class="n">apply_rotation</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This operation updates the internal representation of all interaction tensors (g, hyperfine, dipolar, etc.) by left-multiplying their components with the provided rotation matrix:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{T}_{\text{new}} = \mathbf{R} \cdot \mathbf{T}_{\text{old}}\]</div>
+</section>
+<section id="concatenating-spin-systems">
+<h3>Concatenating Spin Systems<a class="headerlink" href="#concatenating-spin-systems" title="Link to this heading"></a></h3>
+<p>MarS provides functionality to combine multiple independent spin systems into a single composite system using the direct sum construction.
+This is not equivalent to building a true multi-particle quantum system (which would require a tensor-product Hilbert space). Instead, it creates a block-diagonal representation for specific effective models.</p>
+<p>Use concatenation only in scenarios such as:</p>
+<p>-Modeling an electron that may occupy distinct spin environments (e.g., two triplet states with slightly different zero-field splitting or dipolar couplings).</p>
+<p>-Simulating polarized or time-resolved spectra where coherence or population transfer between otherwise isolated manifolds must be considered</p>
+<section id="mathematical-formulation">
+<h4>Mathematical Formulation<a class="headerlink" href="#mathematical-formulation" title="Link to this heading"></a></h4>
+<p>For <span class="math notranslate nohighlight">\(n\)</span> independent spin systems with Hilbert spaces <span class="math notranslate nohighlight">\(\mathcal{H}^{(1)}\)</span>, <span class="math notranslate nohighlight">\(\mathcal{H}^{(2)}\)</span>, …, <span class="math notranslate nohighlight">\(\mathcal{H}^{(n)}\)</span> of dimensions <span class="math notranslate nohighlight">\(d_1, d_2, ..., d_n\)</span>, the concatenated system has Hilbert space:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{H}_{\text{total}} = \mathcal{H}^{(1)} \oplus \mathcal{H}^{(2)} \oplus \cdots \oplus \mathcal{H}^{(n)}\]</div>
+<p>with total dimension <span class="math notranslate nohighlight">\(D = \sum_{i=1}^{n} d_i\)</span>.</p>
+<p>All spin operators become block-diagonal:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\hat{O}_{\text{total}} = \begin{pmatrix}
+\hat{O}^{(1)} &amp; 0 &amp; \cdots &amp; 0 \\
+0 &amp; \hat{O}^{(2)} &amp; \cdots &amp; 0 \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 0 &amp; \cdots &amp; \hat{O}^{(n)}
+\end{pmatrix}\end{split}\]</div>
+<p>The Hamiltonian decomposes as:</p>
+<div class="math notranslate nohighlight">
+\[\hat{H}_{\text{total}} = \hat{H}^{(1)} \oplus \hat{H}^{(2)} \oplus \cdots \oplus \hat{H}^{(n)}\]</div>
+</section>
+<section id="usage">
+<h4>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h4>
+<p>The concatenation can be performed using <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.concatination.concat()</span></code> or directly via <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.spin_model.concat_spin_systems()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">concat</span><span class="p">,</span> <span class="n">spin_model</span>
+
+<span class="c1"># Define two independent triplet systems</span>
+<span class="n">g1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.002</span><span class="p">)</span>
+<span class="n">D1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">350e6</span><span class="p">,</span> <span class="mf">50e6</span><span class="p">])</span>
+<span class="n">triplet_1</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g1</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">D1</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">g2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.008</span><span class="p">)</span>
+<span class="n">D2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">280e6</span><span class="p">,</span> <span class="mf">35e6</span><span class="p">])</span>
+<span class="n">triplet_2</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g2</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">D2</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="c1"># Concatenate into single 6-dimensional system</span>
+<span class="n">composite_system</span> <span class="o">=</span> <span class="n">concat</span><span class="p">([</span><span class="n">triplet_1</span><span class="p">,</span> <span class="n">triplet_2</span><span class="p">])</span>
+<span class="c1"># Equivalent to: spin_model.concat_spin_systems([triplet_1, triplet_2])</span>
+</pre></div>
+</div>
+<p><strong>See also</strong>: <code class="xref py py-func docutils literal notranslate"><span class="pre">mars.spin_model.concat_spin_systems()</span></code> for implementation details.</p>
+</section>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sample.html" class="btn btn-neutral float-right" title="Sample Representation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

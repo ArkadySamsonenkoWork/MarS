@@ -1,0 +1,2101 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mars.mesher package &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="mars.optimization package" href="mars.optimization.html" />
+    <link rel="prev" title="mars package" href="mars.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="mars.html">mars package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="mars.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">mars.mesher package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-mars.mesher.axial_neigbour">mars.mesher.axial_neigbour module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-mars.mesher.delanay_neighbour">mars.mesher.delanay_neighbour module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mars-mesher-experimental-module">mars.mesher.experimental module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-mars.mesher.general_mesh">mars.mesher.general_mesh module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-contents">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="mars.optimization.html">mars.optimization package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.particles.html">mars.particles package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.population.html">mars.population package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.reader.html">mars.reader package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.spectra_manager.html">mars.spectra_manager package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mars.visualization.html">mars.visualization package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-concatination-module">mars.concatination module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-mars.constants">mars.constants module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-multiplication-module">mars.multiplication module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-res-field-algorithm-module">mars.res_field_algorithm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-res-freq-algorithm-module">mars.res_freq_algorithm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-save-procedures-module">mars.save_procedures module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-secular-approximation-module">mars.secular_approximation module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-spectra-processing-module">mars.spectra_processing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#mars-spin-model-module">mars.spin_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-mars.utils">mars.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mars.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="mars.html">mars package</a></li>
+      <li class="breadcrumb-item active">mars.mesher package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/mars.mesher.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mars-mesher-package">
+<h1>mars.mesher package<a class="headerlink" href="#mars-mesher-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-mars.mesher.axial_neigbour">
+<span id="mars-mesher-axial-neigbour-module"></span><h2>mars.mesher.axial_neigbour module<a class="headerlink" href="#module-mars.mesher.axial_neigbour" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.MeshProcessorAxial">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.axial_neigbour.</span></span><span class="sig-name descname"><span class="pre">MeshProcessorAxial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#MeshProcessorAxial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.MeshProcessorAxial" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.MeshProcessorAxial.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#MeshProcessorAxial.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.MeshProcessorAxial.__init__" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.SkipMeshProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.axial_neigbour.</span></span><span class="sig-name descname"><span class="pre">SkipMeshProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#SkipMeshProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.SkipMeshProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.axial_neigbour.MeshProcessorAxial" title="mars.mesher.axial_neigbour.MeshProcessorAxial"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeshProcessorAxial</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.SkipMeshProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#SkipMeshProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.SkipMeshProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.SkipMeshProcessor.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#SkipMeshProcessor.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.SkipMeshProcessor.forward" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.mesh_processor_factory">
+<span class="sig-prename descclassname"><span class="pre">mars.mesher.axial_neigbour.</span></span><span class="sig-name descname"><span class="pre">mesh_processor_factory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#mesh_processor_factory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.mesh_processor_factory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.axial_neigbour.</span></span><span class="sig-name descname"><span class="pre">AxialMeshNeighbour</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#AxialMeshNeighbour"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.general_mesh.BaseMeshAxial" title="mars.mesher.general_mesh.BaseMeshAxial"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseMeshAxial</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#AxialMeshNeighbour.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize Delaunay mesh parameters.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>eps: Small epsilon value for numerical stability
+initial_grid_frequency: Resolution of initial grid
+interpolation_grid_frequency: Resolution of interpolation grid</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.create_initial_cache_data">
+<span class="sig-name descname"><span class="pre">create_initial_cache_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#AxialMeshNeighbour.create_initial_cache_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.create_initial_cache_data" title="Link to this definition"></a></dt>
+<dd><p>Create and cache initial mesh data structures.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<em>torch.device</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.post_mesh">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">post_mesh</span></span><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.post_mesh" title="Link to this definition"></a></dt>
+<dd><p>Processed mesh vertices and triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (vertices, triangles) where vertices has shape (N, 2)
+and triangles has shape (M, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.initial_grid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_grid</span></span><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.initial_grid" title="Link to this definition"></a></dt>
+<dd><p>Initial theta grid for axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 1) with theta coordinates</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.to_delaunay">
+<span class="sig-name descname"><span class="pre">to_delaunay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_post</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#AxialMeshNeighbour.to_delaunay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.to_delaunay" title="Link to this definition"></a></dt>
+<dd><p>Format interpolated values for Delaunay representation.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>f_post: Interpolated function values
+simplices: Simplices to use for final representation</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: Values formatted for Delaunay triangulation</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f_post</strong> (<em>torch.Tensor</em>)</p></li>
+<li><p><strong>simplices</strong> (<em>torch.Tensor</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_init</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/axial_neigbour.html#AxialMeshNeighbour.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.forward" title="Link to this definition"></a></dt>
+<dd><p>Format interpolated values for Delaunay representation.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>f_init: Interpolated function values</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.Tensor: Values formatted for Delaunay triangulation</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_init</strong> (<em>torch.Tensor</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.areas">
+<span class="sig-name descname"><span class="pre">areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas of mesh triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Areas of each triangle in the mesh (unit sphere)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.disordered" title="Link to this definition"></a></dt>
+<dd><p>Powder samples represent disordered ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial theta grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding angular coordinate axis</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Lazy-evaluated rotation matrices for powder orientations.</p>
+<p>Computed on first access if not already cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.spherical_triangle_areas">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spherical_triangle_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.spherical_triangle_areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas for axial symmetry mesh (effectively rings).</p>
+<p>Areas computed as differences in solid angle between theta boundaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<em>torch.Tensor</em>) – Theta coordinates of shape (N, 1)</p></li>
+<li><p><strong>triangles</strong> (<em>torch.Tensor</em>) – Line segment indices of shape (M, 2)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ring areas of shape (M,)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.axial_neigbour.AxialMeshNeighbour.triplot">
+<span class="sig-name descname"><span class="pre">triplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.axial_neigbour.AxialMeshNeighbour.triplot" title="Link to this definition"></a></dt>
+<dd><p>Visualize mesh triangulation in phi-theta coordinates.</p>
+<p>Uses matplotlib’s triplot to display triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-mars.mesher.delanay_neighbour">
+<span id="mars-mesher-delanay-neighbour-module"></span><h2>mars.mesher.delanay_neighbour module<a class="headerlink" href="#module-mars.mesher.delanay_neighbour" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BoundaryHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">BoundaryHandler</span></span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BoundaryHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BoundaryHandler" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Handles boundary condition logic.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BoundaryHandler.get_boundary">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_boundary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_indexes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_start</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BoundaryHandler.get_boundary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BoundaryHandler.get_boundary" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>boundary</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>init_indexes</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>)</p></li>
+<li><p><strong>is_start</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.ThetaLine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">ThetaLine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_point</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#ThetaLine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.ThetaLine" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Represents a line of constant theta with variable phi sampling.</p>
+<p>Used during mesh construction to generate vertices with adaptive density
+based on spherical geometry requirements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (<em>float</em>)</p></li>
+<li><p><strong>points</strong> (<em>int</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>last_point</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.ThetaLine.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_point</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#ThetaLine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.ThetaLine.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize theta line with sampling parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (<em>float</em>) – Polar angle in radians [0, pi]</p></li>
+<li><p><strong>points</strong> (<em>int</em>) – Number of latent sampling points along phi</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds in radians</p></li>
+<li><p><strong>last_point</strong> (<em>bool</em>) – Whether to include the endpoint at phi_max</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.ThetaLine.phi_theta">
+<span class="sig-name descname"><span class="pre">phi_theta</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#ThetaLine.phi_theta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.ThetaLine.phi_theta" title="Link to this definition"></a></dt>
+<dd><p>Generate (phi, theta) coordinate pairs for this theta line.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of (phi, theta) tuples in radians</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[tuple[float, float]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BaseInterpolator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">BaseInterpolator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BaseInterpolator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for spherical mesh interpolators.</p>
+<p>Defines the interface for interpolating scalar fields from a coarse base mesh
+to a finer target mesh on the unit sphere. All concrete interpolators must
+implement the forward pass and provide a transformation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BaseInterpolator.__init__">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extended_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BaseInterpolator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BaseInterpolator.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the interpolator with source and target vertex sets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>np.ndarray</em>) – Base mesh vertices as (phi, theta) pairs.
+Shape (N, 2) with phi ∈ [0, 2π), theta ∈ [0, π/2].</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>np.ndarray</em>) – Target vertices for interpolation.
+Shape (M, 2) with phi ∈ [0, 2π), theta ∈ [0, π/2].</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device for storing tensors</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision for computations</p></li>
+<li><p><strong>args</strong> – Additional positional arguments for subclasses</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments for subclasses</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BaseInterpolator.forward">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BaseInterpolator.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BaseInterpolator.forward" title="Link to this definition"></a></dt>
+<dd><p>Interpolate values at extended points using RBF interpolation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>) – Tensor of shape (…, N), where N = number of base vertices.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated values of shape (…, M), where M = number of extended vertices.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BaseInterpolator.transform_matrix">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transform_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.BaseInterpolator.transform_matrix" title="Link to this definition"></a></dt>
+<dd><p>Get the linear transformation matrix for interpolation.</p>
+<p>The matrix W satisfies: f_extended = f_base &#64; W
+where W has shape (N, M), N = base vertices, M = extended vertices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transformation matrix of shape (N, M)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.RBFInterpolator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">RBFInterpolator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#RBFInterpolator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.RBFInterpolator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInterpolator</span></code></a></p>
+<p>Radial Basis Function interpolator for spherical mesh refinement with symmetry awareness.</p>
+<p>Performs interpolation from a coarse base mesh to a finer extended mesh on the unit sphere
+using geodesic (great-circle) distances and robust regularization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>kernel</strong> (<em>str</em>)</p></li>
+<li><p><strong>jitter</strong> (<em>float</em>)</p></li>
+<li><p><strong>epsilon</strong> (<em>float</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.RBFInterpolator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extended_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'thin_plate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'spherical'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#RBFInterpolator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.RBFInterpolator.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize RBF interpolator with spherical geometry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>np.ndarray</em>) – Base mesh vertices as (phi, theta) pairs on upper hemisphere.
+Shape (N, 2) with phi ∈ [0, 2π), theta ∈ [0, π/2].</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>np.ndarray</em>) – Target vertices for interpolation.
+Shape (M, 2). with phi ∈ [0, 2π), theta ∈ [0, π/2].</p></li>
+<li><p><strong>kernel</strong> (<em>str</em>) – RBF kernel type. Default is  “thin_plate”. It supporst also
+“gaussian”, “multiquadric”, “inverse_multiquadric”, “linear”, “cubic”.</p></li>
+<li><p><strong>regularization</strong> (<em>str</em>) – Regularization method. Options: “spherical”, “tikhonov”</p></li>
+<li><p><strong>jitter</strong> (<em>float</em>) – Small value is multiplied on regularization</p></li>
+<li><p><strong>epsilon</strong> (<em>float</em>) – Shape parameter controlling kernel width. Larger values → smoother
+interpolation; smaller values → tighter fit (risk of overfitting/instability).
+For “thin_plate”, typically set to 1.0 (scale-invariant).</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device for transform matrix storage</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – For unsupported kernel types or invalid vertex configurations</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.RBFInterpolator.transform_matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transform_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.RBFInterpolator.transform_matrix" title="Link to this definition"></a></dt>
+<dd><p>Return the matrix with the shape [N, M] which transforms initial function to extended function
+:return: transformation matrix</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.RBFInterpolator.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#RBFInterpolator.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.RBFInterpolator.forward" title="Link to this definition"></a></dt>
+<dd><p>Interpolate values at extended points using RBF interpolation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>) – Tensor of shape (…, N), where N = number of base vertices.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated values of shape (…, M), where M = number of extended vertices.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BarycentricInterpolator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">BarycentricInterpolator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BarycentricInterpolator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BarycentricInterpolator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInterpolator</span></code></a></p>
+<p>Spherical barycentric interpolator for data defined on a triangulated unit sphere.</p>
+<p>This class interpolates values from an initial spherical mesh to a new set of
+spherical points using true spherical barycentric coordinates.</p>
+<dl class="simple">
+<dt>The interpolation process consists of:</dt><dd><ol class="arabic simple">
+<li><p>Converting spherical coordinates (phi, theta) to 3D Cartesian unit vectors.</p></li>
+<li><p>Finding, for each target point, the spherical triangle that contains it.</p></li>
+<li><p>Computing spherical barycentric coordinates using spherical triangle areas.</p></li>
+</ol>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>)</p></li>
+<li><p><strong>init_triangulation</strong> (<em>numpy.ndarray</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+<li><p><strong>tol</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BarycentricInterpolator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extended_vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_triangulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BarycentricInterpolator.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BarycentricInterpolator.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the spherical barycentric interpolator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>) – Initial mesh vertices as (phi, theta) pairs in radians.
+Shape (N, 2), where phi ∈ [0, 2π), theta ∈ [0, π].</p></li>
+<li><p><strong>extended_vertices</strong> (<em>list</em><em>[</em><em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>| </em><em>numpy.ndarray</em>) – Target vertices for interpolation as (phi, theta) pairs.
+Shape (M, 2).</p></li>
+<li><p><strong>init_triangulation</strong> (<em>numpy.ndarray</em>) – Triangle connectivity array of shape (T, 3), containing indices
+into <cite>init_vertices</cite>.</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – PyTorch device on which the interpolation matrix is stored.</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating-point precision for interpolation weights.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – Numerical tolerance used for spherical point-in-triangle tests.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BarycentricInterpolator.transform_matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transform_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.BarycentricInterpolator.transform_matrix" title="Link to this definition"></a></dt>
+<dd><p>Return the matrix with the shape [N, M] which transforms initial function to extended function
+:return: transformation matrix</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BarycentricInterpolator.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BarycentricInterpolator.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BarycentricInterpolator.forward" title="Link to this definition"></a></dt>
+<dd><p>Interpolate values defined on the initial spherical mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>) – Tensor of shape (…, N) containing values defined at the
+initial mesh vertices.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tensor of shape (…, M) containing interpolated values
+at the target vertices.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.MeshProcessorBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">MeshProcessorBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#MeshProcessorBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.MeshProcessorBase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Base class for mesh processing pipelines with adaptive vertex generation.</p>
+<p>Generates spherical meshes with density increasing toward poles to maintain
+approximately uniform area per triangle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.MeshProcessorBase.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#MeshProcessorBase.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.MeshProcessorBase.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize mesh processor with geometric parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>) – Base resolution parameter controlling vertex count</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds in radians</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>) – Boundary handling: “periodic”, “reflection”, “a”, or None</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatorsName">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">InterpolatorsName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#InterpolatorsName"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Enumeration of supported interpolator types.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatorsName.RBF">
+<span class="sig-name descname"><span class="pre">RBF</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rbf'</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatorsName.RBF" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatorsName.BARYCENTRIC">
+<span class="sig-name descname"><span class="pre">BARYCENTRIC</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'barycentric'</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatorsName.BARYCENTRIC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatingMeshProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">InterpolatingMeshProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#InterpolatingMeshProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatingMeshProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.delanay_neighbour.MeshProcessorBase" title="mars.mesher.delanay_neighbour.MeshProcessorBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeshProcessorBase</span></code></a></p>
+<p>Mesh processor with interpolation from coarse to fine grid.</p>
+<p>Uses nearest-neighbor interpolation to transfer function values from
+initial mesh to higher-resolution target mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interpolate_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>interpolator</strong> (<a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>)</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatingMeshProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interpolate_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#InterpolatingMeshProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatingMeshProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize interpolating mesh processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interpolate_grid_frequency</strong> (<em>int</em>) – Target resolution for interpolation</p></li>
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>) – Base resolution for initial mesh</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>) – Boundary condition type</p></li>
+<li><p><strong>interpolator</strong> (<em>tp.Union</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em>, </em><em>type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em><em>]</em>) – Interpolator type or custom class</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>tp.Union</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>None</em><em>]</em>) – Configuration for interpolator constructor</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.InterpolatingMeshProcessor.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#InterpolatingMeshProcessor.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.InterpolatingMeshProcessor.forward" title="Link to this definition"></a></dt>
+<dd><p>Interpolate function values to higher resolution mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>) – Function values at base vertices, shape (…, N)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated values at extended vertices, shape (…, M)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BoundaryMeshProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">BoundaryMeshProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BoundaryMeshProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BoundaryMeshProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.delanay_neighbour.MeshProcessorBase" title="mars.mesher.delanay_neighbour.MeshProcessorBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeshProcessorBase</span></code></a></p>
+<p>Mesh processor with boundary condition handling but no interpolation.</p>
+<p>Used when mesh resolution remains constant but boundary conditions require
+special vertex handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BoundaryMeshProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BoundaryMeshProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BoundaryMeshProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize boundary-aware mesh processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>) – Base mesh resolution</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Azimuthal bounds (phi_min, phi_max)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>) – Boundary condition type</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.BoundaryMeshProcessor.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#BoundaryMeshProcessor.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.BoundaryMeshProcessor.forward" title="Link to this definition"></a></dt>
+<dd><p>Pass through function values unchanged (no interpolation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_values</strong> (<em>torch.Tensor</em>) – Function values at mesh vertices</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Same values (identity operation)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.mesh_processor_factory">
+<span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">mesh_processor_factory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_grid_frequency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#mesh_processor_factory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.mesh_processor_factory" title="Link to this definition"></a></dt>
+<dd><p>Factory function for creating appropriate mesh processor instance.</p>
+<p>Selects processor type based on interpolation requirements and boundary conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_grid_frequency</strong> (<em>int</em>) – Base mesh resolution</p></li>
+<li><p><strong>interpolate_grid_frequency</strong> (<em>int</em>) – Target resolution for interpolation</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>) – Whether to perform mesh refinement interpolation</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>) – Boundary condition type</p></li>
+<li><p><strong>interpolator</strong> (<a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>) – Enum value or BaseInterpolator subclass</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>) – Configuration parameters for constructor</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Configured mesh processor instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tp.Union[<a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatingMeshProcessor" title="mars.mesher.delanay_neighbour.InterpolatingMeshProcessor">InterpolatingMeshProcessor</a>, <a class="reference internal" href="#mars.mesher.delanay_neighbour.BoundaryMeshProcessor" title="mars.mesher.delanay_neighbour.BoundaryMeshProcessor">BoundaryMeshProcessor</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">DelaunayMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.general_mesh.BaseMeshPowder" title="mars.mesher.general_mesh.BaseMeshPowder"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseMeshPowder</span></code></a></p>
+<p>Delaunay triangulation-based spherical mesh for powder averaging.</p>
+<p>Generates adaptive-resolution meshes with optional interpolation for
+efficient powder averaging in magnetic resonance simulations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>)</p></li>
+<li><p><strong>interpolator</strong> (<em>str</em><em> | </em><a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>)</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">math.pi)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">InterpolatorsName.RBF</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolator_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMesh.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize Delaunay mesh with geometric and processing parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>) – Small value for numerical stability near poles</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds in radians</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>) – Base resolution parameter</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>) – Target resolution when interpolating</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>tp.Optional</em><em>[</em><em>str</em><em>, </em><em>None</em><em>]</em>) – Doesn’t support yet</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>) – Whether to interpolate to higher resolution mesh</p></li>
+<li><p><strong>interpolator</strong> (<em>str</em><em> | </em><a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>) – The Interpolation method.</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>Currently it supports rbf, barycentric interpolation or custom interpolator
+:type interpolator: tp.Union[str, InterpolatorsName, tp.Type[BaseInterpolator]]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>) – Optional keyword arguments passed to the interpolator constructor.</p></li>
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>)</p></li>
+<li><p><strong>interpolator</strong> (<em>str</em><em> | </em><a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>These may include parameters such as <code class="docutils literal notranslate"><span class="pre">jitter</span></code>, <code class="docutils literal notranslate"><span class="pre">regularization</span></code>, <code class="docutils literal notranslate"><span class="pre">kernel</span></code>, <code class="docutils literal notranslate"><span class="pre">tol</span></code>, etc.,
+depending on the specific interpolator type.</p>
+<p>For a complete list of supported options, refer to the documentation of:
+- <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.RBFInterpolator</span></code>
+- <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.BarycentricInterpolator</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>)</p></li>
+<li><p><strong>interpolator</strong> (<em>str</em><em> | </em><a class="reference internal" href="#mars.mesher.delanay_neighbour.InterpolatorsName" title="mars.mesher.delanay_neighbour.InterpolatorsName"><em>InterpolatorsName</em></a><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#mars.mesher.delanay_neighbour.BaseInterpolator" title="mars.mesher.delanay_neighbour.BaseInterpolator"><em>BaseInterpolator</em></a><em>]</em>)</p></li>
+<li><p><strong>interpolator_kwargs</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.create_initial_cache_data">
+<span class="sig-name descname"><span class="pre">create_initial_cache_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMesh.create_initial_cache_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.create_initial_cache_data" title="Link to this definition"></a></dt>
+<dd><p>Precompute and cache mesh geometry data on specified device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<em>torch.device</em>) – Target computation device</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (initial_vertices, final_vertices, simplices)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[torch.Tensor, torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.post_mesh">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">post_mesh</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.post_mesh" title="Link to this definition"></a></dt>
+<dd><p>Processed mesh geometry after interpolation/boundary handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (vertices, triangles) with vertices shape (N, 2),
+triangles shape (M, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.initial_grid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.initial_grid" title="Link to this definition"></a></dt>
+<dd><p>Initial coarse mesh vertices before processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (N, 2) with [phi, theta] coordinates</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.to_delaunay">
+<span class="sig-name descname"><span class="pre">to_delaunay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_post</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMesh.to_delaunay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.to_delaunay" title="Link to this definition"></a></dt>
+<dd><p>Format function values per simplex for Delaunay rendering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f_post</strong> (<em>torch.Tensor</em>) – Function values at mesh vertices, shape (…, N)</p></li>
+<li><p><strong>simplices</strong> (<em>torch.Tensor</em>) – Triangle connectivity indices, shape (M, 3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Values arranged per simplex, shape (…, M, 3)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_init</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMesh.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.forward" title="Link to this definition"></a></dt>
+<dd><p>Process function values through mesh pipeline (interpolation/boundaries).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_init</strong> (<em>torch.Tensor</em>) – Function values at initial mesh vertices, shape (…, N)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Processed values at final mesh vertices, shape (…, M)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.areas">
+<span class="sig-name descname"><span class="pre">areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas of mesh triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Areas of each triangle in the mesh (unit sphere)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.disordered" title="Link to this definition"></a></dt>
+<dd><p>Powder samples represent disordered ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial spherical grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding angular coordinate axes</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Lazy-evaluated rotation matrices for powder orientations.</p>
+<p>Computed on first access if not already cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.spherical_triangle_areas">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spherical_triangle_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.spherical_triangle_areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical excess areas for triangles on a unit sphere.</p>
+<p>Uses L’Huilier’s formula for numerical stability with small triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<em>torch.Tensor</em>) – Spherical coordinates [phi, theta] of shape (N, 2)</p></li>
+<li><p><strong>triangles</strong> (<em>torch.Tensor</em>) – Triangle vertex indices of shape (M, 3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Spherical areas of shape (M,)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMesh.triplot">
+<span class="sig-name descname"><span class="pre">triplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMesh.triplot" title="Link to this definition"></a></dt>
+<dd><p>Visualize mesh triangulation in phi-theta coordinates.</p>
+<p>Uses matplotlib’s triplot to display triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.delanay_neighbour.</span></span><span class="sig-name descname"><span class="pre">DelaunayMeshFullSphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMeshFullSphere"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.delanay_neighbour.DelaunayMesh" title="mars.mesher.delanay_neighbour.DelaunayMesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">DelaunayMesh</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">math.pi)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_grid_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries_cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/delanay_neighbour.html#DelaunayMeshFullSphere.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize Delaunay mesh with geometric and processing parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>eps</strong> (<em>float</em>) – Small value for numerical stability near poles</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – (phi_min, phi_max) bounds in radians</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>) – Base resolution parameter</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>) – Target resolution when interpolating</p></li>
+<li><p><strong>boundaries_cond</strong> (<em>tp.Optional</em><em>[</em><em>str</em><em>, </em><em>None</em><em>]</em>) – Doesn’t support yet</p></li>
+<li><p><strong>interpolate</strong> (<em>bool</em>) – Whether to interpolate to higher resolution mesh</p></li>
+<li><p><strong>interpolator</strong> – The Interpolation method.</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>Currently it supports rbf, barycentric interpolation or custom interpolator
+:type interpolator: tp.Union[str, InterpolatorsName, tp.Type[BaseInterpolator]]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interpolator_kwargs</strong> – Optional keyword arguments passed to the interpolator constructor.</p></li>
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>These may include parameters such as <code class="docutils literal notranslate"><span class="pre">jitter</span></code>, <code class="docutils literal notranslate"><span class="pre">regularization</span></code>, <code class="docutils literal notranslate"><span class="pre">kernel</span></code>, <code class="docutils literal notranslate"><span class="pre">tol</span></code>, etc.,
+depending on the specific interpolator type.</p>
+<p>For a complete list of supported options, refer to the documentation of:
+- <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.RBFInterpolator</span></code>
+- <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.BarycentricInterpolator</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+<li><p><strong>eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>phi_limits</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>)</p></li>
+<li><p><strong>initial_grid_frequency</strong> (<em>int</em>)</p></li>
+<li><p><strong>interpolation_grid_frequency</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.areas">
+<span class="sig-name descname"><span class="pre">areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas of mesh triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Areas of each triangle in the mesh (unit sphere)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.create_initial_cache_data">
+<span class="sig-name descname"><span class="pre">create_initial_cache_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.create_initial_cache_data" title="Link to this definition"></a></dt>
+<dd><p>Precompute and cache mesh geometry data on specified device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<em>torch.device</em>) – Target computation device</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (initial_vertices, final_vertices, simplices)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[torch.Tensor, torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.disordered" title="Link to this definition"></a></dt>
+<dd><p>Powder samples represent disordered ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_init</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.forward" title="Link to this definition"></a></dt>
+<dd><p>Process function values through mesh pipeline (interpolation/boundaries).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_init</strong> (<em>torch.Tensor</em>) – Function values at initial mesh vertices, shape (…, N)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Processed values at final mesh vertices, shape (…, M)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.initial_grid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.initial_grid" title="Link to this definition"></a></dt>
+<dd><p>Initial coarse mesh vertices before processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (N, 2) with [phi, theta] coordinates</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial spherical grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding angular coordinate axes</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.post_mesh">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">post_mesh</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.post_mesh" title="Link to this definition"></a></dt>
+<dd><p>Processed mesh geometry after interpolation/boundary handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (vertices, triangles) with vertices shape (N, 2),
+triangles shape (M, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Lazy-evaluated rotation matrices for powder orientations.</p>
+<p>Computed on first access if not already cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.spherical_triangle_areas">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spherical_triangle_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.spherical_triangle_areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical excess areas for triangles on a unit sphere.</p>
+<p>Uses L’Huilier’s formula for numerical stability with small triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<em>torch.Tensor</em>) – Spherical coordinates [phi, theta] of shape (N, 2)</p></li>
+<li><p><strong>triangles</strong> (<em>torch.Tensor</em>) – Triangle vertex indices of shape (M, 3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Spherical areas of shape (M,)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.to_delaunay">
+<span class="sig-name descname"><span class="pre">to_delaunay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_post</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.to_delaunay" title="Link to this definition"></a></dt>
+<dd><p>Format function values per simplex for Delaunay rendering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f_post</strong> (<em>torch.Tensor</em>) – Function values at mesh vertices, shape (…, N)</p></li>
+<li><p><strong>simplices</strong> (<em>torch.Tensor</em>) – Triangle connectivity indices, shape (M, 3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Values arranged per simplex, shape (…, M, 3)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.triplot">
+<span class="sig-name descname"><span class="pre">triplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.delanay_neighbour.DelaunayMeshFullSphere.triplot" title="Link to this definition"></a></dt>
+<dd><p>Visualize mesh triangulation in phi-theta coordinates.</p>
+<p>Uses matplotlib’s triplot to display triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="mars-mesher-experimental-module">
+<h2>mars.mesher.experimental module<a class="headerlink" href="#mars-mesher-experimental-module" title="Link to this heading"></a></h2>
+</section>
+<section id="module-mars.mesher.general_mesh">
+<span id="mars-mesher-general-mesh-module"></span><h2>mars.mesher.general_mesh module<a class="headerlink" href="#module-mars.mesher.general_mesh" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.general_mesh.</span></span><span class="sig-name descname"><span class="pre">BaseMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for mesh representations used in powder averaging simulations.</p>
+<p>Provides a common interface for crystal and powder mesh implementations,
+including rotation matrix generation and mesh properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh.__init__">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMesh.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the base mesh with device and dtype configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device (CPU/GPU)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision for computations</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh.rotation_matrices">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Rotation matrices mapping laboratory frame to molecular frame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh.initial_size">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial grid before any processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding rotation matrix axes</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh.disordered">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh.disordered" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the mesh represents a disordered (powder) sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True for powder samples, False for single crystals</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMesh.axial">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMesh.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.general_mesh.</span></span><span class="sig-name descname"><span class="pre">CrystalMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#CrystalMesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.general_mesh.BaseMesh" title="mars.mesher.general_mesh.BaseMesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseMesh</span></code></a></p>
+<p>Mesh representation for single-crystal samples with fixed orientation.</p>
+<p>Stores precomputed rotation matrices derived from Euler angles for deterministic
+orientation sampling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>euler_angles</strong> (<em>torch.Tensor</em>)</p></li>
+<li><p><strong>convention</strong> (<em>str</em>)</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">euler_angles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zyz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#CrystalMesh.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize crystal mesh from Euler angles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>euler_angles</strong> (<em>torch.Tensor</em>) – Euler angles in radians. Shape (…, 3) where last dimension
+contains [alpha, beta, gamma] angles</p></li>
+<li><p><strong>convention</strong> (<em>str</em>) – Euler angle convention. Supported: ‘zyz’, ‘xyz’, ‘xzy’,</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>‘yxz’, ‘yzx’, ‘zxy’, ‘zyx’
+:type convention: str
+:param device: Computation device
+:type device: torch.device
+:param dtype: Floating point precision
+:type dtype: torch.dtype</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Precomputed rotation matrices for crystal orientations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the Euler angle grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions before rotation matrix axes</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh.disordered" title="Link to this definition"></a></dt>
+<dd><p>Crystal samples are ordered systems.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always False</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.CrystalMesh.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.CrystalMesh.axial" title="Link to this definition"></a></dt>
+<dd><p>This is True for all non-powder samples</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True for implementation</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.general_mesh.</span></span><span class="sig-name descname"><span class="pre">BaseMeshPowder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.general_mesh.BaseMesh" title="mars.mesher.general_mesh.BaseMesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseMesh</span></code></a></p>
+<p>Abstract base class for powder-averaged mesh implementations.</p>
+<p>Handles evaluation of rotation matrices and provides spherical geometry
+utilities for mesh processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.__init__">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize powder mesh base with device configuration.
+:param device: Computation device
+:type device: torch.device
+:param dtype: Floating point precision
+:type dtype: torch.dtype</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Lazy-evaluated rotation matrices for powder orientations.</p>
+<p>Computed on first access if not already cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial spherical grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding angular coordinate axes</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.areas">
+<span class="sig-name descname"><span class="pre">areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas of mesh triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Areas of each triangle in the mesh (unit sphere)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.spherical_triangle_areas">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spherical_triangle_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangles</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.spherical_triangle_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.spherical_triangle_areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical excess areas for triangles on a unit sphere.</p>
+<p>Uses L’Huilier’s formula for numerical stability with small triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<em>torch.Tensor</em>) – Spherical coordinates [phi, theta] of shape (N, 2)</p></li>
+<li><p><strong>triangles</strong> (<em>torch.Tensor</em>) – Triangle vertex indices of shape (M, 3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Spherical areas of shape (M,)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.initial_grid">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.initial_grid" title="Link to this definition"></a></dt>
+<dd><p>Initial spherical coordinate grid before processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 2) with [phi, theta] coordinates</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.post_mesh">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">post_mesh</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.post_mesh" title="Link to this definition"></a></dt>
+<dd><p>Processed mesh vertices and triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (vertices, triangles) where vertices has shape (N, 2)
+and triangles has shape (M, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.to_delaunay">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">to_delaunay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_interpolated</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.to_delaunay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.to_delaunay" title="Link to this definition"></a></dt>
+<dd><p>Format function values for Delaunay triangulation representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f_interpolated</strong> (<em>torch.Tensor</em>) – Function values at mesh vertices</p></li>
+<li><p><strong>simplices</strong> (<em>torch.Tensor</em>) – Triangle connectivity indices</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Values arranged per simplex for rendering/processing</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.forward">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_function</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.forward" title="Link to this definition"></a></dt>
+<dd><p>Process function values through mesh pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_function</strong> (<em>torch.Tensor</em>) – Input function values at initial grid points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Processed values at final mesh vertices</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.disordered" title="Link to this definition"></a></dt>
+<dd><p>Powder samples represent disordered ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshPowder.triplot">
+<span class="sig-name descname"><span class="pre">triplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshPowder.triplot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshPowder.triplot" title="Link to this definition"></a></dt>
+<dd><p>Visualize mesh triangulation in phi-theta coordinates.</p>
+<p>Uses matplotlib’s triplot to display triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mars.mesher.general_mesh.</span></span><span class="sig-name descname"><span class="pre">BaseMeshAxial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshAxial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mars.mesher.general_mesh.BaseMeshPowder" title="mars.mesher.general_mesh.BaseMeshPowder"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseMeshPowder</span></code></a></p>
+<p>Base class for axially symmetric powder averaging.</p>
+<p>Reduces dimensionality from 2D (phi, theta) to 1D (theta) by exploiting
+rotational symmetry around the molecular z-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>)</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.__init__">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.device('cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshAxial.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize axial powder mesh with device configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Floating point precision</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.initial_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Size</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.initial_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the initial theta grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grid dimensions excluding angular coordinate axis</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Size</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.spherical_triangle_areas">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spherical_triangle_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangles</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshAxial.spherical_triangle_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.spherical_triangle_areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas for axial symmetry mesh (effectively rings).</p>
+<p>Areas computed as differences in solid angle between theta boundaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<em>torch.Tensor</em>) – Theta coordinates of shape (N, 1)</p></li>
+<li><p><strong>triangles</strong> (<em>torch.Tensor</em>) – Line segment indices of shape (M, 2)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ring areas of shape (M,)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.axial">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">axial</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.axial" title="Link to this definition"></a></dt>
+<dd><p>Indicates whether the system has axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if axial symmetry applies</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.initial_grid">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initial_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.initial_grid" title="Link to this definition"></a></dt>
+<dd><p>Initial theta grid for axial symmetry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 1) with theta coordinates</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.post_mesh">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">post_mesh</span></span><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.post_mesh" title="Link to this definition"></a></dt>
+<dd><p>Processed mesh vertices and triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (vertices, triangles) where vertices has shape (N, 2)
+and triangles has shape (M, 3)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[torch.Tensor, torch.Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.to_delaunay">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">to_delaunay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_interpolated</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshAxial.to_delaunay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.to_delaunay" title="Link to this definition"></a></dt>
+<dd><p>Format function values for axial mesh representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f_interpolated</strong> (<em>torch.Tensor</em>) – Function values at mesh vertices</p></li>
+<li><p><strong>simplices</strong> (<em>torch.Tensor</em>) – Segment connectivity indices</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Values arranged per segment</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.forward">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_function</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mars/mesher/general_mesh.html#BaseMeshAxial.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.forward" title="Link to this definition"></a></dt>
+<dd><p>Process function values through mesh pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f_function</strong> (<em>torch.Tensor</em>) – Input function values at initial grid points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Processed values at final mesh vertices</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.areas">
+<span class="sig-name descname"><span class="pre">areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.areas" title="Link to this definition"></a></dt>
+<dd><p>Compute spherical areas of mesh triangles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Areas of each triangle in the mesh (unit sphere)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.disordered">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disordered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.disordered" title="Link to this definition"></a></dt>
+<dd><p>Powder samples represent disordered ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Always True</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.rotation_matrices">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rotation_matrices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.Tensor</span></em><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.rotation_matrices" title="Link to this definition"></a></dt>
+<dd><p>Lazy-evaluated rotation matrices for powder orientations.</p>
+<p>Computed on first access if not already cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor of shape (…, 3, 3) containing rotation matrices</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mars.mesher.general_mesh.BaseMeshAxial.triplot">
+<span class="sig-name descname"><span class="pre">triplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mars.mesher.general_mesh.BaseMeshAxial.triplot" title="Link to this definition"></a></dt>
+<dd><p>Visualize mesh triangulation in phi-theta coordinates.</p>
+<p>Uses matplotlib’s triplot to display triangle connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-contents">
+<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="mars.html" class="btn btn-neutral float-left" title="mars package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="mars.optimization.html" class="btn btn-neutral float-right" title="mars.optimization package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

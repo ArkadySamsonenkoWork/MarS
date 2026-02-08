@@ -1,0 +1,403 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relaxation Parameters and Initial States &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Lindblad Superoperator Construction" href="superoperator_creation.html" />
+    <link rel="prev" title="Relaxation Context" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../populators/index.html">Population Computation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Relaxation Context</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#key-features">Key Features</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#contents">Contents</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Relaxation Parameters and Initial States</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#initial-states">Initial States</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#relaxation-overview">Relaxation Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#out-probabilities-out-probs">Out Probabilities (out_probs)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#free-probabilities-free-probs">Free Probabilities (free_probs)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#driven-probabilities-driven-probs">Driven Probabilities (driven_probs)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dephasing-dephasing">Dephasing (dephasing)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="superoperator_creation.html">Lindblad Superoperator Construction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="basis_transformation.html">Basis Transformations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="complex_context.html">Complex Context Construction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#quick-example">Quick Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Relaxation Context</a></li>
+      <li class="breadcrumb-item active">Relaxation Parameters and Initial States</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/contents/context/relaxation_parameters.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="relaxation-parameters-and-initial-states">
+<span id="relaxation-parameters"></span><h1>Relaxation Parameters and Initial States<a class="headerlink" href="#relaxation-parameters-and-initial-states" title="Link to this heading"></a></h1>
+<p>The Context class in MarS supports four types of relaxation parameters that define how spin populations and coherences evolve over time. All probabilities are expressed in <strong>s⁻¹</strong> (inverse seconds).</p>
+<section id="initial-states">
+<h2>Initial States<a class="headerlink" href="#initial-states" title="Link to this heading"></a></h2>
+<p>Two mutually exclusive ways exist to specify the initial quantum state of a spin system:</p>
+<p>1. <strong>init_populations</strong> (Initial populations): A real-valued vector of length N specifying the probability of occupying each energy level in the working basis.
+This corresponds to a diagonal density matrix and assumes no initial coherences.</p>
+<ol class="arabic simple" start="2">
+<li><p><strong>init_desnity</strong> (Initial density matrix): A full complex-valued N×N density matrix that includes both populations (diagonal) and coherences (off-diagonal).</p></li>
+</ol>
+<p>If init_density is required for a computation but not provided, it is automatically constructed as a diagonal matrix from init_populations (if available).</p>
+<p>Conversely, if init_populations is required but not explicitly given, the system first transforms the provided init_density into the appropriate basis using the ansformation rules.
+After this transformation, the real part of the diagonal elements of the resulting density matrix is used as the initial populations.</p>
+<p>If both of these parameters are missing, then the equilibrium initial state at the given temperature will be used.</p>
+</section>
+<section id="relaxation-overview">
+<h2>Relaxation Overview<a class="headerlink" href="#relaxation-overview" title="Link to this heading"></a></h2>
+<p>MarS defines relaxation through four distinct mechanisms:</p>
+<ol class="arabic simple">
+<li><p><strong>out_probs</strong> (Outgoing probabilities) - Population loss rates</p></li>
+<li><p><strong>free_probs</strong> (Free probabilities) - Spontaneous transition probabilities</p></li>
+<li><p><strong>driven_probs</strong> (Driven probabilities) - Stimulated transition probabilities</p></li>
+<li><p><strong>dephasing</strong> (Dephasing) - Pure dephasing rates used only for density-based relaxation</p></li>
+</ol>
+<p>Each mechanism serves a specific physical purpose and transforms differently under basis changes.</p>
+</section>
+<section id="out-probabilities-out-probs">
+<h2>Out Probabilities (out_probs)<a class="headerlink" href="#out-probabilities-out-probs" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../../_images/out_probs.png"><img alt="Out probabilities diagram" class="align-center" src="../../_images/out_probs.png" style="width: 70%;" />
+</a>
+<p><strong>Physical Meaning</strong></p>
+<p>Out probabilities describe irreversible population loss from energy levels.</p>
+<p><strong>Mathematical Form</strong></p>
+<p>A diagonal vector where element <span class="math notranslate nohighlight">\(o_i\)</span> represents the loss rate from level <span class="math notranslate nohighlight">\(|i\rangle\)</span>.</p>
+<p><strong>Example: Triplet State Phosphorescence</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="c1"># Define different phosphorescence rates for each sublevel</span>
+<span class="n">out_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">120.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># In XYZ basis: [TX, TY, TZ]</span>
+<span class="c1"># TX: 120 s^-1 → lifetime ~8.3 ms</span>
+<span class="c1"># TY: 50 s^-1  → lifetime ~20 ms</span>
+<span class="c1"># TZ: 80 s^-1  → lifetime ~12.5 ms</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet_sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;xyz&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+    <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Transformation Rule</strong>
+For the most cases the parameters are set in some specific basis. If we transformation matrix from coordinates in old basis to coordinates in a new basis as <span class="math notranslate nohighlight">\(U\)</span>,
+then under basis transformation with matrix <span class="math notranslate nohighlight">\(U\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{o}' = |U|^2 \cdot \mathbf{o}\]</div>
+<p>where <span class="math notranslate nohighlight">\(|U|^2\)</span> denotes element-wise squaring of the transformation matrix.</p>
+</section>
+<section id="free-probabilities-free-probs">
+<h2>Free Probabilities (free_probs)<a class="headerlink" href="#free-probabilities-free-probs" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../../_images/free_probs.png"><img alt="Free probabilities diagram" class="align-center" src="../../_images/free_probs.png" style="width: 70%;" />
+</a>
+<p><strong>Physical Meaning</strong></p>
+<p>Free probabilities represent spontaneous transitions between energy levels that obey detailed balance.</p>
+<p><strong>Mathematical Form</strong></p>
+<p>A matrix <span class="math notranslate nohighlight">\(W\)</span> where element <span class="math notranslate nohighlight">\(w_{ij}\)</span> is the transition rate from <span class="math notranslate nohighlight">\(|j\rangle\)</span> to <span class="math notranslate nohighlight">\(|i\rangle\)</span>.</p>
+<p>Diagonal elements are zero (no self-transitions).</p>
+<p><strong>Example: Triplet Spin-Lattice Relaxation</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="c1"># Define transition matrix in eigen basis</span>
+<span class="c1"># Strong relaxation between adjacent levels</span>
+<span class="c1"># Weak direct relaxation between extreme levels</span>
+<span class="n">free_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>    <span class="mf">800.0</span><span class="p">,</span>   <span class="mf">50.0</span><span class="p">],</span>   <span class="c1"># to level 0</span>
+    <span class="p">[</span><span class="mf">800.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>     <span class="mf">800.0</span><span class="p">],</span>  <span class="c1"># to level 1</span>
+    <span class="p">[</span><span class="mf">50.0</span><span class="p">,</span>   <span class="mf">800.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">]</span>     <span class="c1"># to level 2</span>
+<span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Adjacent transitions: ~1.25 ms equilibration time</span>
+<span class="c1"># Direct 0↔2: ~20 ms equilibration time</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet_sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="p">[</span><span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">],</span>
+    <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">80.0</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Detailed Balance Enforcement</strong> (see also <a class="reference internal" href="../populators/detailed_balance.html#detailed-balance"><span class="std std-ref">Detailed Balance Enforcement</span></a>)</p>
+<p>MarS automatically enforces detailed balance at temperature <span class="math notranslate nohighlight">\(T\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[w_{ij}^* = \frac{w_{ij} + w_{ji}}{1 + e^{(E_i - E_j)/k_B T}}\]</div>
+<div class="math notranslate nohighlight">
+\[w_{ji}^* = \frac{w_{ij} + w_{ji}}{1 + e^{(E_j - E_i)/k_B T}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(w_{ij}^*\)</span> are the modified rates ensuring <span class="math notranslate nohighlight">\(\frac{w_{ij}^*}{w_{ji}^*} = e^{(E_j - E_i)/k_B T}\)</span>.</p>
+<p><strong>Transformation Rule</strong></p>
+<p>Under basis transformation:</p>
+<div class="math notranslate nohighlight">
+\[W' = |U|^2 \cdot W \cdot (|U|^2)^T\]</div>
+</section>
+<section id="driven-probabilities-driven-probs">
+<h2>Driven Probabilities (driven_probs)<a class="headerlink" href="#driven-probabilities-driven-probs" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../../_images/driven_probs.png"><img alt="Driven probabilities diagram" class="align-center" src="../../_images/driven_probs.png" style="width: 70%;" />
+</a>
+<p><strong>Physical Meaning</strong></p>
+<p>Driven probabilities describe stimulated transitions that do NOT obey detailed balance.</p>
+<p><strong>Mathematical Form</strong></p>
+<p>A matrix <span class="math notranslate nohighlight">\(D\)</span> where <span class="math notranslate nohighlight">\(d_{ij}\)</span> is the stimulated rate from <span class="math notranslate nohighlight">\(|j\rangle\)</span> to <span class="math notranslate nohighlight">\(|i\rangle\)</span>. This matrix is not modified by detailed balance.</p>
+<p><strong>Example: Selective Microwave Excitation</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="c1"># Simulate selective excitation of specific transition</span>
+<span class="c1"># Strong driving of 0→1 transition</span>
+<span class="c1"># Moderate driving of 1→2 transition</span>
+<span class="n">driven_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>    <span class="mf">2000.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">],</span>      <span class="c1"># to level 0</span>
+    <span class="p">[</span><span class="mf">2000.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>     <span class="mf">500.0</span><span class="p">],</span>    <span class="c1"># to level 1</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>    <span class="mf">500.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">]</span>       <span class="c1"># to level 2</span>
+<span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Strong 0↔1 transition: ~0.5 ms</span>
+<span class="c1"># Weaker 1↔2 transition: ~2 ms</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet_sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="c1"># Then the initial condition is thermal equilibrium</span>
+    <span class="n">driven_probs</span><span class="o">=</span><span class="n">driven_probs</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Transformation Rule</strong></p>
+<p>Same as free probabilities:</p>
+<div class="math notranslate nohighlight">
+\[D' = |U|^2 \cdot D \cdot (|U|^2)^T\]</div>
+</section>
+<section id="dephasing-dephasing">
+<h2>Dephasing (dephasing)<a class="headerlink" href="#dephasing-dephasing" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../../_images/dephasing.png"><img alt="Dephasing diagram" class="align-center" src="../../_images/dephasing.png" style="width: 70%;" />
+</a>
+<p><strong>Physical Meaning</strong></p>
+<p>Dephasing causes loss of coherence without changing populations. This term is used only in the relaxation of density matrix formalism (see <a class="reference internal" href="../populators/index.html#population-description"><span class="std std-ref">Population Computation</span></a>).</p>
+<p><strong>Mathematical Form</strong></p>
+<p>A vector <span class="math notranslate nohighlight">\(\boldsymbol{\gamma}\)</span> where <span class="math notranslate nohighlight">\(\gamma_i\)</span> is the dephasing rate for level <span class="math notranslate nohighlight">\(|i\rangle\)</span>. This vector is only relevant for density matrix calculations.</p>
+<p><strong>Example: T₂ Relaxation in Density Matrix Dynamics</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">population</span>
+
+<span class="c1"># Define level-specific dephasing rates</span>
+<span class="c1"># Faster dephasing for higher energy states</span>
+<span class="n">dephasing</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">5e3</span><span class="p">,</span> <span class="mf">8e3</span><span class="p">,</span> <span class="mf">12e3</span><span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Level 0: T₂ ~ 200 μs</span>
+<span class="c1"># Level 1: T₂ ~ 125 μs</span>
+<span class="c1"># Level 2: T₂ ~ 83 μs</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">triplet_sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="p">[</span><span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">],</span>
+    <span class="n">dephasing</span><span class="o">=</span><span class="n">dephasing</span><span class="p">,</span>
+    <span class="n">out_probs</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">])</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Effect on Coherences</strong></p>
+<p>For off-diagonal density matrix elements <span class="math notranslate nohighlight">\(\rho_{ij}\)</span> (where <span class="math notranslate nohighlight">\(i \neq j\)</span>):</p>
+<div class="math notranslate nohighlight">
+\[\frac{d\rho_{ij}}{dt} = \cdots - \frac{\gamma_i + \gamma_j}{2} \rho_{ij}\]</div>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
+<p>Let’s consider a triplet state with several realxation mechanisms:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">population</span>
+
+<span class="c1"># Create triplet system</span>
+<span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.004</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="n">zfs</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">450e6</span><span class="p">,</span> <span class="o">-</span><span class="mf">90e6</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">triplet_system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+    <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+    <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs</span><span class="p">)]</span>
+<span class="p">)</span>
+
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+    <span class="n">base_spin_system</span><span class="o">=</span><span class="n">triplet_system</span><span class="p">,</span>
+    <span class="n">ham_strain</span><span class="o">=</span><span class="mf">2.5e7</span><span class="p">,</span>
+    <span class="n">gauss</span><span class="o">=</span><span class="mf">0.0012</span><span class="p">,</span>
+    <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.0012</span>
+<span class="p">)</span>
+
+<span class="c1"># Initial selective population (spin polarization)</span>
+<span class="n">init_populations</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">]</span>  <span class="c1"># Strong population of one of the states</span>
+
+<span class="c1"># Outgoing probabilities in ZFS basis</span>
+<span class="n">out_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">45.0</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Spin-lattice relaxation in eigen basis</span>
+<span class="n">free_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>    <span class="mf">900.0</span><span class="p">,</span>   <span class="mf">80.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">900.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>     <span class="mf">900.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">80.0</span><span class="p">,</span>   <span class="mf">900.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">]</span>
+<span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Dephasing rates</span>
+<span class="n">dephasing</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">6e5</span><span class="p">,</span> <span class="mf">6e5</span><span class="p">,</span> <span class="mf">6e5</span><span class="p">])</span>  <span class="c1"># s^-1</span>
+
+<span class="c1"># Combine in ZFS basis for populations, eigen for transitions</span>
+<span class="n">context_zfs</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;zfs&quot;</span><span class="p">,</span>
+    <span class="n">init_populations</span><span class="o">=</span><span class="n">init_populations</span><span class="p">,</span>
+    <span class="n">out_probs</span><span class="o">=</span><span class="n">out_probs</span>
+<span class="p">)</span>
+
+<span class="n">context_eigen</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+    <span class="n">basis</span><span class="o">=</span><span class="s2">&quot;eigen&quot;</span><span class="p">,</span>
+    <span class="n">free_probs</span><span class="o">=</span><span class="n">free_probs</span><span class="p">,</span>
+    <span class="n">dephasing</span><span class="o">=</span><span class="n">dephasing</span>
+<span class="p">)</span>
+
+<span class="c1"># Combine both mechanisms</span>
+<span class="n">context_total</span> <span class="o">=</span> <span class="n">context_zfs</span> <span class="o">+</span> <span class="n">context_eigen</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Relaxation Context" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="superoperator_creation.html" class="btn btn-neutral float-right" title="Lindblad Superoperator Construction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

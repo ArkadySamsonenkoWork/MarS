@@ -1,0 +1,1052 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitting of EPR Spectra with MarS - Advance &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Spectra Polarization and Time Resolved" href="../example_5.html" />
+    <link rel="prev" title="Advance Fitting Procedures" href="../example_4.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contents/meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../example_4.html">Advance Fitting Procedures</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fitting of EPR Spectra with MarS - Advance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.-Introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#2.Loading-and-Preprocessing-Experimental-Data">2.Loading and Preprocessing Experimental Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#3.-Spin-System-Modeling">3. Spin System Modeling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#3.1-Physical-Model-of-the-System">3.1 Physical Model of the System</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#3.2-Creating-the-parameter-space">3.2 Creating the parameter space</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#4-Data-Fitting">4 Data Fitting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#4.1-Creation-of-spactra-simulator">4.1 Creation of spactra simulator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.2-Creation-the-optimizer">4.2 Creation the optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#4.3-Optimization-of-parameters">4.3 Optimization of parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#5.-Search-other-solutions">5. Search other solutions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#5.1.-Defining-Parameter-Searcher">5.1. Defining Parameter Searcher</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#5.2.-Fitting-in-the-new-local-minima">5.2. Fitting in the new local minima</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../example_4.html">Advance Fitting Procedures</a></li>
+      <li class="breadcrumb-item active">Fitting of EPR Spectra with MarS - Advance</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/examples_for_documentation/example_4.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Fitting-of-EPR-Spectra-with-MarS---Advance">
+<h1>Fitting of EPR Spectra with MarS - Advance<a class="headerlink" href="#Fitting-of-EPR-Spectra-with-MarS---Advance" title="Link to this heading"></a></h1>
+<p>This notebook demonstrates how to use the Mars library to fit experimental EPR spectra by optimizing Hamiltonian (or other) parameters.</p>
+<p>In this notebook, we examine real data recorded on the Elexis EPR spectrometer. We aim to complete the entire fitting cycle from start to finish for multi-spectra fitting with user-defined parameters</p>
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line">For any questions, please contact Arkady Samsonenko via:</div>
+<div class="line">Telegram: &#64;Arkady_Samsonenko</div>
+<div class="line">Email: a.samsonenko.tomo.nsc.ru</div>
+<div class="line">The last notebook update: 2026.01.27</div>
+<div class="line">Please, if you want to download this notebook to your computer visit <a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples">https://github.com/ArkadySamsonenkoWork/MarS/tree/main/examples</a></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import necessary libraries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">savgol_filter</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">optuna</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nevergrad</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ng</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c1"># Import Mars library components</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mars</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">spin_model</span><span class="p">,</span> <span class="n">spectra_manager</span><span class="p">,</span> <span class="n">mesher</span><span class="p">,</span> <span class="n">constants</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mars.optimization</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParameterSpace</span><span class="p">,</span> <span class="n">ParamSpec</span><span class="p">,</span> <span class="n">SpectrumFitter</span><span class="p">,</span> <span class="n">SpaceSearcher</span><span class="p">,</span> <span class="n">print_trial_results</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Some stuff might fail: issue in joblib
+[KeOps] Warning : No C++ compiler found. Define CXX environment variable or install g++.
+[KeOps] Warning : No C++ compiler found. You need to either define the CXX environment variable pointing to a valid compiler, or ensure that &#39;g++&#39; is installed and in your PATH.
+[KeOps] Warning : CUDA libraries not found or could not be loaded; Switching to CPU only.
+[KeOps] Warning : No C++ compiler found. You need to either define the CXX environment variable pointing to a valid compiler, or ensure that &#39;g++&#39; is installed and in your PATH.
+[KeOps] Warning : No C++ compiler available to check for OpenMP support.
+[KeOps] Warning : OpenMP support is not available. Disabling OpenMP.
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="1.-Introduction">
+<h1>1. Introduction<a class="headerlink" href="#1.-Introduction" title="Link to this heading"></a></h1>
+<p>The EPR data that we want to fit is described in [Dalton Trans., 2025,54, 15176-15187]. We will work with real experimental data on a copper(II) nitroxide chain complex, which undergoes a magnetic transition in the temperature range 90-120 K, causing changes in the environment of copper ion and, consequently, in the g-tensor.</p>
+<p>We will complete the entire fitting workflow:</p>
+<ol class="arabic simple">
+<li><p>Loading and preprocessing experimental EPR data</p></li>
+<li><p>Setting up a spin system model</p></li>
+<li><p>Implementing multi-spectrum simultaneous fitting</p></li>
+<li><p>Analyzing and validating the best-fit parameters</p></li>
+</ol>
+</section>
+<section id="2.Loading-and-Preprocessing-Experimental-Data">
+<h1>2.Loading and Preprocessing Experimental Data<a class="headerlink" href="#2.Loading-and-Preprocessing-Experimental-Data" title="Link to this heading"></a></h1>
+<p>MarS has some additional functions to prepare data to computations study. We consider spectra under two temperatures: 96K and 136K - temperatures below and above transition</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">path_96K</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;data/KY3_96K&quot;</span>
+<span class="n">path_136K</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;data/KY3_136K&quot;</span>
+
+<span class="n">data_96K</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">read_bruker_data</span><span class="p">(</span><span class="n">path_96K</span><span class="p">)</span>
+<span class="n">data_136K</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">read_bruker_data</span><span class="p">(</span><span class="n">path_136K</span><span class="p">)</span>
+
+<span class="c1"># the output consist of the spectrometer experimental parmeters and x and y values</span>
+
+<span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">1e4</span>
+<span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">1e4</span>  <span class="c1"># From Gauss to Tesla ransformation</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s perform some simple data preparation:</p>
+<ol class="arabic simple">
+<li><p>Removing the baseline</p></li>
+<li><p>Normalizing the spectra</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">areas</span> <span class="o">=</span> <span class="p">((</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.35</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">))</span>  <span class="c1"># area of baselines where spectra is missed. Indeed, MarS can automatically determine the baseline area if you do not put it.</span>
+
+<span class="n">y_values</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">spectra_processing</span><span class="o">.</span><span class="n">correct_baseline</span><span class="p">(</span><span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">],</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">],</span> <span class="n">areas</span><span class="p">,</span> <span class="n">poly_order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y_values</span> <span class="o">=</span> <span class="n">y_values</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">y_values</span><span class="p">)</span>
+<span class="c1"># Make the tata is more informative and save only spectra</span>
+<span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">][</span><span class="mi">300</span><span class="p">:</span><span class="o">-</span><span class="mi">300</span><span class="p">]</span>
+<span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_values</span><span class="p">[</span><span class="mi">300</span><span class="p">:</span><span class="o">-</span><span class="mi">300</span><span class="p">]</span>
+<span class="n">freq_96K</span> <span class="o">=</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;MWFQ&quot;</span><span class="p">]</span>
+
+
+<span class="n">y_values</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">spectra_processing</span><span class="o">.</span><span class="n">correct_baseline</span><span class="p">(</span><span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">],</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">],</span> <span class="n">areas</span><span class="p">,</span> <span class="n">poly_order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y_values</span> <span class="o">=</span> <span class="n">y_values</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">y_values</span><span class="p">)</span>
+<span class="c1"># Make the tata is more informative and save only spectra</span>
+<span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">][</span><span class="mi">300</span><span class="p">:</span><span class="o">-</span><span class="mi">300</span><span class="p">]</span>
+<span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_values</span><span class="p">[</span><span class="mi">300</span><span class="p">:</span><span class="o">-</span><span class="mi">300</span><span class="p">]</span>
+<span class="n">freq_136K</span> <span class="o">=</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;MWFQ&quot;</span><span class="p">]</span>
+
+<span class="c1"># Also spectra_processing has other methods to perform some simple processing. Here we considered the most easy way to subscribe baseline</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">],</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">],</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;EPR Spectrum at 136 K (Above Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">],</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">],</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;EPR Spectrum at 96 K (Below Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_4_8_0.png" src="../../_images/examples_examples_for_documentation_example_4_8_0.png" />
+</div>
+</div>
+</section>
+<section id="3.-Spin-System-Modeling">
+<h1>3. Spin System Modeling<a class="headerlink" href="#3.-Spin-System-Modeling" title="Link to this heading"></a></h1>
+<section id="3.1-Physical-Model-of-the-System">
+<h2>3.1 Physical Model of the System<a class="headerlink" href="#3.1-Physical-Model-of-the-System" title="Link to this heading"></a></h2>
+<p>The original sample from the article [Dalton Trans., 2025,54, 15176-15187] is chain with repeating units. We will model this chain using only one unit.</p>
+<div class="line-block">
+<div class="line"><strong>Each unit can be modeled as a system with three interacting spins:</strong></div>
+<div class="line">Nitroxide radical electron (S = 1/2)</div>
+<div class="line">Chain copper ion (S = 1/2)</div>
+<div class="line">Branching copper ion (S = 1/2)</div>
+</div>
+<p>The magnetic transition affects primarily the g-tensor of the branching copper ion and exchange interaction values between paramagnetic ions</p>
+<div class="line-block">
+<div class="line"><strong>We need to define a model that accounts for:</strong></div>
+<div class="line">Different g-tensors for branching copper ions above and below the transition</div>
+<div class="line">The same g-tensors for chain copper ions</div>
+<div class="line">Exchange interactions between spins</div>
+<div class="line">Orientation relationships between chain and branching g-tensors</div>
+</div>
+<div class="line-block">
+<div class="line">The transition induces a reorientation of the g-tensor at the branching site. While this could be modeled explicitly using three Euler angles, we adopt a simpler approach:</div>
+<div class="line">we allow the individual components <span class="math notranslate nohighlight">\(g_x\)</span>, <span class="math notranslate nohighlight">\(g_y\)</span>, and <span class="math notranslate nohighlight">\(g_z\)</span> of the branching coppers g-tensor to vary, while keeping the mean-square value</div>
+</div>
+<div class="math notranslate nohighlight">
+\[\langle g^2 \rangle = \frac{g_x^2 + g_y^2 + g_z^2}{3}\]</div>
+<p>approximately constant across the transition. This preserves the overall magnitude of the g-tensor while capturing the anisotropy changes linked to the structural rearrangement.</p>
+</section>
+<section id="3.2-Creating-the-parameter-space">
+<h2>3.2 Creating the parameter space<a class="headerlink" href="#3.2-Creating-the-parameter-space" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><div class="line-block">
+<div class="line">We need to define the fixed parameters.</div>
+<div class="line">According to the article, the exchange interactions and the angles between the branching and chain copper ions are known from quantum chemistry calculations.</div>
+</div>
+</li>
+<li><p>Define varying parameters:</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s start from fixed parameters</span>
+
+
+<span class="c1"># Initialize dictionary for fixed parameters</span>
+<span class="n">fixed_parameters</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1"># g-value for nitroxide radical (relatively constant)</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;g_rad&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.002</span>
+
+<span class="c1"># Exchange interactions above the transition (in cm-1)</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;J_chain_high_temp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.4</span>     <span class="c1"># Chain copper-nitroxide interaction</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;J_branching_high_temp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">4.21</span>  <span class="c1"># Branching copper-nitroxide interaction</span>
+
+<span class="c1"># Exchange interactions below the transition (in cm-1)</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;J_chain_low_temp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.9</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;J_branching_low_temp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.23</span>
+
+
+<span class="c1"># Orientation matrices defining relative orientations of copper sites</span>
+<span class="c1"># These are determined from crystal structure data</span>
+<span class="n">orient_branching</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.8859114</span><span class="p">,</span> <span class="mf">0.0008034</span><span class="p">,</span> <span class="mf">0.4638538</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0005397</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.9999996</span><span class="p">,</span> <span class="mf">0.0007013</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.4638541</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.000371</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8859115</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">orient_chain</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.744169</span><span class="p">,</span> <span class="mf">0.4552341</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.4888501</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.3236334</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8859029</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.3323212</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mf">0.5843577</span><span class="p">,</span> <span class="mf">0.0890949</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8065904</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;orient_branching&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">orient_branching</span>
+<span class="n">fixed_parameters</span><span class="p">[</span><span class="s2">&quot;orient_chain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">orient_chain</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize list for parameters to optimize</span>
+<span class="n">varies_parameters</span> <span class="o">=</span> <span class="p">[</span>
+
+    <span class="c1"># g-tensor components for intrachain copper (x, y, z directions)</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_chain_x&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.14</span><span class="p">),</span> <span class="mf">2.025</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_chain_y&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.14</span><span class="p">),</span> <span class="mf">2.05</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_chain_z&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.20</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.25</span><span class="p">),</span>
+
+    <span class="c1"># g-tensor components for branching copper above transition</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_branching_high_temp_x&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.07</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_branching_high_temp_y&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.14</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_branching_high_temp_z&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.26</span><span class="p">),</span>
+
+    <span class="c1"># g-tensor components for branching copper below transition (x and z components)</span>
+    <span class="c1"># y-component will be calculated to maintain constant average g-value</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_branching_low_temp_x&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.19</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;g_cu_branching_low_temp_z&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.30</span><span class="p">),</span> <span class="mf">2.07</span><span class="p">),</span>
+
+    <span class="c1"># Delta g parameter to maintain &lt;g²&gt; conservation between phases</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;delta_g&quot;</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">),</span>
+
+    <span class="c1"># Line broadening parameters for high temperature spectrum</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;lorentz_high_temp&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.00</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">),</span> <span class="mf">0.001</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;ham_strain_high_temp&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">1e8</span><span class="p">,</span> <span class="mf">1e9</span><span class="p">),</span> <span class="mf">5e8</span><span class="p">),</span>
+
+    <span class="c1"># Line broadening parameters for low temperature spectrum</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;lorentz_low_temp&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.00</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">),</span> <span class="mf">0.001</span><span class="p">),</span>
+    <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;ham_strain_low_temp&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">1e8</span><span class="p">,</span> <span class="mf">1e9</span><span class="p">),</span> <span class="mf">5e8</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">param_space</span> <span class="o">=</span> <span class="n">ParameterSpace</span><span class="p">(</span><span class="n">varies_parameters</span><span class="p">,</span> <span class="n">fixed_parameters</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">param_space</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+____Fixed parameters_____
+----------------------------------------
+  g_rad                 =          2.0020
+  J_chain_high_temp     =          1.4000
+  J_branching_high_temp =         -4.2100
+  J_chain_low_temp      =          1.9000
+  J_branching_low_temp  =         -0.2300
+  orient_branching      = tensor([[ 8.8591e-01,  8.0340e-04,  4.6385e-01],
+        [ 5.3970e-04, -1.0000e+00,  7.0130e-04],
+        [ 4.6385e-01, -3.7100e-04, -8.8591e-01]])
+  orient_chain          = tensor([[ 0.7442,  0.4552, -0.4889],
+        [ 0.3236, -0.8859, -0.3323],
+        [-0.5844,  0.0891, -0.8066]])
+
+
+______Varying parameters_____
+----------------------------------------
+  g_cu_chain_x               =          2.0250   (low:   +2.0000  up:   +2.1400)
+  g_cu_chain_y               =          2.0500   (low:   +2.0000  up:   +2.1400)
+  g_cu_chain_z               =          2.2500   (low:   +2.2000  up:   +2.3000)
+  g_cu_branching_high_temp_x =          2.0700   (low:   +2.0000  up:   +2.3000)
+  g_cu_branching_high_temp_y =          2.1400   (low:   +2.0000  up:   +2.3000)
+  g_cu_branching_high_temp_z =          2.2600   (low:   +2.0000  up:   +2.3000)
+  g_cu_branching_low_temp_x  =          2.1900   (low:   +2.0000  up:   +2.3000)
+  g_cu_branching_low_temp_z  =          2.0700   (low:   +2.0000  up:   +2.3000)
+  delta_g                    =          0.0000   (low:   -0.0100  up:   +0.0100)
+  lorentz_high_temp          =          0.0010   (low:   +0.0000  up:   +0.0200)
+  ham_strain_high_temp       =        5.00e+08   (low:   +1.00e+08  up:   +1.00e+09)
+  lorentz_low_temp           =          0.0010   (low:   +0.0000  up:   +0.0200)
+  ham_strain_low_temp        =        5.00e+08   (low:   +1.00e+08  up:   +1.00e+09)
+
+</pre></div></div>
+</div>
+<p>The number of parameters to be varied is truly large. Of course, we encounter overfitting of the g-tensor values. However, we have the ability to search the parameter space for the most physically reasonable values for our case.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">build_sample</span><span class="p">(</span><span class="n">J_chain</span><span class="p">,</span> <span class="n">J_branching</span><span class="p">,</span> <span class="n">g_rad</span><span class="p">,</span> <span class="n">g_cu_chain</span><span class="p">,</span> <span class="n">g_cu_branching</span><span class="p">,</span>
+                 <span class="n">orient_chain</span><span class="p">,</span> <span class="n">orient_branching</span><span class="p">,</span> <span class="n">ham_strain</span><span class="p">,</span> <span class="n">lorentz</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a spin system sample with specified parameters</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    J_chain, J_branching : float</span>
+<span class="sd">        Exchange interaction parameters (in cm^-1)</span>
+<span class="sd">    g_rad : float</span>
+<span class="sd">        g-value for nitroxide radical</span>
+<span class="sd">    g_cu_chain, g_cu_branching : torch.Tensor</span>
+<span class="sd">        g-tensor components for chain and branching copper sites</span>
+<span class="sd">    orient_chain, orient_branching : torch.Tensor</span>
+<span class="sd">        Orientation matrices for copper sites</span>
+<span class="sd">    ham_strain : float</span>
+<span class="sd">        Hamiltonian strain parameter</span>
+<span class="sd">    lorentz : float</span>
+<span class="sd">        Lorentzian line broadening parameter</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    sample : spin_model.MultiOrientedSample</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create g-tensor interactions</span>
+    <span class="n">zeem_chain</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">g_cu_chain</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="n">orient_chain</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">zeem_branching</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">g_cu_branching</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="n">orient_branching</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">zeem_rad</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="n">g_rad</span><span class="p">)</span>
+
+    <span class="n">e_chain</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">Electron</span><span class="p">(</span><span class="n">spin</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">e_branching</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">Electron</span><span class="p">(</span><span class="n">spin</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">e_rad</span> <span class="o">=</span> <span class="n">mars</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">Electron</span><span class="p">(</span><span class="n">spin</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="n">ee_int_branching</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="n">J_branching</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">ee_int_chain</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">constants</span><span class="o">.</span><span class="n">unit_converter</span><span class="p">(</span><span class="n">J_chain</span><span class="p">,</span> <span class="s2">&quot;cm-1_to_Hz&quot;</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Build the complete spin system</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span>
+        <span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="n">e_rad</span><span class="p">,</span> <span class="n">e_chain</span><span class="p">,</span> <span class="n">e_branching</span><span class="p">],</span>
+        <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">zeem_rad</span><span class="p">,</span> <span class="n">zeem_chain</span><span class="p">,</span> <span class="n">zeem_branching</span><span class="p">],</span>
+        <span class="n">electron_electron</span><span class="o">=</span><span class="p">[</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ee_int_chain</span><span class="p">),</span>  <span class="c1"># Nitroxide - chain copper</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ee_int_branching</span><span class="p">)</span>  <span class="c1"># Nitroxide - branching copper</span>
+        <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create multi-oriented sample</span>
+    <span class="k">return</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span>
+        <span class="n">base_spin_system</span><span class="o">=</span><span class="n">system</span><span class="p">,</span>
+        <span class="n">ham_strain</span><span class="o">=</span><span class="n">ham_strain</span><span class="p">,</span>
+        <span class="n">gauss</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>                     <span class="c1"># No Gaussian broadening</span>
+        <span class="n">lorentz</span><span class="o">=</span><span class="n">lorentz</span><span class="p">,</span>             <span class="c1"># Lorentzian broadening</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">build_two_samples</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create spin system samples for both temperature</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    params : dict</span>
+<span class="sd">        Current parameter values from optimization</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    sample_high_temp, sample_low_temp : spin_model.MultiOrientedSample</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Extract g-tensor components for interchain copper</span>
+    <span class="n">g_cu_chain</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_chain_x&quot;</span><span class="p">],</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_chain_y&quot;</span><span class="p">],</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_chain_z&quot;</span><span class="p">]</span>
+    <span class="p">])</span>
+
+    <span class="c1"># Extract g-tensor components for branching copper above transition</span>
+    <span class="n">g_cu_branching_high_temp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_branching_high_temp_x&quot;</span><span class="p">],</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_branching_high_temp_y&quot;</span><span class="p">],</span>
+        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_branching_high_temp_z&quot;</span><span class="p">]</span>
+    <span class="p">])</span>
+
+    <span class="c1"># Calculate g-tensor y-component for branching copper below transition</span>
+    <span class="c1"># This maintains constant &lt;g²&gt; between phases with a small correction (delta_g)</span>
+    <span class="n">delta_g</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;delta_g&quot;</span><span class="p">]</span>
+    <span class="n">g_cu_branching_low_temp_x</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_branching_low_temp_x&quot;</span><span class="p">]</span>
+    <span class="n">g_cu_branching_low_temp_z</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_cu_branching_low_temp_z&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Calculate y-component to maintain constant &lt;g²&gt;</span>
+    <span class="n">g_cu_intra_sq</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">g_cu_branching_high_temp</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">g_cu_branching_low_temp_y_sq</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">g_cu_intra_sq</span> <span class="o">-</span>
+        <span class="n">g_cu_branching_low_temp_x</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span>
+        <span class="n">g_cu_branching_low_temp_z</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span>
+        <span class="n">delta_g</span>
+    <span class="p">)</span>
+    <span class="n">g_cu_branching_low_temp_y</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">g_cu_branching_low_temp_y_sq</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+
+    <span class="c1"># Create g-tensor for branching copper below transition</span>
+    <span class="n">g_cu_branching_low_temp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+        <span class="n">g_cu_branching_low_temp_x</span><span class="p">,</span>
+        <span class="n">g_cu_branching_low_temp_y</span><span class="p">,</span>
+        <span class="n">g_cu_branching_low_temp_z</span>
+    <span class="p">])</span>
+
+    <span class="c1"># Create sample for high temperature</span>
+    <span class="n">sample_high_temp</span> <span class="o">=</span> <span class="n">build_sample</span><span class="p">(</span>
+        <span class="n">J_chain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;J_chain_high_temp&quot;</span><span class="p">],</span>
+        <span class="n">J_branching</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;J_branching_high_temp&quot;</span><span class="p">],</span>
+        <span class="n">g_rad</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_rad&quot;</span><span class="p">],</span>
+        <span class="n">g_cu_chain</span><span class="o">=</span><span class="n">g_cu_chain</span><span class="p">,</span>
+        <span class="n">g_cu_branching</span><span class="o">=</span><span class="n">g_cu_branching_high_temp</span><span class="p">,</span>
+        <span class="n">orient_chain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;orient_chain&quot;</span><span class="p">],</span>
+        <span class="n">orient_branching</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;orient_branching&quot;</span><span class="p">],</span>
+        <span class="n">ham_strain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;ham_strain_high_temp&quot;</span><span class="p">],</span>
+        <span class="n">lorentz</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;lorentz_high_temp&quot;</span><span class="p">]),</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create sample for low temperature</span>
+    <span class="n">sample_low_temp</span> <span class="o">=</span> <span class="n">build_sample</span><span class="p">(</span>
+        <span class="n">J_chain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;J_chain_low_temp&quot;</span><span class="p">],</span>
+        <span class="n">J_branching</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;J_branching_low_temp&quot;</span><span class="p">],</span>
+        <span class="n">g_rad</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;g_rad&quot;</span><span class="p">],</span>
+        <span class="n">g_cu_chain</span><span class="o">=</span><span class="n">g_cu_chain</span><span class="p">,</span>
+        <span class="n">g_cu_branching</span><span class="o">=</span><span class="n">g_cu_branching_low_temp</span><span class="p">,</span>
+        <span class="n">orient_chain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;orient_chain&quot;</span><span class="p">],</span>
+        <span class="n">orient_branching</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;orient_branching&quot;</span><span class="p">],</span>
+        <span class="n">ham_strain</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;ham_strain_low_temp&quot;</span><span class="p">],</span>
+        <span class="n">lorentz</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;lorentz_low_temp&quot;</span><span class="p">])</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sample_high_temp</span><span class="p">,</span> <span class="n">sample_low_temp</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="4-Data-Fitting">
+<h1>4 Data Fitting<a class="headerlink" href="#4-Data-Fitting" title="Link to this heading"></a></h1>
+<section id="4.1-Creation-of-spactra-simulator">
+<h2>4.1 Creation of spactra simulator<a class="headerlink" href="#4.1-Creation-of-spactra-simulator" title="Link to this heading"></a></h2>
+<p>Here we create a StationarySpectra object in the init method. Re-initializing each time doesn’t take as long as it did in notebook example_3, but the current approach is better.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SpectraSimulator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulator class that generates EPR spectra at two temperatures&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq_high_temp</span><span class="p">,</span> <span class="n">freq_low_temp</span><span class="p">,</span> <span class="n">high_temp</span><span class="p">,</span> <span class="n">low_temp</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the simulator with configuration parameters</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        freq_high_temp, freq_low_temp : float</span>
+<span class="sd">            Microwave frequencies for high and low temperature spectra</span>
+<span class="sd">        high_temp, low_temp : float</span>
+<span class="sd">            Temperature values in Kelvin</span>
+<span class="sd">        params : dict</span>
+<span class="sd">            Initial parameter values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create initial samples to configure spectra creators</span>
+        <span class="n">sample_high_temp</span><span class="p">,</span> <span class="n">sample_low_temp</span> <span class="o">=</span> <span class="n">build_two_samples</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Create spectra creators for both temperatures</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">high_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">freq_high_temp</span><span class="p">,</span>
+            <span class="n">sample</span><span class="o">=</span><span class="n">sample_high_temp</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">high_temp</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">low_creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">freq_low_temp</span><span class="p">,</span>
+            <span class="n">sample</span><span class="o">=</span><span class="n">sample_low_temp</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">low_temp</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">magnetic_fields</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate spectra for both temperatures</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        magnetic_fields : list of torch.Tensor</span>
+<span class="sd">            Magnetic field values for high and low temperature spectra</span>
+<span class="sd">        params : dict</span>
+<span class="sd">            Current parameter values from optimization</span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        spectra : list of torch.Tensor</span>
+<span class="sd">            Simulated spectra for high and low temperatures</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">B_high</span> <span class="o">=</span> <span class="n">magnetic_fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">B_low</span> <span class="o">=</span> <span class="n">magnetic_fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Create samples with current parameters</span>
+        <span class="n">sample_high_temp</span><span class="p">,</span> <span class="n">sample_low_temp</span> <span class="o">=</span> <span class="n">build_two_samples</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Generate spectra</span>
+        <span class="n">spectrum_high</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">high_creator</span><span class="p">(</span><span class="n">sample_high_temp</span><span class="p">,</span> <span class="n">B_high</span><span class="p">)</span>
+        <span class="n">spectrum_low</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">low_creator</span><span class="p">(</span><span class="n">sample_low_temp</span><span class="p">,</span> <span class="n">B_low</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">spectrum_high</span><span class="p">,</span> <span class="n">spectrum_low</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spectra_simulator</span> <span class="o">=</span> <span class="n">SpectraSimulator</span><span class="p">(</span>
+    <span class="n">freq_high_temp</span><span class="o">=</span><span class="n">freq_136K</span><span class="p">,</span>
+    <span class="n">freq_low_temp</span><span class="o">=</span><span class="n">freq_96K</span><span class="p">,</span>
+    <span class="n">high_temp</span><span class="o">=</span><span class="mf">136.0</span><span class="p">,</span>
+    <span class="n">low_temp</span><span class="o">=</span><span class="mf">96.0</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="n">param_space</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+D:\ITC\РНФ_Курганский_2024\pythonProject\MarS\mars\spin_model.py:2042: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  width = torch.tensor(width, device=device, dtype=dtype)
+</pre></div></div>
+</div>
+</section>
+<section id="4.2-Creation-the-optimizer">
+<h2>4.2 Creation the optimizer<a class="headerlink" href="#4.2-Creation-the-optimizer" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fields_high</span> <span class="o">=</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span>
+<span class="n">fields_low</span> <span class="o">=</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;x_values&quot;</span><span class="p">]</span>
+
+<span class="n">y_exp_high</span> <span class="o">=</span> <span class="n">data_136K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">]</span>
+<span class="n">y_exp_low</span> <span class="o">=</span> <span class="n">data_96K</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;y_values&quot;</span><span class="p">]</span>
+
+<span class="n">fitter</span> <span class="o">=</span> <span class="n">SpectrumFitter</span><span class="p">(</span>
+    <span class="n">x_exp</span><span class="o">=</span><span class="p">[</span><span class="n">fields_high</span><span class="p">,</span> <span class="n">fields_low</span><span class="p">],</span> <span class="c1"># Field values for both spectra</span>
+    <span class="n">y_exp</span><span class="o">=</span><span class="p">[</span><span class="n">y_exp_high</span><span class="p">,</span> <span class="n">y_exp_low</span><span class="p">],</span> <span class="c1"># Intensity values for both spectra</span>
+    <span class="n">param_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>                                   <span class="c1"># Parameter space defined earlier</span>
+    <span class="n">spectra_simulator</span><span class="o">=</span><span class="n">spectra_simulator</span><span class="p">,</span>
+    <span class="n">norm_mode</span><span class="o">=</span><span class="s2">&quot;max&quot;</span><span class="p">,</span>                                          <span class="c1"># Normalize by maximum intensity</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="4.3-Optimization-of-parameters">
+<h2>4.3 Optimization of parameters<a class="headerlink" href="#4.3-Optimization-of-parameters" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;optuna&quot;</span><span class="p">,</span>
+    <span class="n">n_trials</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>   <span class="c1"># let&#39;s spend about 10 minutes to perform a lot of trials and observe whole picture of parameter space</span>
+    <span class="n">study_name</span><span class="o">=</span><span class="s2">&quot;Cu_nitroxide_initial_fit&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">best_params</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">best_params</span>
+
+<span class="c1"># Create a refined parameter space</span>
+<span class="n">new_param_space</span> <span class="o">=</span> <span class="n">param_space</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># Update default values to best parameters found</span>
+<span class="n">new_param_space</span><span class="o">.</span><span class="n">set_default</span><span class="p">(</span><span class="n">best_params</span><span class="p">)</span>
+
+<span class="c1"># Reduce bounds to focus on promising region (10% of original width)</span>
+<span class="n">new_param_space</span><span class="o">.</span><span class="n">reduce_bounds</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+
+<span class="c1"># Update the fitter with refined parameter space</span>
+<span class="n">fitter</span><span class="o">.</span><span class="n">param_space</span> <span class="o">=</span> <span class="n">new_param_space</span>
+
+<span class="c1"># Run local refinement with COBYLA optimizer</span>
+<span class="n">new_result</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;ng&quot;</span><span class="p">,</span>
+    <span class="n">budget</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">optimizer_name</span><span class="o">=</span><span class="s2">&quot;Cobyla&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[107]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># Plot high temperature spectrum (136 K)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_high</span><span class="p">,</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;fitting&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_high</span><span class="p">,</span> <span class="n">y_exp_high</span><span class="p">,</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;experimental&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Best Fit at 136 K (Above Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="c1"># Plot low temperature spectrum (96 K)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_low</span><span class="p">,</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;fitting&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_low</span><span class="p">,</span> <span class="n">y_exp_low</span><span class="p">,</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;experimental&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Best Fit at 96 K (Below Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_4_24_0.png" src="../../_images/examples_examples_for_documentation_example_4_24_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[110]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">compute_g_tensor_table</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="n">gx_chain</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_chain_x&#39;</span><span class="p">]</span>
+    <span class="n">gy_chain</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_chain_y&#39;</span><span class="p">]</span>
+    <span class="n">gz_chain</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_chain_z&#39;</span><span class="p">]</span>
+    <span class="n">giso_chain</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">gx_chain</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gy_chain</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gz_chain</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">gx_b_high</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_branching_high_temp_x&#39;</span><span class="p">]</span>
+    <span class="n">gy_b_high</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_branching_high_temp_y&#39;</span><span class="p">]</span>
+    <span class="n">gz_b_high</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_branching_high_temp_z&#39;</span><span class="p">]</span>
+    <span class="n">giso_b_high</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">gx_b_high</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gy_b_high</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gz_b_high</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">gx_b_low</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_branching_low_temp_x&#39;</span><span class="p">]</span>
+    <span class="n">gz_b_low</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;g_cu_branching_low_temp_z&#39;</span><span class="p">]</span>
+    <span class="n">delta_g</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;delta_g&#39;</span><span class="p">]</span>
+
+    <span class="n">g_sq_high</span> <span class="o">=</span> <span class="n">gx_b_high</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gy_b_high</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">gz_b_high</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">g_sq_low</span> <span class="o">=</span> <span class="n">g_sq_high</span> <span class="o">+</span> <span class="n">delta_g</span>
+
+    <span class="n">gy_sq_low</span> <span class="o">=</span> <span class="n">g_sq_low</span> <span class="o">-</span> <span class="n">gx_b_low</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">gz_b_low</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">gy_b_low</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">gy_sq_low</span><span class="p">)</span>
+    <span class="n">giso_b_low</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">g_sq_low</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;chain Cu(II) ion&quot;</span><span class="p">,</span> <span class="n">gx_chain</span><span class="p">,</span> <span class="n">gy_chain</span><span class="p">,</span> <span class="n">gz_chain</span><span class="p">,</span> <span class="n">giso_chain</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;branching Cu(II) ion (136 K)&quot;</span><span class="p">,</span> <span class="n">gx_b_high</span><span class="p">,</span> <span class="n">gy_b_high</span><span class="p">,</span> <span class="n">gz_b_high</span><span class="p">,</span> <span class="n">giso_b_high</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;branching Cu(II) center (90 K)&quot;</span><span class="p">,</span> <span class="n">gx_b_low</span><span class="p">,</span> <span class="n">gy_b_low</span><span class="p">,</span> <span class="n">gz_b_low</span><span class="p">,</span> <span class="n">giso_b_low</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;gx&#39;</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;gy&#39;</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;gz&#39;</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;giso&#39;</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="n">gz</span><span class="p">,</span> <span class="n">giso</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">gx</span><span class="si">:</span><span class="s2">&gt;8.3f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">gy</span><span class="si">:</span><span class="s2">&gt;8.3f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">gz</span><span class="si">:</span><span class="s2">&gt;8.3f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">giso</span><span class="si">:</span><span class="s2">&gt;8.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[113]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results_original_best_fit</span> <span class="o">=</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">compute_g_tensor_table</span><span class="p">(</span><span class="n">results_original_best_fit</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.022    2.131    2.277    2.146
+branching Cu(II) ion (136 K)      2.106    2.109    2.278    2.166
+branching Cu(II) center (90 K)    2.128    2.243    2.124    2.165
+</pre></div></div>
+</div>
+<p>Here we observe the rotation of the g-tensor in the bracnhing copper from the y-direction to the z-direction.</p>
+</section>
+</section>
+<section id="5.-Search-other-solutions">
+<h1>5. Search other solutions<a class="headerlink" href="#5.-Search-other-solutions" title="Link to this heading"></a></h1>
+<p>If you look at the dashboard, you’ll notice that our model has many local minima. The resulted parameters correlate with each other. Let’s catch other possible results</p>
+<section id="5.1.-Defining-Parameter-Searcher">
+<h2>5.1. Defining Parameter Searcher<a class="headerlink" href="#5.1.-Defining-Parameter-Searcher" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create space searcher to find alternative solutions</span>
+<span class="n">space_searcher</span> <span class="o">=</span> <span class="n">SpaceSearcher</span><span class="p">(</span><span class="n">loss_rel_tol</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">distance_fraction</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>  <span class="c1"># Allow 200% higher loss, cut distances at 0.2 * max_distance</span>
+
+<span class="c1"># Define parameters to vary when searching for alternatives</span>
+<span class="n">param_names</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;g_cu_chain_x&quot;</span><span class="p">,</span> <span class="s2">&quot;g_cu_chain_y&quot;</span><span class="p">,</span> <span class="s2">&quot;g_cu_chain_z&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;g_cu_branching_high_temp_x&quot;</span><span class="p">,</span> <span class="s2">&quot;g_cu_branching_high_temp_y&quot;</span><span class="p">,</span> <span class="s2">&quot;g_cu_branching_high_temp_z&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;g_cu_branching_low_temp_x&quot;</span><span class="p">,</span> <span class="s2">&quot;g_cu_branching_low_temp_z&quot;</span>
+<span class="p">]</span>
+
+
+<span class="c1"># Search for alternative solutions</span>
+<span class="n">searcher_result</span> <span class="o">=</span> <span class="n">space_searcher</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">param_names</span><span class="p">)</span>
+
+<span class="c1"># Print alternative solutions</span>
+<span class="n">print_trial_results</span><span class="p">(</span><span class="n">searcher_result</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="5.2.-Fitting-in-the-new-local-minima">
+<h2>5.2. Fitting in the new local minima<a class="headerlink" href="#5.2.-Fitting-in-the-new-local-minima" title="Link to this heading"></a></h2>
+<p>We continue fitting the data from newly identified starting points. The procedure is as follows:</p>
+<ol class="arabic simple">
+<li><p>We select trial parameters obtained from the global search and use them as initial guesses.</p></li>
+<li><p>We perform local fitting from these new starting points with reduced parameter bounds.</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results_after_space_search</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">searcher_result</span><span class="p">:</span>
+    <span class="n">new_default_params</span> <span class="o">=</span> <span class="n">trial</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Create a refined parameter space</span>
+    <span class="n">new_param_space</span> <span class="o">=</span> <span class="n">param_space</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># Update default values to best parameters found</span>
+    <span class="n">new_param_space</span><span class="o">.</span><span class="n">set_default</span><span class="p">(</span><span class="n">new_default_params</span><span class="p">)</span>
+
+    <span class="c1"># Reduce bounds to focus on promising region (10% of original width)</span>
+    <span class="n">new_param_space</span><span class="o">.</span><span class="n">reduce_bounds</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="c1"># Update the fitter with refined parameter space</span>
+    <span class="n">fitter</span><span class="o">.</span><span class="n">param_space</span> <span class="o">=</span> <span class="n">new_param_space</span>
+
+    <span class="c1"># Run local refinement with COBYLA optimizer</span>
+    <span class="n">updated_result</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;ng&quot;</span><span class="p">,</span>
+        <span class="n">budget</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">optimizer_name</span><span class="o">=</span><span class="s2">&quot;Cobyla&quot;</span>
+    <span class="p">)</span>
+    <span class="n">results_after_space_search</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">updated_result</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s review the new results. It’s okay if some of them aren’t as good as we expected. We’re defining only one unit of three ions in the Khian system, where the units have different orientations.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[134]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+<span class="n">new_result</span> <span class="o">=</span> <span class="n">results_after_space_search</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="c1"># Plot high temperature spectrum (136 K)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_high</span><span class="p">,</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">/</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;fitting&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_high</span><span class="p">,</span> <span class="n">y_exp_high</span><span class="p">,</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;experimental&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Best Fit at 136 K (Above Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="c1"># Plot low temperature spectrum (96 K)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_low</span><span class="p">,</span> <span class="n">new_result</span><span class="o">.</span><span class="n">best_spectrum</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;fitting&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fields_low</span><span class="p">,</span> <span class="n">y_exp_low</span><span class="p">,</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;experimental&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Best Fit at 96 K (Below Transition)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Magnetic Field (T)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Intensity (a.u.)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_examples_for_documentation_example_4_34_0.png" src="../../_images/examples_examples_for_documentation_example_4_34_0.png" />
+</div>
+</div>
+<p>And plot all copper ions g-tesnors.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[137]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Original best fitting parameters&quot;</span><span class="p">)</span>
+<span class="n">compute_g_tensor_table</span><span class="p">(</span><span class="n">results_original_best_fit</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;---------------------------------------------------------------&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;---------------------------------------------------------------</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Locally defined best fitting parameters </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results_after_space_search</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;updated trial: </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">compute_g_tensor_table</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">best_params</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Original best fitting parameters
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.022    2.131    2.277    2.146
+branching Cu(II) ion (136 K)      2.106    2.109    2.278    2.166
+branching Cu(II) center (90 K)    2.128    2.243    2.124    2.165
+---------------------------------------------------------------
+---------------------------------------------------------------
+
+Locally defined best fitting parameters
+
+
+updated trial: 0
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.053    2.135    2.276    2.157
+branching Cu(II) ion (136 K)      2.224    2.129    2.152    2.169
+branching Cu(II) center (90 K)    2.106    2.275    2.120    2.168
+
+updated trial: 1
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.006    2.102    2.232    2.115
+branching Cu(II) ion (136 K)      2.130    2.153    2.276    2.187
+branching Cu(II) center (90 K)    2.187    2.317    2.047    2.186
+
+updated trial: 2
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.056    2.137    2.291    2.163
+branching Cu(II) ion (136 K)      2.198    2.110    2.159    2.156
+branching Cu(II) center (90 K)    2.168    2.218    2.077    2.155
+
+updated trial: 3
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.005    2.086    2.251    2.116
+branching Cu(II) ion (136 K)      2.174    2.151    2.256    2.194
+branching Cu(II) center (90 K)    2.197    2.273    2.108    2.194
+
+updated trial: 4
+                                     gx       gy       gz     giso
+chain Cu(II) ion                  2.031    2.103    2.242    2.127
+branching Cu(II) ion (136 K)      2.177    2.131    2.223    2.177
+branching Cu(II) center (90 K)    2.184    2.259    2.083    2.177
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../example_4.html" class="btn btn-neutral float-left" title="Advance Fitting Procedures" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../example_5.html" class="btn btn-neutral float-right" title="Spectra Polarization and Time Resolved" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,212 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stationary Spectra &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Coupled Time-Resolved Spectra (Population Dynamics)" href="coupled.html" />
+    <link rel="prev" title="Spectra Creators" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Spectra Creators</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Stationary Spectra</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#key-features">Key Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mathematical-foundation">Mathematical Foundation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="coupled.html">Coupled Time-Resolved Spectra (Population Dynamics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="density.html">Density-Matrix Time-Resolved Spectra</a></li>
+<li class="toctree-l2"><a class="reference internal" href="freq_domain.html">Frequency-Swept Stationary Spectra</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">Internal Architecture of Spectra Creators</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../meshers/index.html">Meshing Strategies</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Spectra Creators</a></li>
+      <li class="breadcrumb-item active">Stationary Spectra</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/contents/spectra_creators/stationary.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="stationary-spectra">
+<h1>Stationary Spectra<a class="headerlink" href="#stationary-spectra" title="Link to this heading"></a></h1>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spectra_manager.spectra_manager.StationarySpectra</span></code> class simulates standard continuous-wave (CW) EPR spectra under thermal equilibrium conditions. It assumes a fixed microwave frequency while sweeping the external magnetic field, and computes either absorption (harmonic=0) or first-derivative (harmonic=1) lineshapes.</p>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Full support for arbitrary spin systems (electrons, nuclei, zero-field splitting, hyperfine, exchange, dipolar couplings).</p></li>
+<li><p>Automatic Boltzmann population weighting at a user-specified temperature.</p></li>
+<li><p>Orientation averaging over powder samples using configurable meshes (Delaunay, axial, crystal).</p></li>
+<li><p>Line broadening via Gaussian, Lorentzian, or Voigt profiles, and also Hamiltonian parameters strain modeling and residual broadening due to unresolved interactions</p></li>
+<li><p>Batched computation for high-throughput simulation of parameter ensembles.</p></li>
+<li><p>Any spectra creator can be transfered to cuda using:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">spectra_creator</span> <span class="o">=</span> <span class="n">spectra_creator</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="mathematical-foundation">
+<h2>Mathematical Foundation<a class="headerlink" href="#mathematical-foundation" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p>Intensities are computed by <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.spectra_manager.spectra_manager.BaseIntensityCalculator</span></code>.</p>
+<p>Assuming the quantization axis aligns with the magnetic field direction (e.g., <span class="math notranslate nohighlight">\(\mathbf{B} \parallel z\)</span>), the intensity of a transition between eigenstates <span class="math notranslate nohighlight">\(|i\rangle\)</span> and <span class="math notranslate nohighlight">\(|j\rangle\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[I_{ij} \propto \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)\]</div>
+<p>where the population of state <em>k</em> for the equilibrium case is:</p>
+<div class="math notranslate nohighlight">
+\[p_k = \frac{e^{-E_k / k_B T}}{Z}, \quad Z = \sum_k e^{-E_k / k_B T}\]</div>
+<p>In the crystal case, <span class="math notranslate nohighlight">\(I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 \cdot (p_j - p_i)\)</span>.</p>
+<p>In <strong>non-equilibrium</strong> simulations (e.g., photoexcited states), populations <span class="math notranslate nohighlight">\(p_i(t)\)</span> are not thermal and are managed via Context tool: see <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.population.contexts.Context</span></code>.</p>
+</div></blockquote>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
+<p><strong>Example 1: Basic triplet spectrum with ZFS</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">g_tensor</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">Interaction</span><span class="p">(</span><span class="mf">2.0023</span><span class="p">)</span>
+<span class="n">zfs</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">([</span><span class="mf">500e6</span><span class="p">,</span> <span class="mf">100e6</span><span class="p">])</span>  <span class="c1"># D=500 MHz, E=100 MHz</span>
+<span class="n">sys</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span><span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">g_tensors</span><span class="o">=</span><span class="p">[</span><span class="n">g_tensor</span><span class="p">],</span>
+                             <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zfs</span><span class="p">)])</span>
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="n">gauss</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="n">creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="mf">9.8e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">)</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.30</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">spec</span> <span class="o">=</span> <span class="n">creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Example 2: Batched simulation of Mn(II) with varying ZFS</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">D_vals</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">480e6</span><span class="p">,</span> <span class="mf">520e6</span><span class="p">])</span>
+<span class="n">E_vals</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">90e6</span><span class="p">,</span> <span class="mf">110e6</span><span class="p">])</span>
+<span class="n">zfs_batch</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">DEInteraction</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">D_vals</span><span class="p">,</span> <span class="n">E_vals</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">sys</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">SpinSystem</span><span class="p">(</span><span class="n">electrons</span><span class="o">=</span><span class="p">[</span><span class="mf">2.5</span><span class="p">],</span> <span class="n">electron_electron</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">zfs_batch</span><span class="p">)])</span>
+<span class="n">sample</span> <span class="o">=</span> <span class="n">spin_model</span><span class="o">.</span><span class="n">MultiOrientedSample</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="n">gauss</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span> <span class="n">lorentz</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="n">creator</span> <span class="o">=</span> <span class="n">spectra_manager</span><span class="o">.</span><span class="n">StationarySpectra</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="mf">9.5e9</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">4.0</span><span class="p">)</span>
+<span class="n">fields</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">spectra</span> <span class="o">=</span> <span class="n">creator</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span>  <span class="c1"># shape: (2, 1000)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Spectra Creators" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="coupled.html" class="btn btn-neutral float-right" title="Coupled Time-Resolved Spectra (Population Dynamics)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

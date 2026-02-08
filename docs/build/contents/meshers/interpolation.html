@@ -1,0 +1,244 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interpolation on Spherical Meshes &mdash; MarS 2026.01.11 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7e9183e1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="mars package" href="../../api/mars.html" />
+    <link rel="prev" title="Crystal Mesh: CrystalMesh" href="crystal_mesh.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MarS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../base_spin_system.html">Base Spin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectrum_constraction.html">EPR Spectrum Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitting_tutorial.html">Fitting Spectroscopic Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactions/index.html">Interactions in MarS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../populators/index.html">Population Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../context/index.html">Relaxation Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spectra_creators/index.html">Spectra Creators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../intensity_calculators/index.html">Transition Intensity Calculation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Meshing Strategies</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#available-mesh-types">Available Mesh Types</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="powder_mesh.html">Powder Mesh: DelaunayMesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="axial_mesh.html">Axial Mesh: AxialMeshNeighbour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="crystal_mesh.html">Crystal Mesh: CrystalMesh</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Interpolation on Spherical Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#technical-details">Technical Details</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuring-interpolators-via-interpolator-kwargs">Configuring Interpolators via <code class="docutils literal notranslate"><span class="pre">interpolator_kwargs</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mars.html">mars package</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_1.html">Continuous-Wave EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_2.html">Polarized Radiation EPR Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_3.html">Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_4.html">Advance Fitting Procedures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_5.html">Spectra Polarization and Time Resolved</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_6.html">Multi-System Kinetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example_7.html">Time-Resolved Fitting Procedures</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ArkadySamsonenkoWork/MarS.git"> GitHub Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MarS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Meshing Strategies</a></li>
+      <li class="breadcrumb-item active">Interpolation on Spherical Meshes</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/contents/meshers/interpolation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="interpolation-on-spherical-meshes">
+<h1>Interpolation on Spherical Meshes<a class="headerlink" href="#interpolation-on-spherical-meshes" title="Link to this heading"></a></h1>
+<p>MarS supports interpolation of the three resonance data: <strong>resonance fields</strong>, <strong>intensities</strong>, and <strong>linewidths</strong> — from a coarse initial orientation grid to a finer evaluation grid.
+This decouples the expensive Hamiltonian diagonalization (performed on the coarse grid) from the high-resolution spherical integration required for smooth spectra.</p>
+<p>Two interpolation strategies are provided:</p>
+<ol class="arabic simple">
+<li><p><strong>Radial Basis Function (RBF) Interpolation</strong></p></li>
+<li><p><strong>Spherical Barycentric Interpolation</strong></p></li>
+</ol>
+<p>These are implemented in <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.RBFInterpolator</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.BarycentricInterpolator</span></code>.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">interpolate=True</span></code> in <code class="xref py py-class docutils literal notranslate"><span class="pre">mars.mesher.delaunay_neighbour.DelaunayMesh</span></code>, all three resonance quantities are interpolated onto the extended mesh before triangulation and integration.</p>
+<section id="technical-details">
+<h2>Technical Details<a class="headerlink" href="#technical-details" title="Link to this heading"></a></h2>
+<section id="interpolation-procedures">
+<h3>Interpolation Procedures<a class="headerlink" href="#interpolation-procedures" title="Link to this heading"></a></h3>
+<p>Given resonance data on the base mesh:</p>
+<ul class="simple">
+<li><p><strong>Fields</strong> <span class="math notranslate nohighlight">\(B_{\text{res}}(\omega_i)\)</span> — resonance magnetic field at orientation <span class="math notranslate nohighlight">\(\omega_i\)</span></p></li>
+<li><p><strong>Intensities</strong> <span class="math notranslate nohighlight">\(I(\omega_i)\)</span> — transition intensity</p></li>
+<li><p><strong>Widths</strong> <span class="math notranslate nohighlight">\(\Delta B(\omega_i)\)</span> — linewidth</p></li>
+</ul>
+<p>All three tensors are interpolated independently to the extended mesh vertices <span class="math notranslate nohighlight">\(\{\omega'_j\}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[B'_{\text{res}}(\omega'_j) = \mathcal{I}[B_{\text{res}}](\omega'_j), \quad
+I'(\omega'_j) = \mathcal{I}[I](\omega'_j), \quad
+\Delta B'(\omega'_j) = \mathcal{I}[\Delta B](\omega'_j),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{I}\)</span> denotes the chosen interpolator.</p>
+</section>
+<section id="rbfinterpolator">
+<h3>RBFInterpolator<a class="headerlink" href="#rbfinterpolator" title="Link to this heading"></a></h3>
+<p>Performs global interpolation using radial basis functions defined on the unit sphere.
+For each resonance quantity, it solves the linear system:</p>
+<div class="math notranslate nohighlight">
+\[(\mathbf{K} + \lambda \mathbf{R}) \boldsymbol{\alpha} = \mathbf{f},\]</div>
+<p>where:
+- <span class="math notranslate nohighlight">\(\mathbf{K}_{mn} = \phi(d(\Omega_m, \Omega_n))\)</span> is the kernel matrix computed from geodesic (great-circle) distances between base vertices,
+- <span class="math notranslate nohighlight">\(\mathbf{R}\)</span> is a regularization matrix (see below),
+- <span class="math notranslate nohighlight">\(\lambda\)</span> is a small jitter term for numerical stability,
+- <span class="math notranslate nohighlight">\(\boldsymbol{\alpha}\)</span> are the RBF coefficients.</p>
+<p>Interpolated values at extended points are then computed as:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{f}' = \mathbf{K}_{\text{ext}} \boldsymbol{\alpha},\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{K}_{\text{ext}}\)</span> contains kernel evaluations between extended and base vertices.</p>
+<p>Supported kernels include:
+<code class="docutils literal notranslate"><span class="pre">gaussian</span></code>, <code class="docutils literal notranslate"><span class="pre">multiquadric</span></code>, <code class="docutils literal notranslate"><span class="pre">inverse_multiquadric</span></code>, <code class="docutils literal notranslate"><span class="pre">linear</span></code>, <code class="docutils literal notranslate"><span class="pre">cubic</span></code>, and <code class="docutils literal notranslate"><span class="pre">thin_plate</span></code>.</p>
+<p>Regularization options:
+- <code class="docutils literal notranslate"><span class="pre">&quot;tikhonov&quot;</span></code>: Adds <span class="math notranslate nohighlight">\(\lambda \mathbf{I}\)</span> (standard ridge regularization).
+- <code class="docutils literal notranslate"><span class="pre">&quot;spherical&quot;</span></code>: Uses a smoother prior based on low-order spherical harmonics (up to degree 5 by default).</p>
+</section>
+<section id="barycentricinterpolator">
+<h3>BarycentricInterpolator<a class="headerlink" href="#barycentricinterpolator" title="Link to this heading"></a></h3>
+<p>Performs local interpolation using true spherical barycentric coordinates.
+The base mesh must be triangulated; for each target point, the algorithm:</p>
+<ol class="arabic">
+<li><p>Finds the spherical triangle containing the point (using oriented great-circle half-spaces),</p></li>
+<li><p>Computes barycentric weights based on spherical triangle areas:</p>
+<div class="math notranslate nohighlight">
+\[w_A = \frac{\text{area}(P, B, C)}{\text{area}(A, B, C)}, \quad \text{etc.}\]</div>
+</li>
+<li><p>Linearly combines vertex values using these weights.</p></li>
+</ol>
+<p>This method is geometrically exact for linear fields on the sphere and naturally respects mesh topology.</p>
+</section>
+</section>
+<section id="configuring-interpolators-via-interpolator-kwargs">
+<h2>Configuring Interpolators via <code class="docutils literal notranslate"><span class="pre">interpolator_kwargs</span></code><a class="headerlink" href="#configuring-interpolators-via-interpolator-kwargs" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">interpolator_kwargs</span></code> parameter allows fine-grained control over interpolator behavior.
+It is passed directly to the interpolator constructor and supports the following options:</p>
+<p>For <code class="xref py py-class docutils literal notranslate"><span class="pre">RBFInterpolator</span></code>:
+- <code class="docutils literal notranslate"><span class="pre">kernel</span></code> (str): Choice of RBF kernel (default: <code class="docutils literal notranslate"><span class="pre">&quot;thin_plate&quot;</span></code>).
+- <code class="docutils literal notranslate"><span class="pre">regularization</span></code> (str): <code class="docutils literal notranslate"><span class="pre">&quot;spherical&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tikhonov&quot;</span></code> (default: <code class="docutils literal notranslate"><span class="pre">&quot;spherical&quot;</span></code>).
+- <code class="docutils literal notranslate"><span class="pre">jitter</span></code> (float): Small positive value added to diagonal for stability (default: <code class="docutils literal notranslate"><span class="pre">1e-6</span></code>).
+- <code class="docutils literal notranslate"><span class="pre">epsilon</span></code> (float): Shape parameter for kernels that require it (default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code>).</p>
+<p>For <code class="xref py py-class docutils literal notranslate"><span class="pre">BarycentricInterpolator</span></code>:
+- <code class="docutils literal notranslate"><span class="pre">tol</span></code> (float): Numerical tolerance for point-in-triangle tests (default: <code class="docutils literal notranslate"><span class="pre">1e-10</span></code>).</p>
+<p>Example usage in <code class="xref py py-class docutils literal notranslate"><span class="pre">DelaunayMesh</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span> <span class="o">=</span> <span class="n">DelaunayMesh</span><span class="p">(</span>
+    <span class="n">interpolate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">interpolator</span><span class="o">=</span><span class="s2">&quot;rbf&quot;</span><span class="p">,</span>
+    <span class="n">interpolator_kwargs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;kernel&quot;</span><span class="p">:</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;regularization&quot;</span><span class="p">:</span> <span class="s2">&quot;tikhonov&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;jitter&quot;</span><span class="p">:</span> <span class="mf">1e-5</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="crystal_mesh.html" class="btn btn-neutral float-left" title="Crystal Mesh: CrystalMesh" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../api/mars.html" class="btn btn-neutral float-right" title="mars package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Arkady Samsonenko, Ivan Kurgansky.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
