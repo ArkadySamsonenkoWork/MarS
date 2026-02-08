@@ -1,7 +1,7 @@
 Powder Mesh: DelaunayMesh
 ==================================
 
-The :class:`mars.mesher.delanay_neigbour.DelaunayMesh` class implements a spherical triangulation
+The :class:`mars.mesher.delanay_neighbour.DelaunayMesh` class implements a spherical triangulation
 based on an adaptive grid in spherical coordinates (θ, φ). It is designed for disordered
 (powder) samples where all orientations are equally probable.
 
