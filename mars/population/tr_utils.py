@@ -22,12 +22,13 @@ class EvolutionBase(ABC):
 
     def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
         """
-        :param res_energies: The resonance energies.
+        :param res_energies: Energy eigenvalues of the spin Hamiltonian.
+                         Expected shape: [..., N] where N is the dimension of the spin system.
 
-        The shape is [..., N, N], where N is spin system dimension
         :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
         """
         self.energy_diff = res_energies.unsqueeze(-2) - res_energies.unsqueeze(-1)
+        # energy_diff[i, j] = E_j - E_i (energy difference from state j to state i)
         self.energy_diff = constants.unit_converter(self.energy_diff, "Hz_to_K")
         self.config_dim = self.energy_diff.shape[:-2]
         self._free_transform = self._prob_transform_factory(symmetry_probs)
@@ -48,10 +49,17 @@ class EvolutionBase(ABC):
 
     def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
         """
-        Compute Boltzmann factor denominator: 1 / (1 + exp(-ΔE / k_B T)).
+        Compute Boltzmann factor for transition FROM j TO i:
 
-        :param temp: Temperature tensor.
-        :return: Tensor of same shape as energy_diff '[..., N, N]'.
+            factor[i, j] = 1 / (1 + exp(-(E_j - E_i) / k_B T))
+
+        This ensures detailed balance:
+            w_{i→j} / w_{j→i} = exp(-(E_j - E_i) / k_B T)
+
+        ote: energy_diff[i, j] = E_j - E_i, so factor[i, j] applies to the rate w_{i→j} (i → j).
+
+        :param temp: Temperature tensor [...]
+        :return: Factor tensor [..., N, N] where factor[i, j] corresponds to w_{j→i}
         """
         denom = 1 + torch.exp(-self.energy_diff / temp)
         return torch.reciprocal(denom)
@@ -69,24 +77,29 @@ class EvolutionBase(ABC):
 
     @abstractmethod
     def _compute_boltzmann_complement(self, temp: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
-        """Modifies the matrix so that it complies with the principle of
-        detailed balance.
+        """Enforce detailed balance by filling missing rates from their reciprocal counterparts.
 
-        Use another approach compared to '_compute_boltzmann_symmetry'
+        In this approach, zero entries are replaced using the transpose element scaled
+        by the Boltzmann factor, while non‑zero entries are left untouched.
+        Subclasses must implement the concrete transformation.
 
-        :param temp: Temperature in K
-        :param matrix: Matrix which should be modified
-        :return: The modified matrix
+        :param temp:   Temperature in K.
+        :param matrix: Input tensor (interpretation depends on subclass).
+        :return:       Tensor satisfying detailed balance.
         """
         pass
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> torch.Tensor:
-        """
-        :param args:
+        """Construct the time‑evolution operator or generator.
 
-        :param kwargs:
-        :return: The matrix or superoperator which used for the time-equation solution
+        Subclasses must implement this method to return the matrix (EvolutionMatrix)
+        or superoperator (EvolutionSuper) that drives the time evolution of a state
+        or density matrix.
+
+        :param args:   Positional arguments specific to the subclass.
+        :param kwargs: Keyword arguments specific to the subclass.
+        :return:       Tensor representing the evolution matrix/superoperator.
         """
 
 
@@ -114,28 +127,50 @@ class EvolutionMatrix(EvolutionBase):
 
     def _compute_boltzmann_symmetry(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
         """
-        Apply detailed balance to symmetric mean rates:
+        Convert symmetric mean strengths k'_ij into physical rates w_{j→i}.
 
-            K_ij = 2 * free_probs[i,j] / (1 + exp(-ΔE_ij / k_B T)),
-            K_ji = 2 * free_probs[i,j] * exp(-ΔE_ij / k_B T) / (1 + exp(-ΔE_ij / k_B T)).
+        Given k'_ij = (free_probs[i, j] + free_probs[j, i]) / 2:
 
-        :param temp: Temperature.
-        :param free_probs: Symmetric matrix where free_probs[i,j] = free_probs[j,i] = k'_ij.
-        :return: Asymmetric rate matrix satisfying K_ij / K_ji = exp(-ΔE_ij / k_B T).
+            w_{j→i} = 2 * k'_ij * factor[i, j]
+            w_{i→j} = 2 * k'_ij * factor[j, i]
+
+        where factor[i, j] is computed by _compute_energy_factor and energy_diff[i, j] = E_j - E_i.
+
+        Returns tensor free_probs_update where free_probs_update[i, j] = w_{j→i}.
+
+        :param temp: Temperature in K [...]
+        :param free_probs: Symmetric tensor [..., N, N] with free_probs[i, j] = k'_ij
+        :return: Tensor [..., N, N] where output[i, j] = w_{j→i}
         """
         energy_factor = self._compute_energy_factor(temp)
         return (free_probs + free_probs.transpose(-2, -1)) * energy_factor
 
     def _compute_boltzmann_complement(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
         """
-        Apply detailed balance to symmetric mean rates:
+        Enforce detailed balance on raw rate estimates.
 
-            K_ij =  K_ji * exp(-ΔE_ij / k_B T)
-            K_ji = K_ji
+        Input interpretation: free_probs[i, j] is initial estimate of w_{j→i}
 
-        :param temp: Temperature.
-        :param free_probs: Symmetric matrix where free_probs[i,j] = free_probs[j,i] = k'_ij.
-        :return: Asymmetric rate matrix satisfying K_ij / K_ji = exp(-ΔE_ij / k_B T).
+        To enforce detailed balance:
+            w_{j→i} = w_{i→j} * exp( -(E_i - E_j) / k_B T )
+                    = w_{i→j} * exp( +(E_j - E_i) / k_B T )
+
+        Since energy_diff[i, j] = E_j - E_i:
+
+            w_{i→j} = w_{j→i} * exp(-energy_diff[i, j] / k_B T)
+
+          If free_probs[i, j] > 0 and free_probs[j, i] == 0:
+              set w_{j→i} = w_{i→j} * exp(+(E_j - E_i) / k_B T)
+
+          If both are non-zero, they are left unchanged (user-provided balance).
+
+        The returned tensor R satisfies: R[i, j] = w_{i→j} (final physical rate).
+
+        :param temp: Temperature in K [...]
+        :param free_probs: Asymmetric input [..., N, N] where
+            free_probs[i, j] is interpreted as the initial guess for w_{i→j}
+        :return: Tensor [..., N, N] where output[i, j] = w_{i→j} satisfying
+            w_{i→j} / w_{j→i} = exp( -(E_j - E_i) / k_B T )  (detailed balance)
         """
         numerator = torch.exp(self.energy_diff / temp)
         return torch.where(free_probs == 0, free_probs.transpose(-1, -2) * numerator, free_probs)
@@ -221,21 +256,32 @@ class EvolutionSuper(EvolutionBase):
             self.spin_system_dim, device=res_energies.device) * (self.spin_system_dim + 1)
 
     def _compute_boltzmann_symmetry(self, temp: torch.Tensor, free_superop: torch.Tensor) -> torch.Tensor:
-        """Apply Boltzmann scaling to population transfer rates in
-        superoperator.
+        """Apply Boltzmann scaling to population transfer rates in superoperator.
 
-        For population transfer rates R[i,i],[j,j] (transitions between states i and j):
-            R_mean[i,j] = (R[i,i],[j,j] + R[j,j],[i,i]) / 2
-            R_new[i,i],[j,j] = R_mean[i,j] * energy_factor[i,j]
-            R_new[j,j],[i,i] = R_mean[i,j] * energy_factor[i,j]
-        Then it is corrected the decay rates because they can be changed. That is
+        The population-population block is defined by indices:
+            pop_block[i, j] = free_superop[pop_i, pop_j] = initial rate from j → i (i.e., R_{iijj})
 
-        decay_i = R[i,i,i,i,] + sum{R[i,i,j,j]} - total depopulation of i energy level
-        After correct we perform R[i,i,i,i,]_new =  -sum{R[i,i,j,j]_new} + decay_i.
+        Under the symmetric input convention:
+            (pop_block[i, j] + pop_block[j, i]) / 2 = k'_ij   (mean strength)
+
+        This method computes physical rates:
+            w_{j→i} = 2 * k'_ij * factor[i, j]
+            w_{i→j} = 2 * k'_ij * factor[j, i]
+
+        where factor[i, j] = 1 / (1 + exp(-(E_j - E_i) / k_B T))
+
+        After scaling off-diagonal elements (i ≠ j), diagonal elements are adjusted
+        to preserve the original column sums of the population block. The column sum
+        for level j equals -loss_j (net depopulation rate including irreversible losses),
+        which is a physical observable that must remain unchanged by thermal correction.
 
         :param temp: Temperature tensor [...]
-        :param free_superop: Superoperator [..., N^2, N^2]
-        :return: Scaled superoperator [..., N^2, N^2]
+        :param free_superop: Relaxation superoperator [..., N², N²]
+            Must be in the energy eigenbasis. Element [p_i, p_j] represents the rate
+            from population ρ_jj to population ρ_ii (j → i transition)
+        :return: Scaled superoperator [..., N², N²] with thermally corrected
+            population transfer rates satisfying detailed balance while preserving
+            original net loss rates from each energy level.
         """
         device = free_superop.device
 
@@ -268,9 +314,15 @@ class EvolutionSuper(EvolutionBase):
                  driven_superop: tp.Optional[torch.Tensor] = None,
                  ) -> torch.Tensor:
         """
-        Build full superoperator from Hamiltonian and relaxation superoperator:
+        Build full Liouvillian superoperator 𝓛 such that dρ/dt = 𝓛[ρ].
 
-            Then 'drho / dt = R_full [rho]'
+        The superoperator is assembled as:
+            𝓛 = ℒ_H + 𝓡_thermal + 𝓡_driven
+
+        where:
+          - ℒ_H[ρ] = -i[H, ρ] (coherent evolution)
+          - 𝓡_thermal: thermal relaxation with detailed balance (from free_superop)
+          - 𝓡_driven: user-provided relaxation (unchanged)
 
         :param temp: Temperature(s).
         :param H: Hamiltonian operator. The shape is [..., N, N].

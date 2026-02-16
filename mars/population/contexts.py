@@ -15,7 +15,7 @@ from .. import spin_model
 from . import transform
 
 
-def transform_to_complex(vector):
+def transform_to_complex(vector: torch.Tensor) -> torch.Tensor:
     if vector.dtype == torch.float32:
         return vector.to(torch.complex64)
     elif vector.dtype == torch.float64:
@@ -459,7 +459,7 @@ def _multiply_homogeneous_contexts_to_context(contexts: tp.Sequence[Context]) ->
         driven_probs=_process_matrices("driven_probs"),
         out_probs=_process_diagonal_vectors("out_probs"),
         dephasing=_process_diagonal_vectors("dephasing"),
-        relaxation_superop=_process_matrices("driven_probs"),
+        relaxation_superop=_process_matrices("_default_driven_superop"),
         profile=None,
         time_dimension=time_dimension,
         dtype=dtype,
@@ -1179,20 +1179,28 @@ class Context(TransformedContext):
             If provided then init_populations will be ignored for computations,
             however for the most cases it is better to set only one among init_populations / init_density
 
-        :param free_probs:   torch.Tensor or callable or None, optional
-            Thermal (Boltzmann-weighted) transition probabilities.
-            It can be set as symmetrix matrix of mean transition probabilities. Accepts either:
-              - a tensor shaped `[..., N, N]`
-                [[0,  w],
-                 [w, 0]]
+        :param free_probs: Thermal (Boltzmann) transition rates between states, or a callable that generates them.
+            Uses the **rate matrix convention** where element ``[j, i]``
+            represents the rate from state *i* to state *j*:
+            free_probs[j, i] = w_{i→j}
+            Accepts either:
+              - A tensor of shape ``[..., N, N]`` with zero diagonal (diagonal will be corrected as negative row-sum).
+                Example for a 2-level system:
+                [[0,  w{1->0}],
+                 [w{0->1}, 0]]
               , or
-              - a callable `f(time) -> tensor` that returns the tensor at requested times.
+              -  A callable ``f(time) -> Tensor`` that returns time-dependent rates at the requested time points.
 
-        :param driven_probs: torch.Tensor [..., N, N] or None
-            Probabilities of driven transitions (e.g. due to external driving).
-            DR matrix is a matrix of driven transitions that are not connected by thermal equilibrium:
-             [[0,  dr_1],
-             [dr_2, 0]]
+        :param driven_probs: Non-thermal transition rates induced by external driving (e.g., THz radiation).
+            Follows the same convention and shape requirements as ``free_probs``:
+                driven_probs[j, i] = d_{i→j}
+            Accepts either:
+              - A tensor of shape ``[..., N, N]`` with zero diagonal (diagonal will be corrected as negative row-sum).
+                Example for a 2-level system:
+                [[0,  d{1->0}],
+                 [d{0->1}, 0]]
+              , or
+              -  A callable ``f(time) -> Tensor`` that returns time-dependent rates at the requested time points.
 
         :param out_probs: torch.Tensor or list[float] or callable or None, optional
             Out-of-system transition probabilities (loss terms). Expected shapes:

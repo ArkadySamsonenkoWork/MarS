@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: mars-epr
-Version: 0.0.3b1
+Version: 0.0.3b2
 Summary: A library for computation CW and time resolved spectra
 Author-email: Arkady Samsonenko <a.samsonenko@tomo.nsc.ru>, Ivan Kurganskii <kurgansky@tomo.nsc.ru>
 License-Expression: MIT
@@ -12,7 +12,7 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Requires-Dist: numpy>=1.19.4
 Requires-Dist: torch>=2.2
-Requires-Dist: scipy>=1.14
+Requires-Dist: scipy>=1.15
 Requires-Dist: scikit-learn
 Requires-Dist: torchdiffeq
 Provides-Extra: opt

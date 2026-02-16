@@ -522,12 +522,27 @@ For population dynamics (kinetic matrices)
    \mathbf{n}_{\text{total}} = \mathbf{n}^{(1)} \oplus \mathbf{n}^{(2)}, \quad
    K_{\text{total}} = K^{(1)} \oplus K^{(2)}
 
-For density matrix dynamics:
+For density matrix:
 
 .. math::
 
-   \rho_{\text{total}} = \rho^{(1)} \oplus \rho^{(2)}, \quad
-   \hat{\mathcal{R}}_{\text{total}} = \hat{\mathcal{R}}^{(1)} \oplus \hat{\mathcal{R}}^{(2)}
+   \rho_{\text{total}} = \rho^{(1)} \oplus \rho^{(2)} =
+   \begin{pmatrix}
+     \rho^{(1)} & 0 \\
+     0 & \rho^{(2)}
+   \end{pmatrix}
+
+
+Under vectorization (row-major in MarS), :math:`\mathrm{vec}(\rho_1 \oplus \rho_2) \neq \mathrm{vec}(\rho_1) \oplus \mathrm{vec}(\rho_2)` due to non-contiguous
+index mapping. The composite relaxation superoperator requires explicit embedding into the correct
+Liouville subspaces:
+
+.. math::
+
+   \hat{\mathcal{R}}_{\text{total}} = \mathcal{P} \cdot 
+   \bigl( \hat{\mathcal{R}}^{(1)} \oplus \hat{\mathcal{R}}^{(2)} \bigr) \cdot \mathcal{P}^\top
+
+where :math:`\mathcal{P}` is the permutation reconciling row-major vectorization of block-diagonal states.
 
 Example: Two Triplet States in Distinct Conformers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

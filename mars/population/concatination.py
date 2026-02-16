@@ -4,6 +4,7 @@ import warnings
 import torch
 
 from .contexts import Context, SummedContext
+from . import transform
 
 
 def _normalize_to_components(
@@ -484,6 +485,41 @@ def _concat_homogeneous_contexts(
             start = end
         return composite
 
+    def _process_superoperators(attr_name: str):
+        """Construct composite relaxation superoperator using correct Liouville-space embedding.
+
+        Unlike Hilbert-space matrices, superoperators require non-contiguous embedding due to
+        vectorization of block-diagonal density matrices. Uses
+        transform.reshape_superoperators_tensor_to_direct_sum_basis for correct placement.
+
+        :return: Composite superoperator of shape [..., N², N²] where N = Σᵢ Nᵢ,
+                 or None if all contexts have None for relaxation_superop.
+
+        Note:
+            Batch dimensions are preserved by expanding all superoperators to a common batch shape
+            before embedding. The embedding operation is applied identically across all batch elements.
+        """
+        superops = [getattr(ctx, attr_name) for ctx in contexts]
+        if all(sop is None for sop in superops):
+            return None
+
+        batch_shapes = [sop.shape[:-2] for sop in superops if sop is not None]
+        common_batch_shape = torch.Size(torch.broadcast_shapes(*batch_shapes)) if batch_shapes else torch.Size()
+
+        superop_list = []
+        for i, sop in enumerate(superops):
+            Ni = dims[i]
+            target_shape = common_batch_shape + (Ni * Ni, Ni * Ni)
+
+            if sop is None:
+                block = torch.zeros(target_shape, dtype=dtype, device=device)
+            else:
+                block = sop.expand(target_shape)
+
+            superop_list.append(block)
+
+        return transform.reshape_superoperators_list_to_direct_sum_basis(superop_list)
+
     def _process_density():
         """Construct block-diagonal initial density matrix from context density matrices.
 
@@ -540,7 +576,7 @@ def _concat_homogeneous_contexts(
         driven_probs=_process_matrices("driven_probs"),
         out_probs=_process_vectors("out_probs"),
         dephasing=_process_vectors("dephasing"),
-        relaxation_superop=_process_matrices("driven_probs"),
+        relaxation_superop=_process_superoperators("_default_driven_superop"),
         profile=None,
         time_dimension=time_dimension,
         dtype=dtype,

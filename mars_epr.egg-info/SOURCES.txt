@@ -12,8 +12,8 @@ mars/spectra_processing.py
 mars/spin_model.py
 mars/utils.py
 mars/mesher/__init__.py
-mars/mesher/axial_neigbour.py
-mars/mesher/delanay_neigbour.py
+mars/mesher/axial_mesh.py
+mars/mesher/delanay_mesh.py
 mars/mesher/experimental.py
 mars/mesher/general_mesh.py
 mars/optimization/__init__.py
@@ -21,7 +21,6 @@ mars/optimization/fitter.py
 mars/optimization/interactions.py
 mars/optimization/objectives.py
 mars/particles/__init__.py
-mars/particles/nuclei_db_creation.py
 mars/particles/typed_particles.py
 mars/population/__init__.py
 mars/population/concatination.py

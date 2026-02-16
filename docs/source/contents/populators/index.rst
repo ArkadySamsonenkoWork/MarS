@@ -42,7 +42,7 @@ Populations can be initialized in two ways:
 
       n_i \propto \exp(-E_i / k_B T)
 
-2. **Context-defined**: Explicitly specified populations, automatically transformed to the field-dependent eigenbasis. (see :ref:`context-general-information` and :class:`mars.population.context.Context`)
+2. **Context-defined**: Explicitly specified populations, automatically transformed to the field-dependent eigenbasis. (see :ref:`context-general-information` and :class:`mars.population.contexts.Context`)
 
 Time-Dependent Evolution
 ~~~~~~~~~~~~~~~~~~~~~~~~~

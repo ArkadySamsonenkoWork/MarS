@@ -4,7 +4,7 @@ project = 'MarS'
 copyright = '2026, Arkady Samsonenko, Ivan Kurgansky'
 author = 'Arkady Samsonenko, Ivan Kurgansky'
 release = '2026.01.11'
-version = '0.0.3b1'
+version = '0.0.3b2'
 
 # -- General configuration ---------------------------------------------------
 

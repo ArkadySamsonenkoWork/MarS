@@ -1243,6 +1243,7 @@ class SpinSystem(nn.Module):
             This parameter can be used when you need to create not ordinary system
             which can not be created by default methods.
             If you use it, some inner class methods may not work correctly, so be careful.
+            This is a parameter for advance usage,  for ordinary workflow consider another approach
 
         :param energy_shift:
         float, Tensor, optional
@@ -1251,14 +1252,15 @@ class SpinSystem(nn.Module):
             doesn't change the the spectrum of the sample but changes the absolute energy reference.
 
         :param device: device to compute (cpu / gpu)
+        :param dtype: float32/float64
         """
         super().__init__()
         self.is_artificial = False
         complex_dtype = utils.float_to_complex_dtype(dtype)
 
-        self.electrons = self._init_electrons(electrons)
+        self.electrons = self._init_electrons(electrons, device, complex_dtype)
         self.g_tensors = nn.ModuleList(g_tensors)
-        self.nuclei = self._init_nuclei(nuclei) if nuclei else []
+        self.nuclei = self._init_nuclei(nuclei, device, complex_dtype) if nuclei else []
 
         self.electron_nuclei_interactions = nn.ModuleList()
         self.electron_electron_interactions = nn.ModuleList()
@@ -1306,24 +1308,45 @@ class SpinSystem(nn.Module):
                 module_list.append(interaction)
                 index_list.append((idx1, idx2))
 
-    def _init_electrons(self, electrons):
+    def _init_electrons(self, electrons: tp.Union[list[float], list[particles.Electron]],
+                        device: torch.device, complex_dtype: torch.dtype) -> list[particles.Electron]:
         """Initialize electron particles from spin values or Electron instances.
 
         :param electrons: List of spin quantum numbers (float) or Electron objects.
+        :param device: device to compute (cpu / gpu)
+        :param complex_dtype: complex64/complex128
         :return: List of initialized Electron instances.
         """
-        return [particles.Electron(electron) if isinstance(electron, float) else electron for electron in electrons]
+        def _convert(item: tp.Union[float, particles.Electron]):
+            if isinstance(item, (int, float)):
+                return particles.Electron(item, device, complex_dtype)
+            if isinstance(item, particles.Electron):
+                return item
+            raise TypeError(
+                f"Expected Electron or float, got {type(item).__name__}"
+            )
+        return [_convert(el) for el in electrons]
 
-    def _init_nuclei(self, nuclei: tp.Union[list[particles.Nucleus], list[str]]):
+    def _init_nuclei(self, nuclei: tp.Union[list[particles.Nucleus], list[str]],
+                     device: torch.device, complex_dtype: torch.dtype) -> list[particles.Nucleus]:
         """Initialize nucleus particles from isotope symbols or Nucleus instances.
 
         :param nuclei: List of isotope strings (e.g., "1H") or Nucleus objects.
+        :param device: device to compute (cpu / gpu)
+        :param complex_dtype: complex64/complex128
         :return: List of initialized Nucleus instances.
         """
-        return [particles.Nucleus(nucleus) if isinstance(nucleus, str) else nucleus for nucleus in nuclei]
+        def _convert(item: tp.Union[str, particles.Nucleus]):
+            if isinstance(item, str):
+                return particles.Nucleus(item, device, complex_dtype)
+            if isinstance(item, particles.Nucleus):
+                return item
+            raise TypeError(f"Expected Nucleus or str, got {type(item).__name__}")
+
+        return [_convert(n) for n in nuclei]
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         """Get the device where the spin system tensors are stored.
 
         :return: The torch.device (e.g., 'cpu' or 'cuda') used for computation.
@@ -1331,12 +1354,12 @@ class SpinSystem(nn.Module):
         return self.operator_cache.device
 
     @property
-    def dtype(self):
+    def dtype(self) -> torch.dtype:
         """Get the floating-point data type of interaction parameters."""
         return self.g_tensors[0].components.dtype
 
     @property
-    def complex_dtype(self):
+    def complex_dtype(self) -> torch.dtype:
         """Get the complex data type corresponding to the system float precision."""
         return utils.float_to_complex_dtype(self.dtype)
 

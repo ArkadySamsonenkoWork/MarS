@@ -23,7 +23,9 @@ The density matrix ρ(t) evolves according to:
 
 where:
 
-* **H**: Spin Hamiltonian
+* **H**: Spin Hamiltonian. Note that throughout MarS, the Hamiltonian is defined in frequency units (Hz).
+Consequently, the physical commutator term implicitly includes a factor of $2\pi$ (i.e., $-i 2\pi [H, \rho]$)
+to convert from Hz to angular frequency, as the standard equation assumes energy units where $\hbar=1$.
 * **R**: Relaxation superoperator describing decoherence and population transfer
 
 To solve this numerically, the equation is transformed into Liouville space where the density matrix becomes a vector of dimension N^2 and operators become N^2xN^2 superoperators:
@@ -51,7 +53,7 @@ In the rotating frame, the effective Hamiltonian becomes time-independent and fo
 
 .. math::
 
-   H_{\text{eff}} = F + g\mu_B(B_0 - \omega/g\mu_B)S_z + g\mu_B B_1 S_x
+   H_{\text{eff}} = F + g\mu_B(B_0 - \omega/g\mu_B)S_z + \frac{1}{2}g\mu_B B_1 S_x
 
 where:
 
@@ -102,7 +104,8 @@ The oscillating magnetic field must be circularly polarized:
 
 Linear polarization introduces counter-rotating components that are not eliminated by RWA.
 
-**Why this occurs**: Linear polarization contains both co-rotating and counter-rotating components. The RWA discards the counter-rotating terms, which is valid only when they oscillate at ~2ω and can be neglected.
+**Why this occurs**: Linear polarization contains both co-rotating and counter-rotating components.
+The RWA discards the counter-rotating terms, which is valid only when they oscillate at ~2ω and can be neglected.
 
 Commutation with Zero-Field Hamiltonian
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

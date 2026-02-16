@@ -1077,11 +1077,78 @@ def reshape_superoperator_tensor_to_kronecker_basis(
     return x.reshape(*batch_shape, total_dim * total_dim, total_dim * total_dim)
 
 
+def reshape_superoperators_list_to_direct_sum_basis(
+    superoperators: tp.List[torch.Tensor]
+) -> torch.Tensor:
+    """Construct superoperator for direct-sum composite system with independent relaxation.
+
+    Given subsystem superoperators {Rᵢ} acting on vectorized density matrices
+    vec(ρᵢ) (row-major), constructs the full superoperator R acting on the
+    vectorized block-diagonal density matrix:
+
+        ρ = ρ_1 ⊕ ρ_2 ⊕ … ⊕ ρ_n = diag(ρ_1, ρ_2, …, ρ_n)
+
+    The resulting superoperator preserves the block-diagonal structure of ρ
+    under time evolution.
+
+    :param superoperators:
+            List of subsystem superoperators.
+            Each element Rᵢ has shape ``(N_i^2, N_i^2)`` where N_i is the Hilbert
+            space dimension of subsystem i.
+
+    :return:
+        total_superop: Composite superoperator acting on vec(ρ_1 ⊕ … ⊕ ρ_n).
+            Shape: ``(N², N²)`` where N = Σᵢ Nᵢ is the total Hilbert space dimension.
+
+    Mathematical Formulation:
+    -------------------------
+    For block-diagonal ρ with subsystem dimensions {Nᵢ} and offsets
+    offsetᵢ = Σ_{k<i} N_k:
+
+        ρ[p, q] = ρᵢ[p−offsetᵢ, q−offsetᵢ]   if p,q ∈ [offsetᵢ, offsetᵢ+Nᵢ)
+                = 0                           otherwise
+
+    Row-major vectorization maps matrix element ρ[p, q] to index:
+
+        k = p·N + q   where N = Σᵢ Nᵢ
+
+    Subsystem i occupies non-contiguous indices in vec(ρ):
+
+        Kᵢ = { (offsetᵢ + a)·N + (offsetᵢ + b) | a,b ∈ [0, Nᵢ) }
+
+    The composite superoperator embeds each Rᵢ into the subspace spanned by Kᵢ:
+
+        R_total[Kᵢ, Kᵢ] = Rᵢ
+        R_total[Kᵢ, Kⱼ] = 0   for i ≠ j
+
+    """
+    dims = [int(round(math.sqrt(R.shape[0]))) for R in superoperators]
+
+    N = sum(dims)
+    offsets = [0] + torch.cumsum(torch.tensor(dims[:-1]), dim=0).tolist()
+
+    device = superoperators[0].device
+    dtype = superoperators[0].dtype
+    total_superop = torch.zeros((N * N, N * N), dtype=dtype, device=device)
+
+    for R_i, N_i, off in zip(superoperators, dims, offsets):
+        a = torch.arange(N_i, device=device)
+        b = torch.arange(N_i, device=device)
+        grid_a, grid_b = torch.meshgrid(a, b, indexing="ij")
+
+        global_idx = (off + grid_a) * N + (off + grid_b)       # shape (N_i, N_i)
+
+        out_global = global_idx.flatten()                      # length N_i²
+        in_global = out_global                                 # same mapping for input
+        total_superop[out_global[:, None], in_global[None, :]] = R_i
+    return total_superop
+
+
 class Liouvilleator:
     @staticmethod
     def commutator_superop(operator: torch.Tensor) -> torch.Tensor:
         """Compute the superoperator form of the commutator with a given
-        operator.
+        operator. Here we use row-stacking for density matrix
 
         For an operator A, this superoperator L satisfies:
             L[ρ] = [A, ρ] = Aρ - ρA

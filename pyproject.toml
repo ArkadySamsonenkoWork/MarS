@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mars-epr"
-version = "0.0.3b1"
+version = "0.0.3b2"
 authors = [
     {name = "Arkady Samsonenko", email = "a.samsonenko@tomo.nsc.ru"},
     {name = "Ivan Kurganskii", email = "kurgansky@tomo.nsc.ru"},
@@ -22,7 +22,7 @@ requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.19.4",
     "torch>=2.2",
-    "scipy>=1.14",
+    "scipy>=1.15",
     "scikit-learn",
     "torchdiffeq"
 ]

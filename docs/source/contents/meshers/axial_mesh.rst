@@ -1,7 +1,7 @@
 Axial Mesh: AxialMeshNeighbour
 ==============================
 
-The :class:`mars.mesher.axial_neigbour.AxialMeshNeighbour` class is optimized for systems with axial (cylindrical)
+The :class:`mars.mesher.axial_mesh.AxialMeshNeighbour` class is optimized for systems with axial (cylindrical)
 symmetry, where physical observables depend only on the polar angle θ and are invariant under
 azimuthal rotation (φ).
 

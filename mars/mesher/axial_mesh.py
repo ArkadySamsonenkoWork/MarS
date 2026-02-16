@@ -5,7 +5,6 @@ import torch.nn as nn
 from .general_mesh import BaseMesh, BaseMeshAxial
 
 
-
 class MeshProcessorAxial(nn.Module):
     def __init__(self, init_grid_frequency, device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32

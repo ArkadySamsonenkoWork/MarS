@@ -139,7 +139,14 @@ MarS automatically enforces detailed balance at temperature :math:`T`:
 
    w_{ji}^* = \frac{w_{ij} + w_{ji}}{1 + e^{(E_j - E_i)/k_B T}}
 
-where :math:`w_{ij}^*` are the modified rates ensuring :math:`\frac{w_{ij}^*}{w_{ji}^*} = e^{(E_j - E_i)/k_B T}`.
+where :math:`w_{ij}^*` are the modified rates ensuring :math:`\frac{w_{ij}^*}{w_{ji}^*} = e^{-(E_i - E_j)/k_B T}`.
+
+We additionally note, that in MarS notation, the matrix element :math:`w_{ij}` corresponds to the physical transition rate :math:`w_{j \to i}`,
+and after thermal correction it satisfies the detailed balance condition:
+
+.. math::
+
+   \frac{w_{j \to i}}{w_{i \to j}} = e^{-(E_i - E_j)/k_B T}.
 
 **Transformation Rule**
 

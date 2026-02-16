@@ -1225,7 +1225,6 @@ class AxialSpectraIntegrator(BaseSpectraIntegrator):
         additional_width_square.mul_(self.field_to_width)
 
         #torch.where(width > 2 * threshold, width, width + 2 * threshold, out=width)
-
         width.square_()
         clamp_param = additional_width_square.clone()
         additional_width_square.add_(1.0)

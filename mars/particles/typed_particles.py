@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+import typing as tp
+from dataclasses import dataclass, field, InitVar
 import os
 import pickle
 import torch
@@ -34,26 +35,33 @@ class SpinMatricesOne:
 
 
 # Лучше этим пользоваться
-def get_spin_operators(s):
-    """Generate spin matrices for a given spin s."""
-    s = float(s)
-    dim = int(2 * s + 1)
-    if not (2 * s).is_integer():
+def get_spin_operators(spin: tp.Union[float, int],
+                       device: torch.device = torch.device("cpu"),
+                       complex_dtype: torch.dtype = torch.complex64):
+
+    """Generate spin matrices for a given spin s.
+    :param: spin: the value of spin
+    :param device: device to compute (cpu / gpu)
+    :param complex_dtype: complex64/complex128
+    """
+    spin = float(spin)
+    dim = int(2 * spin + 1)
+    if not (2 * spin).is_integer():
         raise ValueError("Spin must be an integer or half-integer.")
 
-    sz = torch.diag(torch.tensor([s - i for i in range(dim)], dtype=torch.complex64))
-    splus = torch.zeros((dim, dim), dtype=torch.complex64)
-    sminus = torch.zeros((dim, dim), dtype=torch.complex64)
+    sz = torch.diag(torch.tensor([spin - i for i in range(dim)], dtype=complex_dtype, device=device))
+    splus = torch.zeros((dim, dim), dtype=complex_dtype, device=device)
+    sminus = torch.zeros((dim, dim), dtype=complex_dtype, device=device)
 
     for i in range(dim):
-        m_i = s - i
-        if m_i + 1 <= s:
+        m_i = spin - i
+        if m_i + 1 <= spin:
             j = i - 1
-            value = math.sqrt((s - m_i) * (s + m_i + 1))
+            value = math.sqrt((spin - m_i) * (spin + m_i + 1))
             splus[j, i] = value
-        if m_i - 1 >= -s:
+        if m_i - 1 >= -spin:
             j = i + 1
-            value = math.sqrt((s + m_i) * (s - m_i + 1))
+            value = math.sqrt((spin + m_i) * (spin - m_i + 1))
             sminus[j, i] = value
 
     sx = (splus + sminus) / 2
@@ -75,19 +83,22 @@ class Particle:
     Spin must be an integer or half-integer.
     """
     spin: float
+
+    device: InitVar[torch.device] = torch.device("cpu")
+    complex_dtype: InitVar[torch.dtype] = torch.complex64
+
     spin_matrices: tuple[torch.Tensor, torch.Tensor, torch.Tensor] = field(init=False)
     identity: torch.Tensor = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, device: torch.device, complex_dtype: torch.dtype):
         dim = int(2 * self.spin + 1)
-        self.identity = torch.eye(dim, dtype=torch.complex64)
-        self.spin_matrices = get_spin_operators(self.spin)["matrices"]
+        self.identity = torch.eye(dim, dtype=complex_dtype, device=device)
+        self.spin_matrices = get_spin_operators(self.spin, device, complex_dtype)["matrices"]
 
 
 @dataclass
 class Electron(Particle):
     """Represents the electron Particle.
-
     Spin must be an integer or half-integer.
     """
 
@@ -98,31 +109,33 @@ class Nucleus(Particle):
     _isotope_data = None
     _data_loaded = False  # To load data only one time
 
-    def __init__(self, nucleus_str: str):
+    def __init__(self, nucleus_str: str, device: torch.device, complex_dtype: torch.dtype):
         self.nucleus_str = nucleus_str
         if not Nucleus._data_loaded:
-            data_path = self._get_data_path(r"nuclei_db\nuclear_data.pkl")
+            data_path = self._get_data_path("nuclei_db", "nuclear_data.pkl")
             Nucleus._load_isotope_data(data_path)
         spin, g_factor = self._parse_nucleus_str(nucleus_str)
-        super().__init__(spin)
-        self.g_factor = torch.tensor(g_factor)
+        super().__init__(spin, device, complex_dtype)
+        self.g_factor = torch.tensor(
+            g_factor, device=device,
+            dtype=torch.float64 if complex_dtype == torch.complex128 else torch.float32)
 
     @classmethod
     def _load_isotope_data(cls, data_path: str):
         """Load isotope data from a pickle file."""
         try:
-            with open(data_path, 'rb') as f:
+            with open(data_path, "rb") as f:
                 cls._isotope_data = pickle.load(f)
             cls._data_loaded = True
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Isotope data file '{data_path}' not found.")
 
-    def _get_data_path(self, filename: str) -> str:
+    def _get_data_path(self,  *parts: str) -> str:
         """Get the absolute path to the data file, relative to the location of
         this class."""
         class_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(class_dir, filename)
+        return os.path.join(class_dir, *parts)
 
     def _parse_nucleus_str(self, nucleus_str: str) -> tuple[float, float]:
         """Extract nucleons and symbol from the nucleus string (e.g., '14N' ->
@@ -130,4 +143,4 @@ class Nucleus(Particle):
         data = Nucleus._isotope_data.get(nucleus_str)
         if not data:
             raise KeyError(f"No data found for nucleus: {self.nucleus_str}")
-        return (data['spin'], data['gn'])
+        return (data["spin"], data["gn"])

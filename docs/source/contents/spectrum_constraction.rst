@@ -69,9 +69,9 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
 
    .. math::
 
-      I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 (p_j - p_i)
+      I_{ij} \propto \left| \langle i | \hat{G}_\perp | j \rangle \right|^2 (p_j - p_i)
 
-   where the population of state *k* for the equilibrium case is:
+   where :math:`\hat{G}_{\perp}` depends on the crystal or powder sample case, the population :math:`p_k` of state *k* for the equilibrium case is:
 
    .. math::
 
@@ -80,14 +80,14 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
    In the crystal case, :math:`I_{ij} \propto \left| \langle i | \hat{G}_x | j \rangle \right|^2 \cdot (p_j - p_i)`.
 
    In disordered (powder) systems, the signal must be averaged over all molecular orientations.
-   This is typically done by sampling three Euler angles (:math:\alpha,\beta,\gamma) that define the rotation from the molecular frame to the lab frame.
-   However, due to cylindrical symmetry of the microwave magnetic field around :math:\mathbf{B}_0, the final averaging over the third Euler angle (:math:\gamma) can be performed analytically, reducing computational cost:
+   This is typically done by sampling three Euler angles (:math:'\alpha', '\beta', '\gamma') that define the rotation from the molecular frame to the lab frame.
+   However, the final averaging over the third Euler angle (:math:'\gamma') can be performed analytically, reducing computational cost:
    
    .. math::
-      I_{ij} \propto \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)
+      I_{ij} \propto \frac{1}{2} \left( |\langle i | \hat{G}_x | j \rangle|^2 + |\langle i | \hat{G}_y | j \rangle|^2 \right) \cdot (p_j - p_i)
 
 
-   In **time-resolved** or **non-equilibrium** simulations (e.g., photoexcited states), populations :math:`p_i(t)` are not thermal and are managed via Context tool: see :class:`mars.population.contexts.Context`.
+   In **time-resolved** or **spin-polarized** simulations, populations :math:`p_i(t)` are not thermal and are managed via Context tool: see :class:`mars.population.contexts.Context`.
 
    For density matrix-based time dependant methods, the signal is computed directly as :math:`\mathrm{Tr}(\hat{G}_{\perp} \hat{\rho}(t))`,
    where :math:`\hat{G}_{\perp}` is the detected transverse spin component (e.g., :math:`\hat{G}_x`, :math:`\hat{G}_y`, or circular combinations depending on detection computation method)

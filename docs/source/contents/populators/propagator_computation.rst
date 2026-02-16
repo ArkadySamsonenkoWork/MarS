@@ -6,7 +6,7 @@ Propagator-Based Density Matrix Evolution
 Overview
 --------
 
-The class:`mars.population.stationary.`PropagatorDensityPopulator` class computes time-resolved EPR signals by explicitly calculating the full time-evolution propagator U(t, 0) of the density matrix.
+The :class:`mars.population.stationary.PropagatorDensityPopulator` class computes time-resolved EPR signals by explicitly calculating the full time-evolution propagator :math:`\hat{U}(t, 0)` of the density matrix.
 This method imposes no approximations on the g-tensor, zero-field splitting, or relaxation superoperator, making it the most general approach for time-dependent density matrix evolution.
 
 Theory
@@ -16,72 +16,68 @@ Evolution Propagator
 ~~~~~~~~~~~~~~~~~~~~
 The core algorithm is based on the approach introduced in [Appl Magn Reson 55, 1553–1567 (2024)].
 
-The time evolution of the spin density matrix :math:`\hat{\rho}(t)` is governed by the Liouville equation:
+The time evolution of the spin density matrix :math:`\hat{\rho}(t)` is governed by the Liouville-von Neumann equation. In the vectorized Liouville space representation, this is written as:
 
 .. math::
 
-   \frac{\partial\hat{\rho}(t)}{\partial t} = (-i\hat{H}(t) + \hat{R})\hat{rho}(t)
+   \frac{d\vec{\rho}(t)}{dt} = \hat{\mathcal{L}}(t)\vec{\rho}(t)
 
-where :math:`\hat{\mathcal{L}}(t)` is the Liouvillian superoperator that includes the Hamiltonian and relaxation
-
-To solve this equation, we introduce the **propagator** :math:`\hat{U}(t, 0)`, which maps the initial density matrix to the density matrix at time t:
+where :math:`\vec{\rho}` is the vectorized density matrix and :math:`\hat{\mathcal{L}}(t) = -i\hat{\mathcal{H}}(t) + \hat{R}` is the Liouvillian superoperator. Here, :math:`\hat{\mathcal{H}}` represents the superoperator form of the commutator with the Hamiltonian, defined as:
 
 .. math::
 
-   \hat{\rho}(t) = \hat{U}(t, 0)\hat{\rho}(0)
+   \hat{\mathcal{H}} = H \otimes I - I \otimes H^T
+
+where :math:`H` is the spin Hamiltonian in Hilbert space (in frequency units, Hz) and :math:`I` is the identity matrix. The factor of :math:`2\pi` is implicitly included in the definition of :math:`H` within MarS to match angular frequency conventions in the exponent.
+
+To solve this equation, we introduce the **propagator** :math:`\hat{U}(t, 0)`, which maps the initial state to the state at time :math:`t`:
 
 .. math::
 
-   \hat{\rho}(t) = \hat{G}(t, 0) \hat{\rho}(0)
+   \vec{\rho}(t) = \hat{U}(t, 0)\vec{\rho}(0)
 
-where the propagator satisfies:
-
-.. math::
-
-   \frac{d\hat{G}(t, 0)}{dt} = (-i\hat{H}(t) + \hat{R})\hat{G}(t, 0)
-
-with initial condition G(0, 0) = I (identity superoperator) and Hamiltonian $\hat{H}$ is in Liouville space which is:
+The propagator satisfies the differential equation:
 
 .. math::
 
-   \hat{H} = H \otimes I - I \otimes H
+   \frac{d\hat{U}(t, 0)}{dt} = \hat{\mathcal{L}}(t)\hat{U}(t, 0)
 
-where H is the spin Hamiltonian in Hilbert space and I is the identity matrix. 
+with the initial condition :math:`\hat{U}(0, 0) = \hat{I}` (the identity superoperator).
 
 Floquet Theory for Periodic Hamiltonians
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The time-dependent Hamiltonian H(t) is periodic with period T = 2π/w, where w is the microwave frequency (9-10 GHz in X-band, giving T ~ 0.1 ns). This periodicity enables efficient long-time propagation using Floquet theory.
+Assuming a continuous microwave drive, the time-dependent Hamiltonian :math:`H(t)` is periodic with period :math:`T = 2\pi/\omega`, where :math:`\omega` is the microwave frequency (e.g., 9–10 GHz in X-band, yielding :math:`T \approx 0.1` ns). This periodicity enables efficient long-time propagation using Floquet theory.
 
-For any time t = kT + τ where k is an integer and 0 ≤ τ < T:
+For any time :math:`t = kT + \tau`, where :math:`k` is an integer and :math:`0 \leq \tau < T`:
 
 .. math::
 
-   \hat{G}(t, 0) = [\hat{G}(T, 0)]^k \hat{G}(\tau, 0)
+   \hat{U}(t, 0) = [\hat{U}(T, 0)]^k \hat{U}(\tau, 0)
 
-Thus the propagator need only be computed over one microwave period [0, T], then raised to the k-th power for longer times.
+Thus, the propagator need only be computed numerically over one microwave period :math:`[0, T]`. For longer times, the result is obtained by raising the single-period propagator to the :math:`k`-th power.
 
-Notification
-~~~~~~~~~~~~
-Populator uses Runge–Kutta method to fine :math:\hat{G}(T, 0). It requires the parameter of populator n_steps (see :meth:`mars.population.stationary.PropagatorDensityPopulator.__init__`)
-This parameter is crucial and for some applications it should be increased to avoid numerical instability.
+Implementation Notes
+~~~~~~~~~~~~~~~~~~~~
+The populator uses a Runge–Kutta method to **compute** :math:`\hat{U}(T, 0)`. This requires the parameter ``n_steps`` (see :meth:`mars.population.stationary.PropagatorDensityPopulator.__init__`).
+This parameter is crucial; for systems with fast oscillating terms or strong coupling, ``n_steps`` must be increased to avoid numerical instability.
 
 Signal Detection
 ~~~~~~~~~~~~~~~~
 
-The observable EPR signal is proportional to the transverse magnetization:
+The observable EPR signal is proportional to the transverse magnetization. In the vectorized formalism, this is calculated as:
 
 .. math::
 
-   S(t) \propto \text{Tr}[\hat{G}_x \hat{\rho}(t)] = \text{Tr}[\hat{G}_x \hat{G}(t,0) \hat{\rho}(0)]
+   S(t) \propto \text{Tr}[\hat{S}_x \hat{\rho}(t)] = \mathbf{s}_x^\dagger \hat{U}(t,0) \vec{\rho}(0)
 
-where G_x is the x-component of the total spin angular momentum operator (proportional to the transverse magnetization).
+where :math:`\hat{S}_x` is the x-component of the total spin angular momentum operator.
 
-For phase-sensitive detection at the microwave frequency:
+For phase-sensitive detection locked to the microwave frequency, the integrated signal :math:`I(t)` is:
 
 .. math::
 
-   I(t) = \int_0^t \text{Tr}[\hat{G}(\tau) \hat{\rho}(\tau)] \sin(\omega\tau) d\tau
+   I(t) = \int_0^t \text{Tr}[\hat{S}_x \hat{\rho}(\tau)] \sin(\omega\tau) d\tau
 
 Computational Implementation
 ----------------------------
@@ -89,100 +85,95 @@ Computational Implementation
 Efficient Propagator Calculation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Rather than storing the full propagator G(τ, 0) for all τ ∈ [0, T], only two quantities are computed during integration over one period:
+Rather than storing the full propagator :math:`\hat{U}(\tau, 0)` for all :math:`\tau \in [0, T]`, the integration over one period computes only two quantities:
 
-1. **Full-period propagator**: G(T, 0)
+1. **Full-period propagator**: :math:`\hat{U}(T, 0)`
 2. **Phase-weighted integral**:
 
    .. math::
 
-      \hat{I} = \int_0^T \hat{G}(\tau, 0) \sin(\omega\tau) d\tau
+      \hat{J} = \int_0^T \hat{U}(\tau, 0) \sin(\omega\tau) d\tau
 
-These are sufficient to compute the detected signal at any time t.
+These matrices are sufficient to reconstruct the detected signal at any time :math:`t` using the Floquet expansion.
 
 Matrix Power via Diagonalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To compute [G(T, 0)]^k efficiently, the propagator is diagonalized once:
+To compute :math:`[\hat{U}(T, 0)]^k` efficiently, the single-period propagator is diagonalized once:
 
 .. math::
 
-   \hat{G}(T, 0) = S \Lambda S^{-1}
+   \hat{U}(T, 0) = S \Lambda S^{-1}
 
 Then:
 
 .. math::
 
-   [\hat{G}(T, 0)]^k = S \Lambda^k S^{-1}
+   [\hat{U}(T, 0)]^k = S \Lambda^k S^{-1}
 
-where Λ^k is a diagonal matrix easily obtained by raising eigenvalues to the k-th power.
-
-This avoids repeated matrix multiplications and scales linearly with k rather than as k times the cost of matrix multiplication.
+where :math:`\Lambda^k` is a diagonal matrix obtained by raising the eigenvalues to the :math:`k`-th power.
+This avoids repeated matrix multiplications, scaling linearly with :math:`k` rather than quadratically.
 
 Time Discretization
 ~~~~~~~~~~~~~~~~~~~
 
-Since the microwave period T ~ 0.1 ns is much shorter than typical detection timescales (hundreds of nanoseconds or longer), time points are rounded to the nearest integer multiple of T.
-This introduces negligible error while greatly simplifying calculations.
+Since the microwave period :math:`T \approx 0.1` ns is much shorter than typical detection timescales (hundreds of nanoseconds or longer), output time points are rounded to the nearest integer multiple of :math:`T`.
+This introduces negligible error for envelope detection while greatly simplifying calculations. Note that this method does not resolve signal variations *within* a single microwave cycle.
 
 Relaxation Parameter Constraints
 ---------------------------------
 
-For the propagator method, all relaxation parameters in the Context *must be time-independent*.
-The Floquet approach relies on the periodicity of the evolution operator. If the relaxation superoperator R depends on time (e.g., due to temperature changes), the propagator loses its periodic structure and cannot be efficiently computed via [G(T, 0)]^k.
+For the propagator method, all relaxation parameters in the Context **must be time-independent**.
+The Floquet approach relies on the strict periodicity of the Liouvillian. If the relaxation superoperator :math:`\hat{R}` depends on time (e.g., due to rapid temperature jumps or time-dependent fields), the propagator loses its periodic structure and cannot be computed via :math:`[\hat{U}(T, 0)]^k`.
 
 If relaxation parameters vary with time, use the kinetic approach or RWA with adaptive ODE integration instead.
 
 Powder Averaging
 ----------------
 
-For disordered samples (powders, frozen solutions), the spectrum must be averaged over all molecular orientations. Unlike the RWA, the propagator method supports fully anisotropic g-tensors, so the γ Euler angle affects both resonance frequencies and intensities.
+For disordered samples (powders, frozen solutions), the spectrum must be averaged over all molecular orientations. The propagator method supports fully anisotropic g-tensors and non-secular terms.
 
-The averaging over γ is performed by computing two orthogonal polarizations of the microwave field:
+While the resonance frequencies depend on all three Euler angles (:math:`\alpha, \beta, \gamma`), the averaging over :math:`\gamma` (rotation around the external magnetic field :math:`\mathbf{B}_0`) can often be performed analytically for linearly polarized detection, similar to the RWA case. The effective intensity is computed by averaging two orthogonal polarizations:
 
 .. math::
 
-   \langle I \rangle_\gamma = \frac{1}{2}[\text{Tr}(\hat{G}_x \hat{\rho}) + \text{Tr}(\hat{G}_y \hat{\rho})]
+   \langle I \rangle_\gamma = \frac{1}{2}\left(\text{Tr}[\hat{S}_x \hat{\rho}] + \text{Tr}[\hat{S}_y \hat{\rho}]\right)
 
-This accounts for the rotation of the molecular frame around the applied field direction.
-
-The spatial integration over (α, β) uses the same triangular discretization and interpolation as other methods.
+This accounts for the rotation of the molecular frame around the applied field direction. The spatial integration over (:math:`\alpha, \beta`) uses the same triangular discretization and interpolation schemes as other methods in MarS.
 
 Advantages
 ----------
 
 The propagator method:
 
-* Supports arbitrary g-tensor anisotropy
-* Handles any zero-field splitting tensor
-* Allows general relaxation superoperators (no secular approximation)
-* Includes coherence-population coupling if present
-* Provides numerically exact evolution
+* Supports arbitrary g-tensor anisotropy without secular approximations.
+* Handles any zero-field splitting tensor orientation.
+* Allows general relaxation superoperators (including coherence-population coupling).
+* Provides numerically exact evolution within the limits of the time-step discretization.
 
 Computational Cost
 ------------------
 
-This method is more demanding than RWA because:
+This method is more demanding than the RWA approach because:
 
-* Propagator dimension is N^2 × N^2 (versus N^2 for density vector evolution)
-* Integration must be performed over one microwave period
-
+* It operates on the full Liouville space propagator (dimension :math:`N^2 \times N^2` versus versus :math:`N^2` for density vector evolution).
+* It requires high-resolution integration over the fast microwave period :math:`T`.
 
 Applicability
 -------------
 
 Use the propagator method when:
 
-* g-tensor anisotropy is significant (transition metals, high-field EPR)
-* Zero-field splitting has arbitrary orientation
-* Non-secular relaxation is important
-* Coherence-population coupling cannot be neglected
-* RWA assumptions are violated
+* g-tensor anisotropy is significant (transition metals, high-field EPR).
+* Zero-field splitting has arbitrary orientation relative to the g-tensor.
+* Non-secular relaxation terms are important.
+* Coherence-population coupling cannot be neglected.
+* RWA assumptions (slowly varying envelope) are violated.
 
-The propagator method is essential for:
+The propagator method is essential for simulating:
 
-* Single-molecule magnets
-* High-spin metal complexes
-* Strongly coupled radical pairs with anisotropic interactions
+* Single-molecule magnets.
+* High-spin metal complexes.
+* Strongly coupled radical pairs with large anisotropic interactions.
 
-For simpler systems where RWA is valid, use class:`mars.population.stationary.StationaryPopulator` for faster computation.
+For simpler systems where the RWA is valid, use :class:`mars.population.stationary.StationaryPopulator` for significantly faster computation.
