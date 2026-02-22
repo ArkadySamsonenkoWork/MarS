@@ -1428,7 +1428,7 @@ class BaseSpectra(nn.Module, ABC):
     2. Calculate transition intensities from matrix elements and populations
     3. Compute linewidths from strain tensors
     4. Integrate over orientation mesh (for powder samples)
-    5. Apply line broadening (Gaussian/Lorentzian/PseudoVoigt)
+    5. Apply line broadening (Gaussian/Lorentzian/Voigt)
 
     Supports both stationary (CW) and time-resolved experiments, powder and
     single-crystal samples, field-swept and frequency-swept modes.

@@ -128,6 +128,7 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             init_temperature=self.init_temperature,
             res_fields=res_fields,
             full_system_vectors=full_system_vectors,
+            energies=energies
         )
 
     def forward(self,

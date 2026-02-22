@@ -21,6 +21,7 @@ class BaseGenerator(ABC):
                  init_temperature: torch.Tensor,
                  res_fields: tp.Optional[torch.Tensor],
                  full_system_vectors: tp.Optional[torch.Tensor],
+                 energies: tp.Optional[torch.Tensor],
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
@@ -41,6 +42,10 @@ class BaseGenerator(ABC):
             The default behavior, whether to calculate vectors or not,
             depends on the specific Spectra Manager and its settings.
 
+        :param energies:
+            Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
+            and N is the number of energy levels.
+
         :param device: Computation device
         :param dtype:
         :param args:
@@ -50,6 +55,7 @@ class BaseGenerator(ABC):
         self.context = context
         self.init_temperature = init_temperature
         self.full_system_vectors = full_system_vectors
+        self.energies = energies
         self.res_fields = res_fields
 
     @abstractmethod
@@ -214,6 +220,7 @@ class DensityRWAGenerator(BaseGenerator):
                  init_temperature: torch.Tensor,
                  res_fields: torch.Tensor,
                  full_system_vectors: tp.Optional[torch.Tensor],
+                 energies: tp.Optional[torch.Tensor],
                  stationary_hamiltonian: torch.Tensor,
                  lvl_down: torch.Tensor, lvl_up: torch.Tensor,
                  device: torch.device = torch.device("cpu"),
@@ -238,6 +245,10 @@ class DensityRWAGenerator(BaseGenerator):
             The default behavior, whether to calculate vectors or not,
             depends on the specific Spectra Manager and its settings.
 
+        :param energies:
+            Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
+            and N is the number of energy levels.
+
         :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
             -For RWA it uses full Hamiltonian in rotating frame.
             -For Propagator it uses real stationary Hamiltonian
@@ -256,7 +267,7 @@ class DensityRWAGenerator(BaseGenerator):
         :param args:
         :param kwargs:
         """
-        super().__init__(context, init_temperature, res_fields, full_system_vectors, device, dtype)
+        super().__init__(context, init_temperature, res_fields, full_system_vectors, energies, device, dtype)
         self.stationary_hamiltonian = stationary_hamiltonian
         self.level_down = lvl_down
         self.level_up = lvl_up

@@ -95,6 +95,128 @@ def time_spectrum_calculation(
     return mean_time, std_time, times_ms
 
 
+def time_spectrum_calculation_full_pipeline(
+        sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
+        sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        freq: float = 9.8e9,
+        field_range: tp.Tuple[float, float] = (0.30, 0.40),
+        n_points: int = 1000,
+        n_warmup: int = 5,
+        n_iterations: int = 50,
+        temperature: float = 298.0
+) -> tp.Tuple[tp.Union[float, np.ndarray], tp.Union[float, np.ndarray], tp.List[float]]:
+    """
+    Measure full spectrum calculation time including sample creation.
+
+    This function measures the complete execution time including:
+    - Sample creation (spin system, interactions, etc.)
+    - StationarySpectra object initialization
+    - Spectrum computation
+    - All associated overhead
+
+    Parameters
+    ----------
+    sample_creation_func : callable
+        Function that creates a MultiOrientedSample (e.g., create_2_electrons_sample).
+    sample_kwargs : dict, optional
+        Keyword arguments to pass to the sample creation function.
+        Default is None (uses function defaults).
+    freq : float, optional
+        Microwave frequency in Hz. Default is 9.8 GHz (X-band).
+    field_range : tuple of (float, float), optional
+        Magnetic field range (min, max) in Tesla.
+    n_points : int, optional
+        Number of field points in simulation. Default is 1000.
+    n_warmup : int, optional
+        Number of warmup iterations (discarded from timing). Default is 5.
+    n_iterations : int, optional
+        Number of timed iterations. Default is 50.
+    temperature : float, optional
+        Sample temperature in Kelvin. Default is 298 K (room temp).
+
+    Returns
+    -------
+    mean_time_ms : float
+        Mean execution time in milliseconds (full pipeline).
+    std_time_ms : float
+        Standard deviation of execution times in milliseconds.
+    all_times_ms : list of float
+        Raw timing measurements for all iterations.
+
+    See Also
+    --------
+    time_spectrum_calculation : Measures only computation time (excludes init).
+    time_spectrum_calculation_with_init : Measures computation + spectra init (excludes sample creation).
+
+    """
+    if sample_kwargs is None:
+        sample_kwargs = {}
+
+    times_ms = []
+    for _ in range(n_warmup):
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        fields = torch.linspace(
+            field_range[0],
+            field_range[1],
+            n_points,
+            device=device,
+            dtype=dtype
+        )
+
+        creator = spectra_manager.StationarySpectra(
+            freq=freq,
+            sample=sample,
+            temperature=temperature,
+            device=device,
+            dtype=dtype
+        )
+        _ = creator(sample, fields)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+    for _ in range(n_iterations):
+        if sample_kwargs.get("device", torch.device("cpu")).type == "cuda":
+            torch.cuda.synchronize()
+
+        start = time.perf_counter()
+
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        fields = torch.linspace(
+            field_range[0],
+            field_range[1],
+            n_points,
+            device=device,
+            dtype=dtype
+        )
+        creator = spectra_manager.StationarySpectra(
+            freq=freq,
+            sample=sample,
+            temperature=temperature,
+            device=device,
+            dtype=dtype
+        )
+        _ = creator(sample, fields)
+
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+        end = time.perf_counter()
+
+        elapsed_ms = (end - start) * 1000.0
+        times_ms.append(elapsed_ms)
+
+    mean_time = np.mean(times_ms)
+    std_time = np.std(times_ms)
+
+    return mean_time, std_time, times_ms
+
+
 def _plot_benchmark_results(results: dict, device: torch.device, dtype: torch.dtype) -> None:
     """Helper function to visualize benchmark results with mesh size annotations and system labels."""
     plt.figure(figsize=(14, 8))

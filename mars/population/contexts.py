@@ -13,6 +13,7 @@ import typing as tp
 
 from .. import spin_model
 from . import transform
+from .redfield import RedfieldRelaxationChannel
 
 
 def transform_to_complex(vector: torch.Tensor) -> torch.Tensor:
@@ -1142,6 +1143,8 @@ class Context(TransformedContext):
 
             profile: tp.Optional[tp.Callable[[torch.Tensor], torch.Tensor]] = None,
             time_dimension: int = -3,
+            enforce_secularity: bool = False,
+            redfield_channels: tp.Optional[tp.List[RedfieldRelaxationChannel]] = None,
             dtype: torch.dtype = torch.float32,
             device: torch.device = torch.device("cpu")
     ):
@@ -1416,6 +1419,8 @@ class Context(TransformedContext):
         self.transformation_probabilities = None
         self.transformation_unitary = None
         self.transformation_liouville = None
+        if self.redfield_manager is not None:
+            self.redfield_manager.close()
 
     @property
     def init_density(self) -> tp.Optional[torch.Tensor]:
@@ -1434,6 +1439,9 @@ class Context(TransformedContext):
             self._init_density_real = torch.diag_embed(self.init_populations, dim1=-1, dim2=-2)
             self._init_density_imag = torch.zeros_like(self._init_density_real)
         return torch.complex(self._init_density_real, self._init_density_imag)
+
+    def _init_redfiled(self, enforce_secularity: bool, re):
+
 
     def _set_init_density(self, init_density: tp.Optional[torch.Tensor]) ->\
             tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]:
