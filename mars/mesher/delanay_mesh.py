@@ -183,7 +183,7 @@ class RBFInterpolator(BaseInterpolator):
                  extended_vertices: tp.Union[list[tuple[float, float]], np.ndarray],
                  kernel: str = "thin_plate",
                  regularization="spherical",
-                 jitter: float = 1e-6,
+                 jitter: float = 1e-5,
                  epsilon: float = 1.0,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
@@ -1033,6 +1033,9 @@ class DelaunayMesh(BaseMeshPowder):
 
         if boundaries_cond is not None:
             raise NotImplementedError("Boundaries condition is not supported in this version")
+
+        if isinstance(interpolator, str):
+            interpolator = InterpolatorsName(interpolator)
 
         self.mesh_processor = mesh_processor_factory(initial_grid_frequency, interpolation_grid_frequency,
                                                      interpolate=interpolate,

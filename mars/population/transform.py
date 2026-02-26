@@ -665,8 +665,11 @@ def transform_kronecker_populations(
     Example:
     :param populations_list: List of population vectors for each  subsystem.
                             Each has shape [..., k_i]
-    :param probabilities: Squared Clebsch-Gordan coefficients |C|².
-                      Shape: [..., k1, k2, ..., kn, K]
+    :param probabilities: Joint probabilities [..., k₁ * ... * kₙ, K]
+                          where K = dimension of new basis
+        Transformation probabilities from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
+        The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
+        Us has shape [..., K]
     :return: Populations in new-system basis. Shape: [..., K]
 
     Mathematical Formulation:
@@ -681,7 +684,7 @@ def transform_kronecker_populations(
     """
     return transform_state_weights_to_new_basis(
         batched_multi_kron([v.unsqueeze(-1) for v in populations_list]).squeeze(-1),
-        get_product_to_target_unitary(probabilities, n=len(populations_list))
+        probabilities
     )
 
 
@@ -703,8 +706,11 @@ def transform_kronecker_rate_vector(
     where the diagonal operator in the product basis has Kronecker-sum structure.
 
     Example:
-    :param probabilities: Squared Clebsch-Gordan coefficients |C|².
-                      Shape: [..., k1, k2, ..., kn, K]
+    :param probabilities: Joint probabilities [..., k₁ * ... * kₙ, K]
+                          where K = dimension of new basis
+    Transformation probabilities from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
+    The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
+    Us has shape [..., K]
     :param vector_list: List of population vectors for each  subsystem.
                             Each has shape [..., k_i]
     :return: Populations in new-system basis. Shape: [..., K]
@@ -718,7 +724,7 @@ def transform_kronecker_rate_vector(
     """
     return transform_state_weights_to_new_basis(
         batched_sum_kron_diagonal(vector_list),
-        get_product_to_target_unitary(probabilities, n=len(vector_list))
+        probabilities
     )
 
 
@@ -738,14 +744,19 @@ def transform_kronecker_rate_matrix(
     when the basis factorizes (because P_joint factorizes → marginals exact).
 
     :param matrices: List of rate matrices [..., k_i, k_i]
-    :param probabilities: Joint probabilities [..., k₁, ..., kₙ, K]
+    :param probabilities: Joint probabilities [..., k₁ * ... * kₙ, K]
                           where K = dimension of new basis
+
+    Transformation probabilities from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
+    The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
+    Us has shape [..., K]
+
     :return: Transformed rate matrix [..., K, K]
     """
 
     return transform_rate_matrix_to_new_basis(
         batched_sum_kron(matrices),
-        get_product_to_target_unitary(probabilities, n=len(matrices))
+        probabilities
     )
 
 
@@ -758,12 +769,13 @@ def transform_kronecker_operator(
     ρ_new = U @ (ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ) @ U^†
 
     :param density_list: Density matrices for subsystems. Each shape: [..., k_i, k_i]
-    :param coeffs: Clebsch-Gordan coefficients. Shape: [..., k1, k2, ..., kn, K]
+    :param coeffs: Transformation basis coeffs from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
+    The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
+    Us has shape [..., K]
     :return: Density matrix in new-system basis. Shape: [..., K, K]
     """
-    unitarty = get_product_to_target_unitary(coeffs, len(density_list))
     return transform_operator_to_new_basis(
-        batched_multi_kron(density_list), unitarty
+        batched_multi_kron(density_list), coeffs
     )
 
 
@@ -779,8 +791,9 @@ def transform_kronecker_superoperator(
 
     :param superoperator_list: Subsystem superoperators in Liouville space.
                                Each shape: [..., k_i², k_i²]
-    :param coeffs: Clebsch-Gordan coefficients for basis transformation.
-                   Shape: [..., k₁, k₂, ..., kₙ, K] where K = ∏ᵢ k_i
+    :param coeffs: Transformation basis coeffs from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
+    The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
+    Us has shape [..., K]
     :return: Composite superoperator in coupled Liouville basis. Shape: [..., K², K²]
 
     Mathematical Formulation:
@@ -802,8 +815,7 @@ def transform_kronecker_superoperator(
     """
     dims = [int(round(superop.shape[-1] ** 0.5)) for superop in superoperator_list]
     R = reshape_superoperator_tensor_to_kronecker_basis(batched_sum_kron(superoperator_list), subsystem_dims=dims)
-    unitarty = get_product_to_target_unitary(coeffs, len(superoperator_list))  # K, K
-    T = batched_kron(unitarty, unitarty.conj())
+    T = batched_kron(coeffs, coeffs.conj())
     return transform_superop_to_new_basis(R, T)
 
 

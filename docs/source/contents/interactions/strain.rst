@@ -39,7 +39,7 @@ In explicit modeling, you would generate many spin systems with different parame
 
 **Strain Modeling (Analytical)**
 
-Strain modeling achieves the same result analytically using second-order perturbation theory, avoiding the need to sample many configurations:
+Strain modeling achieves the same result analytically using first-order perturbation theory. Instead of sampling, MarS calculates how parameter variations shift the energy levels directly.
 
 .. code-block:: python
 
@@ -54,22 +54,26 @@ Strain modeling achieves the same result analytically using second-order perturb
    
    # Compute broadening analytically
 
-In strain modeling, MarS computes how parameter variations affect transition energies through derivatives of the Hamiltonian matrix elements. For a transition between states :math:`|u\rangle` and :math:`|v\rangle`, the linewidth contribution is:
+For a transition between states :math:`|u\rangle` and :math:`|v\rangle`, the linewidth contribution depends on the variance of the energy difference.
+MarS computes this via the derivatives of the diagonal Hamiltonian elements (eigenenergies):
 
 .. math::
 
-   \Delta\nu_{uv} \propto \sum_{i=x,y,z} \left( \frac{\partial H_{uv}}{\partial g_i} \right)^2 \sigma_i^2
+   \Delta\nu_{uv}^{2} \propto \sum_{i} \left( \frac{\partial (H_{vv} - H_{uu})}{\partial p_i} \right)^2 \sigma_i^2
 
-where :math:`\sigma_i` is the standard deviation of the :math:`i`-th parameter (related to FWHM by :math:`\sigma = \text{FWHM} / (2\sqrt{2\ln 2})`).
+where:
+- :math:`H_{vv}` and :math:`H_{uu}` are the diagonal energy elements for states :math:`|v\rangle` and :math:`|u\rangle`.
+- :math:`p_i` represents the Hamiltonian parameters (e.g., :math:`g_x, g_y, g_z`).
+- :math:`\sigma_i` is the standard deviation of the :math:`i`-th parameter.
 
-This approach is equivalent to Monte Carlo sampling in the limit of small strain, but requires only a single computation.
+This approach is equivalent to Monte Carlo sampling in the limit of small strain but requires only a single computation.
 
 How Strain Works
 ----------------
 
 For any interaction, strain is modeled as a Gaussian distribution of the principal values. In the case of :class:`mars.spin_model.Interaction`, strain is applied independently to :math:`T_x, T_y, T_z`. For :class:`mars.spin_model.DEInteraction`, strain is applied to the underlying :math:`D` and :math:`E` parameters.
 
-During simulation, MarS integrates over this distribution analytically (via second-order perturbation theory) when computing the spectrum, avoiding costly Monte Carlo sampling. The result is a broadened lineshape consistent with Gaussian disorder in the Hamiltonian parameters.
+During simulation, MarS integrates over this distribution analytically (via first-order perturbation theory) when computing the spectrum, avoiding costly Monte Carlo sampling. The result is a broadened lineshape consistent with Gaussian disorder in the Hamiltonian parameters.
 
 Specifying Strain
 -----------------
@@ -129,15 +133,31 @@ You can represent this with two strain parameters :math:`\delta s` (symmetric) a
 Mathematical Framework
 ~~~~~~~~~~~~~~~~~~~~~~
 
-In MarS, the strain broadening is computed from the derivatives of the Hamiltonian matrix elements :math:`H_{uv}` with respect to the physical parameters. For a transition between states :math:`|u\rangle` and :math:`|v\rangle`, the field-dependent contribution to the linewidth is proportional to:
+The transition frequency :math:`\nu_{uv}` is defined by the difference in diagonal energy elements:
 
 .. math::
 
-   \sum_{\alpha=s,t} \left( \frac{\partial H_{uv}}{\partial p_\alpha} \right)^2 \sigma_\alpha^2
-   =
-   \sum_{\alpha=s,t} \left( \sum_{i=x,y,z} \frac{\partial H_{uv}}{\partial g_i} \frac{\partial g_i}{\partial p_\alpha} \right)^2 \sigma_\alpha^2
+   \nu_{uv} = H_{vv} - H_{uu}
 
-where :math:`p_\alpha = [s, t]`, and the Jacobian :math:`\partial g_i / \partial p_\alpha` is provided by the ``strain_correlation`` matrix.
+Consequently, the sensitivity of the transition to a physical parameter :math:`p` is the difference of the individual energy derivatives:
+
+.. math::
+
+   \frac{d \nu_{uv}}{dp} = \frac{\partial H_{vv}}{\partial p} - \frac{\partial H_{uu}}{\partial p}
+
+In MarS, strain broadening is calculated by propagating the uncertainty of underlying physical parameters :math:`p_\alpha` (such as structural modes) through this relation. The variance of the transition frequency is:
+
+.. math::
+
+   \sigma_{\nu, uv}^2 = \sum_{\alpha} \left( \frac{\partial H_{vv}}{\partial p_\alpha} - \frac{\partial H_{uu}}{\partial p_\alpha} \right)^2 \sigma_{p_\alpha}^2
+
+Using the chain rule, we connect physical parameters :math:`p_\alpha` to the Hamiltonian components :math:`g_i`:
+
+.. math::
+
+   \frac{\partial H_{kk}}{\partial p_\alpha} = \sum_{i} \frac{\partial H_{kk}}{\partial g_i} \frac{\partial g_i}{\partial p_\alpha} \quad \text{for } k \in \{u, v\}
+
+Here, :math:`\frac{\partial g_i}{\partial p_\alpha}` corresponds to the user-defined ``strain_correlation`` matrix.
 
 Implementation in MarS
 ~~~~~~~~~~~~~~~~~~~~~~

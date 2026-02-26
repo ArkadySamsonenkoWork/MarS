@@ -131,15 +131,26 @@ If relaxation parameters vary with time, use the kinetic approach or RWA with ad
 Powder Averaging
 ----------------
 
-For disordered samples (powders, frozen solutions), the spectrum must be averaged over all molecular orientations. The propagator method supports fully anisotropic g-tensors and non-secular terms.
+For disordered samples, the spectrum must be averaged over all molecular orientations :math:`(\alpha,\beta,\gamma)`.
+Unlike the RWA method, the propagator approach makes no simplifying assumptions about the :math:`g`-tensor, zero‑field splitting, or relaxation.
+Consequently, the signal depends on all three Euler angles, and the :math:`\gamma` integration must be performed numerically.
 
-While the resonance frequencies depend on all three Euler angles (:math:`\alpha, \beta, \gamma`), the averaging over :math:`\gamma` (rotation around the external magnetic field :math:`\mathbf{B}_0`) can often be performed analytically for linearly polarized detection, similar to the RWA case. The effective intensity is computed by averaging two orthogonal polarizations:
+Full numerical integration over :math:`\gamma \in [0,2\pi]` is therefore the
+default. The number of :math:`\gamma` points can be controlled via the
+``angle_average_steps`` parameter of
+:class:`mars.population.stationary.PropagatorDensityPopulator`:
 
-.. math::
+.. code-block:: python
 
-   \langle I \rangle_\gamma = \frac{1}{2}\left(\text{Tr}[\hat{S}_x \hat{\rho}] + \text{Tr}[\hat{S}_y \hat{\rho}]\right)
+   populator_prop = population.PropagatorDensityPopulator(
+       angle_average_steps=4,         # Number of γ‑integration points
+       context=context,
+       measurement_time=None,         # Default: one microwave period
+       init_temperature=300.0,
+   )
 
-This accounts for the rotation of the molecular frame around the applied field direction. The spatial integration over (:math:`\alpha, \beta`) uses the same triangular discretization and interpolation schemes as other methods in MarS.
+Alternatively, ``angle_average_steps`` can be set globally via
+:class:`mars.spectra_manager.spectra_manager.ComputationalDetails`.
 
 Advantages
 ----------

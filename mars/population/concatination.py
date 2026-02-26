@@ -2,9 +2,38 @@ import typing as tp
 import warnings
 
 import torch
+import numpy as np
 
 from .contexts import Context, SummedContext
 from . import transform
+from .redfield import RedfieldRelaxationChannel, RedfieldManager, combine_redfield_managers
+
+
+def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
+    """
+    Constructs a composite Redfield manager by expanding individual managers via Kronecker products.
+
+    This function iterates through a sequence of contexts, expands each associated redfield manager
+    into the full Hilbert space of the composite system using the dimensions of the other spin
+    system.
+
+    :param contexts: A sequence of Context objects, each containing a spin system dimension and
+        an associated redfield manager.
+    :return: A combined RedfieldManager object representing the relaxation dynamics of the
+        entire composite system.
+    """
+    dims = [context.spin_system_dim for context in contexts]
+    managers = [context.redfield_manager for context in contexts]
+    for idx, manager in enumerate(managers):
+        if manager is None:
+            continue
+
+        left_dim = np.prod(dims[:idx]) if idx > 0 else 1
+        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 1
+
+        manager.expand_zeros(left_dim, right_dim)
+
+    return combine_redfield_managers(managers)
 
 
 def _normalize_to_components(
@@ -568,6 +597,11 @@ def _concat_homogeneous_contexts(
 
     use_identity_for_basis = any(ctx.basis is not None for ctx in contexts)
 
+    redfield_manager = concat_redfield_managers(contexts)
+    if redfield_manager is not None:
+        redfield_channels = [channel for channel in redfield_manager.redfield_channels]
+    else:
+        redfield_channels = None
     return Context(
         basis=_process_matrices("basis", use_identity_for_none=use_identity_for_basis),
         init_populations=_process_vectors("init_populations"),
@@ -577,6 +611,7 @@ def _concat_homogeneous_contexts(
         out_probs=_process_vectors("out_probs"),
         dephasing=_process_vectors("dephasing"),
         relaxation_superop=_process_superoperators("_default_driven_superop"),
+        redfield_channels=redfield_channels,
         profile=None,
         time_dimension=time_dimension,
         dtype=dtype,

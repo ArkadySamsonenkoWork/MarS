@@ -51,6 +51,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
                  difference_out: bool = False,
                  disordered: bool = True,
+                 angle_average_steps: int = 4,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
@@ -80,6 +81,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
 
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
 
+        :param angle_average_steps: The number of steps to average the signal
+        intensity over the euler angle rotating over the stationary magnetic field
+        For RWA methods the modification of the initial density is used and this parameter is not used.
+
+
         :param device: device to compute (cpu / gpu)
         :param dtype: dtype of computation
         """
@@ -90,6 +96,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         self.register_buffer("omega_intensity", torch.tensor(omega_intensity))
         self.liouvilleator = transform.Liouvilleator
         self.disordered: tp.Optional[bool] = disordered
+        self.angle_average_steps = angle_average_steps
 
     def init_solver(self, solver: tp.Optional[tp.Callable]) -> tp.Callable:
         if solver is not None:
@@ -244,11 +251,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
                                   lvl_up: torch.Tensor, energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   resonance_frequency: torch.Tensor,
                                   H0: torch.Tensor,
                                   Sz: torch.Tensor,
@@ -264,14 +271,6 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
-
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
-            make the creator to compute these vectors
-            The default behavior, whether to calculate vectors or not,
-            depends on the specific Spectra Manager and its settings.
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -294,6 +293,14 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
 
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
+
         :param resonance_frequency: Resonance frequency of the spin transition, in (Hz).
         Scalar value (shape: `[]`).
 
@@ -313,29 +320,231 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             - Sz * constants.unit_converter(
                 self.two_pi * resonance_frequency, "Hz_to_T_e"
             ) * (constants.BOHR / constants.PLANCK)
+
         tr_matrix_generator = self.tr_matrix_generator_cls(context=self.context,
                                                            init_temperature=self.init_temperature,
                                                            res_fields=res_fields,
-                                                           full_system_vectors=full_system_vectors,
                                                            energies=energies,
                                                            stationary_hamiltonian=H0 + shift + Ht,
                                                            lvl_down=lvl_down, lvl_up=lvl_up,
+                                                           full_system_vectors=full_system_vectors,
                                                            )
         return tr_matrix_generator
 
-    def _compute_out(self,
-                evo: tr_utils.EvolutionSuper,
-                tr_matrix_generator: tr_utils.matrix_generators.BaseGenerator,
-                time: torch.Tensor, res_fields: torch.Tensor,
-                initial_density: torch.Tensor,
-                Gx: torch.Tensor, Gy: torch.Tensor,
-                resonance_frequency: torch.Tensor,
-                *args, **kwargs) -> torch.Tensor:
+    def _compute_average_density(
+            self, initial_density: torch.Tensor, full_system_vectors: torch.Tensor, Sz_product: torch.Tensor, tol=1e-6
+    ) -> torch.Tensor:
+        """
+        :param initial_density: Initial density matrix in the Hamiltonian eigenbasis. Shape [..., N, N].
+        :param full_system_vectors: Eigenvectors of the Hamiltonian in the product basis. Shape [..., N, N].
+        :param Sz_product: Sz operator in the individual spin projections basis (diagonal). Shape [N, N].
+        :param tol: Tolerance for comparing Sz eigenvalues to handle numerical noise.
+        :return: Phase-averaged density matrix in the Hamiltonian eigenbasis. Shape [..., N, N].
+        """
+        m_vals = torch.diag(Sz_product)
+        diff = torch.abs(m_vals.unsqueeze(-1) - m_vals.unsqueeze(-2))
+        mask = (diff < tol).to(initial_density.dtype)
+
+        rho_product = full_system_vectors @ initial_density @ full_system_vectors.mH
+
+        rho_product_avg = rho_product * mask
+        rho_avg = full_system_vectors.mH @ rho_product_avg @ full_system_vectors
+
+        return rho_avg
+
+    def _compute_powder(self,
+                        time: torch.Tensor, res_fields: torch.Tensor,
+                        lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+                        energies: torch.Tensor, vector_down: torch.Tensor,
+                        vector_up: torch.Tensor,
+                        full_system_vectors: tp.Optional[torch.Tensor],
+                        initial_density: torch.Tensor,
+                        Gx: torch.Tensor, Gy: torch.Tensor, Sz_eigen: torch.Tensor, Sz_product: torch.Tensor,
+                        resonance_frequency: torch.Tensor,
+                        H0: torch.Tensor,
+                        *args, **kwargs) -> torch.Tensor:
+        """Computes the time-resolved EPR signal for a disordered (powder)
+        sample by averaging over the microwave field polarization.
+
+         In powder samples, the orientation of the microwave magnetic field relative to the molecular structure is random.
+         The orientation of the molecule is described by three Euler angles.
+         The first two angles determine the energy and eigenvectors.
+         The last angle does not change the energy or eigenvectors, but it does alter the signal intensity.
+         This can be described as a rotation between Gx and Gy. Thus, the final signal is the average of this rotation.
+
+
+        :param time:
+            Time points at which the signal is evaluated, shape [T].
+        :param res_fields:
+            Resonance fields corresponding to each orientation or transition.
+        :param lvl_down:
+            Energy levels of lower states from which transitions occur.
+        :param lvl_up:
+            Energy levels of upper states to which transitions occur.
+        :param energies:
+            The energies of spin states. The shape is [..., N]
+        :param vector_down:
+            Eigenvectors of the lower energy states.
+        :param vector_up:
+            Eigenvectors of the upper energy states.
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels.
+        :param initial_density:
+            Initial density matrix in the eigenbasis of the full Hamiltonian, shape [..., N, N].
+        :param Gx, Gy:
+            Transformed Zeeman operators (x- and y-components) in the eigenbasis, each of shape [..., 1, N, N].
+        :param Sz_eigen:
+            Electron z-projection operator in the eigen basis
+        :param Sz_product:
+            Electron z-projection operator in the product basis. In this basis it is diagonal
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
+        :param H0:
+            Static Hamiltonian in eigenbasis.
+        :return:
+            Averaged time
+        """
+        evo = tr_utils.EvolutionSuper(energies)
+        initial_density = self._compute_average_density(initial_density, full_system_vectors, Sz_product)
+        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
+                                                             lvl_down, lvl_up, energies, vector_down,
+                                                             vector_up, full_system_vectors, resonance_frequency,
+                                                             H0, Sz_eigen, Gx,
+                                                             *args, **kwargs)
         out = self.solver(
             time, self.liouvilleator.vec(initial_density),
             evo, tr_matrix_generator, self.liouvilleator.vec(Gy.transpose(-2, -1))
         )
         return self._post_compute(out)
+
+    def _compute_crystal(self,
+                         time: torch.Tensor, res_fields: torch.Tensor,
+                         lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+                         energies: torch.Tensor, vector_down: torch.Tensor,
+                         vector_up: torch.Tensor,
+                         full_system_vectors: tp.Optional[torch.Tensor],
+                         initial_density: torch.Tensor,
+                         Gx: torch.Tensor, Gy: torch.Tensor, Sz_eigen: torch.Tensor, Sz_product: torch.Tensor,
+                         resonance_frequency: torch.Tensor,
+                         H0: torch.Tensor,
+                         *args, **kwargs) -> torch.Tensor:
+        """Computes the time-resolved EPR signal for a single-crystal or many-
+        crystal sample with fixed microwave polarization.
+
+        In crystal simulations, the microwave field direction is fixed relative to the molecular frame.
+        By convention, the excitation is applied along the x-axis of the laboratory frame, so only the Gx operator
+        contributes to the transition intensity. No averaging over gamma is performed.
+
+        :param time:
+            Time points for signal evaluation, shape [T].
+        :param res_fields:
+            Resonance fields (used for shape alignment; not directly used in computation).
+        :param lvl_down:
+            Energy levels of lower states from which transitions occur.
+        :param lvl_up:
+            Energy levels of upper states to which transitions occur.
+        :param energies:
+            The energies of spin states. The shape is [..., N]
+        :param vector_down:
+            Eigenvectors of the lower energy states.
+        :param vector_up:
+            Eigenvectors of the upper energy states.
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels.
+        :param initial_density:
+            Initial density matrix in the eigenbasis, shape [..., N, N].
+        :param Gx, Gy:
+            Zeeman operators in the eigenbasis; only Gx is used in this method.
+        :param Sz_eigen:
+            Electron z-projection operator in the eigen basis
+        :param Sz_product:
+            Electron z-projection operator in the product basis. In this basis it is diagonal
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
+        :param H0:
+            Static Hamiltonian in eigenbasis.
+
+        :return:
+            Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
+        """
+        evo = tr_utils.EvolutionSuper(energies)
+        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
+                                                             lvl_down, lvl_up, energies, vector_down,
+                                                             vector_up, full_system_vectors, resonance_frequency,
+                                                             H0, Sz_eigen, Gx,
+                                                             *args, **kwargs)
+        out = self.solver(
+            time, self.liouvilleator.vec(initial_density),
+            evo, tr_matrix_generator, self.liouvilleator.vec(Gy.transpose(-2, -1))
+        )
+        return self._post_compute(out)
+
+    def _compute_out(self,
+                     time: torch.Tensor, res_fields: torch.Tensor,
+                     lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+                     energies: torch.Tensor, vector_down: torch.Tensor,
+                     vector_up: torch.Tensor,
+                     full_system_vectors: tp.Optional[torch.Tensor],
+                     initial_density: torch.Tensor,
+                     Gx: torch.Tensor, Gy: torch.Tensor, Sz_eigen: torch.Tensor, Sz_product,
+                     resonance_frequency: torch.Tensor,
+                     H0: torch.Tensor,
+                     *args, **kwargs) -> torch.Tensor:
+        """Computes the time-resolved EPR signal.
+
+        Creates the TransitionMatrixGenerator and dispatches to `_compute_crystal` or `_compute_powder`
+        based on `self.disordered`.
+
+        For powder samples: signal = (Ix + Iy) / 2 (averages over Gx and Gy)
+        For crystal samples: signal = Ix (uses only Gx)
+
+        :param time:
+            Time points for signal evaluation, shape [T].
+        :param res_fields:
+            Resonance fields (used for shape alignment; not directly used in computation).
+        :param lvl_down:
+            Energy levels of lower states from which transitions occur.
+        :param lvl_up:
+            Energy levels of upper states to which transitions occur.
+        :param energies:
+            The energies of spin states. The shape is [..., N]
+        :param vector_down:
+            Eigenvectors of the lower energy states.
+        :param vector_up:
+            Eigenvectors of the upper energy states.
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels.
+        :param initial_density:
+            Initial density matrix in the eigenbasis, shape [..., N, N].
+        :param Gx, Gy:
+            Zeeman operators in the eigenbasis.
+        :param Sz_eigen:
+            Electron z-projection operator in the eigen basis
+        :param Sz_product:
+            Electron z-projection operator in the product basis. In this basis it is diagonal
+        :param resonance_frequency:
+            Microwave frequency in Hz (scalar).
+        :param H0:
+            Static Hamiltonian in eigenbasis.
+        :return:
+            Time-dependent signal intensity, shape [T, ..., Tr].
+        """
+        if self.disordered:
+            return self._compute_powder(
+                time, res_fields,
+                lvl_down, lvl_up, energies,
+                vector_down, vector_up,  full_system_vectors,
+                initial_density,
+                Gx, Gy, Sz_eigen, Sz_product,
+                resonance_frequency, H0, *args, **kwargs)
+        else:
+            return self._compute_crystal(
+                time, res_fields,
+                lvl_down, lvl_up, energies,
+                vector_down, vector_up, full_system_vectors,
+                initial_density,
+                Gx, Gy, Sz_eigen, Sz_product,
+                resonance_frequency, H0, *args, **kwargs)
 
     def forward(self,
                 time: torch.Tensor, res_fields: torch.Tensor,
@@ -402,17 +611,14 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         H0 = self._get_initial_Hamiltonian(energies) * self.two_pi
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
 
-
-        Gx, Gy, Sz = self._compute_hamiltonian_operators(
+        Gx, Gy, Sz_eigen = self._compute_hamiltonian_operators(
             Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
-        evo = tr_utils.EvolutionSuper(energies)
-        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
-                                                             lvl_down, lvl_up, energies, vector_down,
-                                                             vector_up, full_system_vectors, resonance_frequency,
-                                                             H0, Sz, Gx,
-                                                             *args, **kwargs)
-        return self._compute_out(evo, tr_matrix_generator,
-                time, res_fields, initial_density, Gx, Gy, resonance_frequency)
+        return self._compute_out(
+            time, res_fields,
+            lvl_down, lvl_up, energies, vector_down,
+            vector_up,  full_system_vectors, initial_density,
+            Gx, Gy, Sz_eigen, Sz,
+            resonance_frequency,  H0, *args, **kwargs)
 
 
 class PropagatorDensityPopulator(RWADensityPopulator):
@@ -427,7 +633,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
       - Any kind of zero field splitting.
 
     The propagator is computed over one period of the microwave field and then extrapolated
-    to arbitrary detection times using Floquet theory. For disordered (powder) samples,
+    to arbitrary detection times using pereodic solution of time-evolution equation. For disordered (powder) samples,
     the signal is averaged over the Euler angle γ by evaluating two orthogonal field polarizations.
 
     While more computationally demanding than RWA-based methods, this approach is necessary
@@ -444,6 +650,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
                  difference_out: bool = False,
                  disordered: bool = True,
+                 angle_average_steps: int = 4,
                  n_steps: int = 100,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
@@ -478,6 +685,11 @@ class PropagatorDensityPopulator(RWADensityPopulator):
 
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
 
+        :param angle_average_steps: The number of steps to average the signal
+        intensity over the euler angle rotating over the stationary magnetic field
+        For Propagator methods this parameter define how many directions of outer magnetic field is used to compute
+        the avergae signal with the general formula Gperp = Gx * cos (phi) + Gy * sin(phi)
+
         :param n_steps: the number of steps to find U(2pi) and Integral U sin(phi) at the interval (0, 2pi].
             This is quite crucial value for rk4 loop. If this value is small then the results will be dramatic
 
@@ -486,7 +698,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         """
         super().__init__(
             omega_intensity, context, tr_matrix_generator_cls, solver,
-            init_temperature, difference_out, disordered, device, dtype
+            init_temperature, difference_out, disordered, angle_average_steps, device, dtype
         )
         measurement_time =\
             torch.tensor(measurement_time, dtype=dtype, device=device)\
@@ -497,11 +709,12 @@ class PropagatorDensityPopulator(RWADensityPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
-                                  lvl_up: torch.Tensor, energies: torch.Tensor,
+                                  lvl_up: torch.Tensor,
+                                  energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   resonance_frequency: torch.Tensor, H0: torch.Tensor,
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
@@ -514,14 +727,6 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
-
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
-            make the creator to compute these vectors.
-            The default behavior, whether to calculate vectors or not,
-            depends on the specific Spectra Manager and its settings.
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -544,6 +749,14 @@ class PropagatorDensityPopulator(RWADensityPopulator):
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
 
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors.
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
+
         :param resonance_frequency: Resonance frequency of the spin transition, in hertz (Hz).
         Scalar value (shape: `[]`).
         :param H0: Static (time-independent) part of the spin Hamiltonian, expressed in hertz (Hz).
@@ -562,8 +775,8 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         tr_matrix_generator = self.tr_matrix_generator_cls(context=self.context,
                                                            init_temperature=self.init_temperature,
                                                            res_fields=res_fields,
-                                                           full_system_vectors=full_system_vectors,
                                                            energies=energies,
+                                                           full_system_vectors=full_system_vectors,
                                                            stationary_hamiltonian=H0,
                                                            lvl_down=lvl_down, lvl_up=lvl_up,
                                                            )
@@ -615,12 +828,15 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         res_omega = resonance_frequency * self.two_pi
         superop_static = evo(*tr_matrix_generator(time))
         out = torch.zeros(*(time.shape[0], *Gx.shape[:-2]), dtype=res_fields.dtype, device=res_fields.device)
-        for Gt in [Gx, Gy]:
+        z_axis_angles = torch.linspace(0, 2 * math.pi, self.angle_average_steps + 1)[:-1]
+        delta_angle_z_axis = z_axis_angles[1] - z_axis_angles[0]
+        for z_axis_angle in z_axis_angles:
+            Gt = Gx * torch.cos(z_axis_angle) + Gy * torch.sin(z_axis_angle)
             out += self.solver.stationary_rate_solver(
                 time, initial_density, Gt, superop_static,
                 res_omega, tau, delta_phi, self.measurement_time, self.n_steps
             )
-        return self._post_compute(out / 2)
+        return self._post_compute(out) * delta_angle_z_axis
 
     def _compute_crystal(self,
                          evo: tr_utils.EvolutionSuper,
@@ -675,42 +891,68 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         return self._post_compute(out)
 
     def _compute_out(self,
-                evo: tr_utils.EvolutionSuper,
-                tr_matrix_generator: tr_utils.matrix_generators.BaseGenerator,
                 time: torch.Tensor, res_fields: torch.Tensor,
+                lvl_down: torch.Tensor, lvl_up: torch.Tensor,
+                energies: torch.Tensor, vector_down: torch.Tensor,
+                vector_up: torch.Tensor,
+                full_system_vectors: tp.Optional[torch.Tensor],
                 initial_density: torch.Tensor,
-                Gx: torch.Tensor, Gy: torch.Tensor,
+                Gx: torch.Tensor, Gy: torch.Tensor, Sz_eigen: torch.Tensor, Sz_prod: torch.Tensor,
                 resonance_frequency: torch.Tensor,
+                H0: torch.Tensor,
                 *args, **kwargs) -> torch.Tensor:
-        """Omputes the time-resolved EPR signal.
+        """Computes the time-resolved EPR signal.
 
         The signal is computed using a stationary Floquet-based solver that integrates the quantum evolution
         over one microwave period (or a user-defined `measurement_time`).
 
-        :param evo:
-            Evolution superoperator generator that constructs the Liouville-space relaxation superoperator.
-        :param tr_matrix_generator:
-            Generator that provides the static relaxation superoperator.
         :param time:
             Time points for signal evaluation, shape [T].
         :param res_fields:
             Resonance fields (used for shape alignment; not directly used in computation).
+        :param lvl_down:
+            Energy levels of lower states from which transitions occur.
+        :param lvl_up:
+            Energy levels of upper states to which transitions occur.
+        :param energies:
+            The energies of spin states. The shape is [..., N]
+        :param vector_down:
+            Eigenvectors of the lower energy states.
+        :param vector_up:
+            Eigenvectors of the upper energy states.
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels.
         :param initial_density:
             Initial density matrix in the eigenbasis, shape [..., N, N].
         :param Gx, Gy:
-            Zeeman operators in the eigenbasis; only Gx is used in this method.
+            Zeeman operators in the eigenbasis.
+        :param Sz_eigen:
+            Electron z-projection operator in the eigen basis
+        :param Sz_product:
+            Electron z-projection operator in the product basis. In this basis it is diagonal
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
+        :param H0:
+            Static Hamiltonian in eigenbasis.
         :return:
-            Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
+            Time-dependent signal intensity, shape [T, ..., Tr].
         """
+        evo = tr_utils.EvolutionSuper(energies)
+
+        tr_matrix_generator = self._init_tr_matrix_generator(
+            time, res_fields,
+            lvl_down, lvl_up, energies, vector_down,
+            vector_up, full_system_vectors, resonance_frequency,
+            H0,
+            *args, **kwargs)
 
         if self.disordered:
             return self._compute_powder(evo, tr_matrix_generator,
-                time, res_fields, initial_density, Gx, Gy, resonance_frequency)
+                time, res_fields, initial_density, Gx, Gy, resonance_frequency, *args, **kwargs)
         else:
             return self._compute_crystal(evo, tr_matrix_generator,
-                time, res_fields, initial_density, Gx, Gy, resonance_frequency)
+                time, res_fields, initial_density, Gx, Gy, resonance_frequency, *args, **kwargs)
+
 
     def forward(self,
                 time: torch.Tensor, res_fields: torch.Tensor,
@@ -775,15 +1017,20 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         The shape is [T, ...., Tr]
         """
         H0 = self._get_initial_Hamiltonian(energies) * self.two_pi
-        Gx, Gy, Gz = self._compute_hamiltonian_operators(
-            Gx, Gy, Gz, full_system_vectors)
+        Gx, Gy, Sz_eigen = self._compute_hamiltonian_operators(
+            Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
-        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields, full_system_vectors,
-                                                             lvl_down, lvl_up, energies, vector_down,
-                                                             vector_up, resonance_frequency, H0,
-                                                             *args, **kwargs)
-        evo = tr_utils.EvolutionSuper(energies)
-        return self._compute_out(evo, tr_matrix_generator,
-                time, res_fields, initial_density, Gx, Gy, resonance_frequency)
+
+        return self._compute_out(
+            time, res_fields,
+            lvl_down, lvl_up,
+            energies, vector_down,
+            vector_up,
+            full_system_vectors,
+            initial_density,
+            Gx, Gy, Sz_eigen, Sz,
+            resonance_frequency,
+            H0,
+            *args, **kwargs)
 
 

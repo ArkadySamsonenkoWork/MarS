@@ -121,7 +121,7 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
     A discrete spectrum is built from resonance lines with computed positions, intensities, and intrinsic widths.
 
 12. **Apply lineshape convolution**  
-    The final spectrum is obtained by convolving the stick spectrum with a Gaussian, Lorentzian, or Pseudo-Voigt profile.
+    The final spectrum is obtained by convolving the stick spectrum with a Gaussian, Lorentzian, or Voigt profile (not pseudo-Voigt as implemented in some packages).
 
     Both Gaussian and Lorentzian broadening parameters are specified as full width at half maximum (FWHM) and measured according to the spectral domain:
     

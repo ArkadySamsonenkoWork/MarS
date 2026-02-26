@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import math
-import warnings
 import itertools
 import functools
 
 import torch
 from torch import nn
+import numpy as np
 
 import typing as tp
 
 from .. import spin_model
 from . import transform
-from .redfield import RedfieldRelaxationChannel
+from .redfield import RedfieldRelaxationChannel, RedfieldManager, combine_redfield_managers
 
 
 def transform_to_complex(vector: torch.Tensor) -> torch.Tensor:
@@ -284,6 +284,34 @@ def multiply_contexts(contexts: tp.List[tp.Union[Context, SummedContext, Kroneck
     return results[0] if len(results) == 1 else SummedContext(results)
 
 
+def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
+    """
+    Constructs a composite Redfield manager by expanding individual managers via Kronecker products.
+
+    This function iterates through a sequence of contexts, expands each associated redfield manager
+    into the full Hilbert space of the composite system using the dimensions of the other spin
+    system.
+
+    :param contexts: A sequence of Context objects, each containing a spin system dimension and
+        an associated redfield manager.
+    :return: A combined RedfieldManager object representing the relaxation dynamics of the
+        entire composite system.
+    """
+    dims = [context.spin_system_dim for context in contexts]
+    managers = [context.redfield_manager for context in contexts]
+    for idx, manager in enumerate(managers):
+        if manager is None:
+            continue
+
+        left_dim = np.prod(dims[:idx]) if idx > 0 else 1
+        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 1
+
+        manager.expand_kronecker(left_dim, right_dim)
+
+    return combine_redfield_managers(managers)
+
+
+
 def _multiply_homogeneous_contexts_to_context(contexts: tp.Sequence[Context]) -> Context:
     """ Build the tensor-product (Kronecker) composition of multiple homogeneous `Contexts.
 
@@ -551,7 +579,6 @@ class BaseContext(nn.Module, ABC):
                  device: torch.device = torch.device("cpu")):
         """
         :param time_dimension: Dimension index where time-dependent values should be broadcasted.
-
                                Negative values index from the end of tensor dimensions.
         """
         super().__init__()
@@ -622,7 +649,10 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_free_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ):
         """Return spontaneous (thermal) transition probabilities in the
         eigenbasis.
@@ -632,8 +662,14 @@ class BaseContext(nn.Module, ABC):
         thermal equilibrium.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time: Optional time points for evaluation if transition probabilities are
+        :param time_dep_values: Optional time points for evaluation if transition probabilities are
             time-dependent.
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
 
         :return: Transition rate matrix W with shape [..., N, N], where W_{ij} (i≠j) is the
             rate from state j to state i. Diagonal elements are not used directly but are
@@ -654,7 +690,10 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_driven_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ):
         """Return induced (non-thermal) transition probabilities in the
         eigenbasis.
@@ -663,7 +702,15 @@ class BaseContext(nn.Module, ABC):
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian at each orientation/field,
                         shape `[..., M, N, N]`, where M is number of transitions, N is number of levels.
-        :param time: Time points tensor for evaluation
+        :param time_dep_values: Optional time points for evaluation if  probabilities are time-dependant
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
+
         :return: Matrix of shape `[..., N, N]`.
         """
         pass
@@ -672,7 +719,10 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_out_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
         """Return loss (out-of-system) probabilities in the eigenbasis.
 
@@ -683,6 +733,13 @@ class BaseContext(nn.Module, ABC):
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
 
         :return: Loss rate vector O with shape `[..., N]`, where O_i is the rate at which
             population is lost from state i.
@@ -698,7 +755,10 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_free_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None) -> tp.Optional[torch.Tensor]:
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None) -> tp.Optional[torch.Tensor]:
         """Return the spontaneous relaxation superoperator in Liouville space.
 
         This superoperator includes all spontaneous processes (thermal transitions, losses,
@@ -735,7 +795,10 @@ class BaseContext(nn.Module, ABC):
     def get_transformed_driven_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
     ) -> tp.Optional[torch.Tensor]:
         """Return the induced relaxation superoperator in Liouville space.
 
@@ -762,6 +825,12 @@ class BaseContext(nn.Module, ABC):
         rates), it is interpreted as an induced superoperator and no thermal correction
         is applied.
         """
+        pass
+
+    @property
+    @abstractmethod
+    def spin_system_dim(self) -> int:
+        """Return the dimension of the context spin system"""
         pass
 
 
@@ -791,6 +860,161 @@ class TransformedContext(BaseContext):
     The class automatically selects appropriate transformation methods based on basis type
     and caches transformation coefficients to avoid redundant computations.
     """
+
+    def __init__(self, time_dimension: int = -3,
+                 enforce_secularity: bool = False,
+                 redfield_manager: tp.Optional[RedfieldManager] = None,
+                 dtype: torch.dtype = torch.float32,
+                 device: torch.device = torch.device("cpu")):
+        """
+        :param time_dimension: Dimension index where time-dependent values should be broadcasted.
+                               Negative values index from the end of tensor dimensions.
+        """
+        super().__init__(time_dimension, dtype, device)
+        self.enforce_secularity = enforce_secularity
+        self.redfield_manager = redfield_manager
+
+    def _secular_mask(self) -> torch.Tensor:
+        """
+        :return: the secular mask with the non-zero
+        values corresponding the elements of superoperator where a - b = c - d
+        """
+        idx = torch.arange(self.spin_system_dim, dtype=torch.long)
+        coherence_diff_2d = idx[:, None] - idx[None, :]
+        coherence_diff_1d = coherence_diff_2d.reshape(-1)
+        mask = coherence_diff_1d[:, None] == coherence_diff_1d[None, :]
+        return mask.to(self.device)
+
+    def apply_secular_mask(self, superoperator: torch.Tensor) -> torch.Tensor:
+        """
+        :param superoperator: relaxation superoperator
+        :return: secularized superoperator if self.enforce_secularity is True, else do not change it
+        """
+        if self.enforce_secularity:
+            return superoperator @ self._secular_mask().type_as(superoperator)
+        return superoperator
+
+    def get_redfield_transition_probs(
+            self,
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """
+        Compute the population transfer rate matrix. The diagonal elements are zeros.
+
+        This method delegates the computation to the underlying RedfieldManager if it
+        exists. Otherwise, it returns None.
+        :param fields: External fields.
+        :param energies: System eigenenergies.
+        :param temperature: Temperature.
+        :return: Rate matrix W. Shape: (..., N, N). Returns None if no manager is set.
+        """
+        if self.redfield_manager is not None:
+            coeffs = self._compute_transformation_unitary()
+            return self.redfield_manager.compute_transition_probabilities(
+                coeffs, fields, energies, temperature
+            )
+        return None
+
+    def get_redfield_superoperator(
+            self,
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """
+        Compute the 2D Liouvillian relaxation superoperator.
+
+        This method delegates the computation to the underlying RedfieldManager if it
+        exists. Otherwise, it returns None.
+
+        Mathematical formulation
+
+        The density matrix rho is vectorized in row-major order:
+        |rho>> = [rho_00, rho_01, ..., rho_0N, rho_10, ...]^T
+        The superoperator R acts as:
+        d/dt |rho>> = R |rho>>
+
+        :param fields: External fields.
+        :param energies: System eigenenergies.
+        :param temperature: Temperature.
+        :return: Superoperator matrix. Shape: (..., N^2, N^2). Returns None if no manager is set.
+        """
+        if self.redfield_manager is not None:
+            coeffs = self._compute_transformation_unitary()
+            return self.redfield_manager.compute_relaxation_superoperator(
+                coeffs, fields, energies, temperature
+            )
+        return None
+
+    def _add_redfield_transition_probs(
+            self,
+            probs_matrix: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """
+        Add Redfield population transfer rates to an existing rate matrix.
+
+        This method is used to combine Redfield relaxation with other relaxation
+        mechanisms (e.g., direct processes, Raman processes) by summing their
+        respective rate matrices.
+
+        :param probs_matrix: Existing rate matrix to add to. May be None.
+        :param fields: External fields.
+        :param energies: System eigenenergies.
+        :param temperature: Temperature.
+        :return: Combined rate matrix. Returns None if both inputs are None.
+        """
+        if self.redfield_manager is not None:
+            coeffs = self._compute_transformation_unitary()
+            redfield_matrix = self.redfield_manager.compute_transition_probabilities(
+                coeffs, fields, energies, temperature
+            )
+
+            if probs_matrix is not None:
+                return probs_matrix + redfield_matrix
+            else:
+                return redfield_matrix
+
+        return probs_matrix
+
+    def _add_redfield_superoperator(
+            self,
+            superoperator: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """
+        Add Redfield relaxation superoperator to an existing superoperator.
+
+        This method is used to combine Redfield relaxation with other relaxation
+        mechanisms (e.g., Lindblad terms, phenomenological decay) by summing their
+        respective superoperators.
+
+        Mathematical formulation
+
+        The total Liouvillian is the sum of individual contributions:
+        L_total = L_coherent + L_Redfield + L_other
+
+        :param superoperator: Existing superoperator to add to. May be None.
+        :param fields: External fields.
+        :param energies: System eigenenergies.
+        :param temperature: Temperature.
+        :return: Combined superoperator. Returns None if both inputs are None.
+        """
+        if self.redfield_manager is not None:
+            coeffs = self._compute_transformation_unitary()
+            redfield_superop = self.redfield_manager.compute_relaxation_superoperator(
+                coeffs, fields, energies, temperature
+            )
+
+            if superoperator is not None:
+                return superoperator + redfield_superop
+            else:
+                return redfield_superop
+
+        return superoperator
+
     def _setup_transformers(self):
         """Configure transformation methods based on the specified basis.
 
@@ -814,6 +1038,7 @@ class TransformedContext(BaseContext):
 
             self.transformed_density = self._transformed_density_basis
             self.transformed_superop = self._transformed_superop_basis
+
 
     @abstractmethod
     def _transformed_skip(
@@ -850,13 +1075,16 @@ class TransformedContext(BaseContext):
     def _transformed_superop_basis(
             self, superop: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
     ) -> tp.Optional[torch.Tensor]:
-        """Transform a super operator from one basis to another."""
+        """Transform a super operator from one basis to another. Apply secular Mask if it is needed"""
         raise NotImplementedError
 
     def get_transformed_free_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
         """Return spontaneous (thermal) transition probabilities in the
         eigenbasis.
@@ -866,8 +1094,15 @@ class TransformedContext(BaseContext):
         thermal equilibrium.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time: Optional time points for evaluation if transition probabilities are
+        :param time_dep_values: Optional time points for evaluation if transition probabilities are
             time-dependent.
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
 
         :return: Transition rate matrix W with shape `[..., N, N]`, where `W_{ij} (i≠j)` is the
             rate from state j to state i. Diagonal elements are not used directly but are
@@ -888,7 +1123,10 @@ class TransformedContext(BaseContext):
     def get_transformed_driven_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
         """Return induced (non-thermal) transition probabilities in the
         eigenbasis.
@@ -897,8 +1135,15 @@ class TransformedContext(BaseContext):
         driving forces or non-equilibrium processes.
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time: Optional time points for evaluation if transition probabilities are
+        :param time_dep_values: Optional time points for evaluation if transition probabilities are
             time-dependent.
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
 
         :return: Transition rate matrix D with shape `[..., N, N]`, where `D_{ij} (i≠j)` is the
             non-thermal rate from state j to state i.
@@ -910,12 +1155,17 @@ class TransformedContext(BaseContext):
         processes that actively drive the system away from thermal equilibrium.
         """
         _driven_probs = self._get_driven_probs_tensor(time_dep_values)
-        return self.transformed_matrix(_driven_probs, full_system_vectors)
+        return self._add_redfield_transition_probs(
+            self.transformed_matrix(_driven_probs, full_system_vectors), fields, energies, temperature
+        )
 
     def get_transformed_out_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
         """Return loss (out-of-system) probabilities in the eigenbasis.
 
@@ -926,6 +1176,13 @@ class TransformedContext(BaseContext):
 
         :param full_system_vectors: Eigenvectors of the full Hamiltonian.
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
 
         :return: Loss rate vector O with shape [..., N], where O_i is the rate at which
             population is lost from state i.
@@ -965,7 +1222,10 @@ class TransformedContext(BaseContext):
     def get_transformed_free_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
         """Return the spontaneous relaxation superoperator in Liouville space.
 
@@ -998,12 +1258,18 @@ class TransformedContext(BaseContext):
         where E_i are eigenenergies and T is temperature.
         """
         _relaxation_superop = self._get_free_superop_tensor(time_dep_values)
-        return self.transformed_superop(_relaxation_superop, full_system_vectors)
+        out = self.transformed_superop(_relaxation_superop, full_system_vectors)
+        if out is not None:
+            out = self.apply_secular_mask(out)
+        return out
 
     def get_transformed_driven_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ):
         """Return the induced relaxation superoperator in Liouville space.
 
@@ -1033,7 +1299,10 @@ class TransformedContext(BaseContext):
         is applied.
         """
         _relaxation_superop = self._get_driven_superop_tensor(time_dep_values)
-        return self.transformed_superop(_relaxation_superop, full_system_vectors)
+        out = self.transformed_superop(_relaxation_superop, full_system_vectors)
+        if out is not None:
+            out = self.apply_secular_mask(out)
+        return self._add_redfield_superoperator(out, fields, energies, temperature)
 
     def _extract_free_populations_superop(self, time_dep_values):
         if (self.out_probs is not None) and (self.free_probs is not None):
@@ -1124,7 +1393,6 @@ class Context(TransformedContext):
     These operations follow the physical rules described in the MarS documentation and
     enable construction of sophisticated relaxation models from simpler components.
     """
-
     def __init__(
             self,
             basis: tp.Optional[tp.Union[torch.Tensor, str, None]] = None,
@@ -1233,11 +1501,39 @@ class Context(TransformedContext):
         :param time_dimension: int, optional
             Axis index where time should be broadcasted in returned tensors.
             Default -3 to match the code broadcasting conventions.
+
+        :param enforce_secularity: bool, optional
+            Whether to apply the secular approximation to the Redfield relaxation tensor.
+            If True, non-secular terms (oscillating terms) are removed, keeping only
+            energy-conserving transitions. Default is False.
+
+        :param redfield_channels: list of RedfieldRelaxationChannel or None, optional
+            List of relaxation channel objects defining the system-bath coupling.
+            Each channel must implement the spectral density and coupling operators.
+            If None, no Redfield relaxation is computed.
         """
-        super().__init__(time_dimension=time_dimension, dtype=dtype, device=device)
         self.transformation_probabilities = None
         self.transformation_unitary = None
         self.transformation_liouville = None
+
+        self.eigen_basis_flag = False
+        if isinstance(basis, str):
+            self.basis = self._create_basis_from_string(basis, sample)
+        elif isinstance(basis, torch.Tensor):
+            if basis.shape[-1] != basis.shape[-2]:
+                raise ValueError("Basis tensor must be square (last two dimensions must match)")
+            self.basis = basis
+        elif basis is None:
+            self.eigen_basis_flag = True
+            self.basis = basis
+        else:
+            raise ValueError("Basis must be either None, string or tensor")
+        redfield_manager = self._init_redfield(enforce_secularity, redfield_channels)
+        super().__init__(time_dimension=time_dimension,
+                         enforce_secularity=enforce_secularity,
+                         redfield_manager=redfield_manager,
+                         dtype=dtype, device=device)
+
 
         self.init_populations = self._set_init_populations(init_populations, init_density, dtype, device)
         init_density_real, init_density_imag = self._set_init_density(init_density)
@@ -1260,18 +1556,6 @@ class Context(TransformedContext):
 
         self.profile = profile
 
-        self.eigen_basis_flag = False
-        if isinstance(basis, str):
-            self.basis = self._create_basis_from_string(basis, sample)
-        elif isinstance(basis, torch.Tensor):
-            if basis.shape[-1] != basis.shape[-2]:
-                raise ValueError("Basis tensor must be square (last two dimensions must match)")
-            self.basis = basis
-        elif basis is None:
-            self.eigen_basis_flag = True
-            self.basis = basis
-        else:
-            raise ValueError("Basis must be either None, string or tensor")
         self._setup_prob_getters()
         self._setup_transformers()
         self._spin_system_dim = None
@@ -1419,8 +1703,6 @@ class Context(TransformedContext):
         self.transformation_probabilities = None
         self.transformation_unitary = None
         self.transformation_liouville = None
-        if self.redfield_manager is not None:
-            self.redfield_manager.close()
 
     @property
     def init_density(self) -> tp.Optional[torch.Tensor]:
@@ -1440,7 +1722,29 @@ class Context(TransformedContext):
             self._init_density_imag = torch.zeros_like(self._init_density_real)
         return torch.complex(self._init_density_real, self._init_density_imag)
 
-    def _init_redfiled(self, enforce_secularity: bool, re):
+    def _init_redfield(self,
+                       enforce_secularity: bool,
+                       redfield_channels: tp.Optional[tp.List[RedfieldRelaxationChannel]]) ->\
+            tp.Optional[RedfieldManager]:
+        """
+        Initialize the Redfield manager and configure relaxation channels.
+
+        This method applies post-initialization steps to each channel, such as
+        enforcing the secular approximation, before wrapping them in a manager.
+        It ensures all operators are correctly mapped to the system basis.
+
+        :param enforce_secularity: Whether to apply the secular approximation.
+            If True, non-secular terms are removed from the relaxation tensor.
+        :param redfield_channels: List of relaxation channels to initialize.
+            If None, no manager is created.
+        :return: Initialized RedfieldManager instance. Returns None if channels are None.
+        """
+        if redfield_channels is None:
+            return None
+        else:
+            for channel in redfield_channels:
+                channel.post_init(self.eigen_basis_flag, secular=enforce_secularity)
+            return RedfieldManager(redfield_channels)
 
 
     def _set_init_density(self, init_density: tp.Optional[torch.Tensor]) ->\
@@ -1477,33 +1781,40 @@ class Context(TransformedContext):
         else:
             return None
 
-    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
         """Compute and cache basis transformation probabilities for the initial
         population and all other real values tranformations."""
         if self.transformation_probabilities is not None:
             return self.transformation_probabilities
-        else:
-            self.transformation_probabilities = transform.get_transformation_probabilities(
-                self.basis, full_system_vectors
-            )
-            return self.transformation_probabilities
+        if full_system_vectors is None:
+            return None
+        self.transformation_probabilities = transform.get_transformation_probabilities(
+            self.basis, full_system_vectors
+        )
+        return self.transformation_probabilities
 
-    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
         """Compute and cache basis transformation coefficients for the density
         matrix transformation."""
         if self.transformation_unitary is not None:
             return self.transformation_unitary
-        else:
-            self.transformation_unitary = transform.basis_transformation(
-                self.basis, full_system_vectors
-            )
-            return self.transformation_unitary
+        if full_system_vectors is None:
+            return None
+        self.transformation_unitary = transform.basis_transformation(
+            self.basis, full_system_vectors
+        )
+        return self.transformation_unitary
 
-    def _compute_transformation_liouville(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_liouville(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
         """Compute and cache basis transformation coefficients for the
         superoperator transformation."""
         if self.transformation_liouville is not None:
             return self.transformation_liouville
+        if full_system_vectors is None:
+            return None
         else:
             self.transformation_liouville = transform.compute_liouville_basis_transformation(
                 self.basis, full_system_vectors
@@ -1554,7 +1865,9 @@ class Context(TransformedContext):
     def _transformed_superop_basis(
             self, relaxation_superop: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
     ):
-        """Transform relaxation superoperator from one basis to another."""
+        """Transform relaxation superoperator from one basis to another.
+            Apply secular mask if it is needed
+        """
         if relaxation_superop is None:
             return None
         else:
@@ -1765,7 +2078,12 @@ class KroneckerContext(TransformedContext):
         - Data types and computational devices
         - Dimensional compatibility for tensor products
         """
-        super().__init__(time_dimension=time_dimension)
+        super().__init__(
+            time_dimension=time_dimension,
+            enforce_secularity=contexts[0].enforce_secularity,
+            redfield_manager=kronecker_multiplication_redfield_managers(contexts)
+        )
+
         self.component_contexts = nn.ModuleList(contexts)
 
         self.transformation_probabilities = None
@@ -1773,6 +2091,7 @@ class KroneckerContext(TransformedContext):
 
         self._setup_prob_getters()
         self._setup_transformers()
+
 
     @property
     def basis(self) -> tp.Optional[torch.Tensor]:
@@ -1878,7 +2197,8 @@ class KroneckerContext(TransformedContext):
         """This is just entire context. Let's set its len as 1"""
         return 1
 
-    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
         """Compute Clebsch-Gordan transformation coefficients for composite
         system.
 
@@ -1895,21 +2215,26 @@ class KroneckerContext(TransformedContext):
         """
         if self.transformation_probabilities is not None:
             return self.transformation_probabilities
-        else:
-            bases = [context.basis for context in self.component_contexts]
-            self.transformation_probabilities = transform.compute_clebsch_gordan_probabilities(
-                full_system_vectors, bases
-            )
-            return self.transformation_probabilities
+        if full_system_vectors is None:
+            return self.transformation_unitary
+        bases = [context.basis for context in self.component_contexts]
+        self.transformation_probabilities = transform.get_product_to_target_unitary(
+            transform.compute_clebsch_gordan_probabilities(full_system_vectors, bases), len(bases)
+        )
+        return self.transformation_probabilities
 
-    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]):
+    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
         """Compute and cache superoperator transformation coefficients."""
         if self.transformation_unitary is not None:
             return self.transformation_unitary
-        else:
-            bases = [context.basis for context in self.component_contexts]
-            self.transformation_unitary = transform.compute_clebsch_gordan_coeffs(full_system_vectors, bases)
+        if full_system_vectors is None:
             return self.transformation_unitary
+        bases = [context.basis for context in self.component_contexts]
+        self.transformation_unitary = transform.get_product_to_target_unitary(
+            transform.compute_clebsch_gordan_coeffs(full_system_vectors, bases), len(bases)
+        )
+        return self.transformation_unitary
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         for context in self.component_contexts:
@@ -2032,7 +2357,9 @@ class KroneckerContext(TransformedContext):
             self, relaxation_superop_lst: tp.Optional[list[torch.Tensor]],
             full_system_vectors: tp.Optional[torch.Tensor]
     ):
-        """Transform relaxation relaxation_superop_lst from one basis to another."""
+        """Transform relaxation relaxation_superop_lst from one basis to another.
+           Apply secular mask if it is needed
+        """
         if relaxation_superop_lst is None:
             return None
         else:
@@ -2363,7 +2690,10 @@ class SummedContext(BaseContext):
     def get_transformed_free_probs(
         self,
         full_system_vectors: tp.Optional[torch.Tensor],
-        time_dep_values: tp.Optional[torch.Tensor] = None
+        time_dep_values: tp.Optional[torch.Tensor] = None,
+        fields: tp.Optional[torch.Tensor] = None,
+        energies: tp.Optional[torch.Tensor] = None,
+        temperature: tp.Optional[torch.Tensor] = None
     ):
         """
         :param full_system_vectors:
@@ -2376,12 +2706,20 @@ class SummedContext(BaseContext):
         depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: torch.Tensor or None
             Transformed out probabilities shaped `[..., N]` or `[..., R, M, N]`.
         """
         result = None
         for context in self.component_contexts:
-            probs = context.get_transformed_free_probs(full_system_vectors, time_dep_values)
+            probs = context.get_transformed_free_probs(
+                full_system_vectors, time_dep_values, fields, energies, temperature
+            )
             if probs is not None:
                 result = probs if result is None else result + probs
         return result
@@ -2389,7 +2727,10 @@ class SummedContext(BaseContext):
     def get_transformed_driven_probs(
         self,
         full_system_vectors: tp.Optional[torch.Tensor],
-        time_dep_values: tp.Optional[torch.Tensor] = None
+        time_dep_values: tp.Optional[torch.Tensor] = None,
+        fields: tp.Optional[torch.Tensor] = None,
+        energies: tp.Optional[torch.Tensor] = None,
+        temperature: tp.Optional[torch.Tensor] = None
     ):
         """
         :param full_system_vectors:
@@ -2402,11 +2743,19 @@ class SummedContext(BaseContext):
         depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: the values computed at get_time_dependent_values
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: driven probability of transition.
         """
         result = None
         for context in self.component_contexts:
-            probs = context.get_transformed_driven_probs(full_system_vectors, time_dep_values)
+            probs = context.get_transformed_driven_probs(
+                full_system_vectors, time_dep_values, fields, energies, temperature)
             if probs is not None:
                 result = probs if result is None else result + probs
         return result
@@ -2414,7 +2763,10 @@ class SummedContext(BaseContext):
     def get_transformed_out_probs(
         self,
         full_system_vectors: tp.Optional[torch.Tensor],
-        time_dep_values: tp.Optional[torch.Tensor] = None
+        time_dep_values: tp.Optional[torch.Tensor] = None,
+        fields: tp.Optional[torch.Tensor] = None,
+        energies: tp.Optional[torch.Tensor] = None,
+        temperature: tp.Optional[torch.Tensor] = None
     ):
         """
         :param full_system_vectors:
@@ -2427,12 +2779,22 @@ class SummedContext(BaseContext):
         depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: the values computed at get_time_dependent_values
+
+        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
+        It can be used for redfield relaxation evaluation
+        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
+        It can be used for redfield relaxation evaluation
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
+
         :return: torch.Tensor or None
             Transformed free probabilities shaped `[..., N, N]` or `[..., R, M, N, N]`.
         """
         result = None
         for context in self.component_contexts:
-            probs = context.get_transformed_out_probs(full_system_vectors, time_dep_values)
+            probs = context.get_transformed_out_probs(
+                full_system_vectors, time_dep_values, fields, energies, temperature
+            )
             if probs is not None:
                 result = probs if result is None else result + probs
         return result
@@ -2440,7 +2802,10 @@ class SummedContext(BaseContext):
     def get_transformed_free_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ):
         """Return the spontaneous relaxation superoperator in Liouville spac.
 
@@ -2467,7 +2832,8 @@ class SummedContext(BaseContext):
         """
         result = None
         for context in self.component_contexts:
-            probs = context.get_transformed_free_superop(full_system_vectors, time_dep_values)
+            probs = context.get_transformed_free_superop(
+                full_system_vectors, time_dep_values, fields, energies, temperature)
             if probs is not None:
                 result = probs if result is None else result + probs
         return result
@@ -2475,7 +2841,10 @@ class SummedContext(BaseContext):
     def get_transformed_driven_superop(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
-            time_dep_values: tp.Optional[torch.Tensor] = None
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None
     ):
         """Return the spontaneous relaxation superoperator in Liouville spac.
 
@@ -2499,7 +2868,8 @@ class SummedContext(BaseContext):
         """
         result = None
         for context in self.component_contexts:
-            probs = context.get_transformed_driven_superop(full_system_vectors, time_dep_values)
+            probs = context.get_transformed_driven_superop(
+                full_system_vectors, time_dep_values, fields, energies, temperature)
             if probs is not None:
                 result = probs if result is None else result + probs
         return result

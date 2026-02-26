@@ -53,7 +53,7 @@ In the rotating frame, the effective Hamiltonian becomes time-independent and fo
 
 .. math::
 
-   H_{\text{eff}} = F + g\mu_B(B_0 - \omega/g\mu_B)S_z + \frac{1}{2}g\mu_B B_1 S_x
+   H_{\text{eff}} = F + g\mu_B(B_0 - \omega/g\mu_B)S_z + g\mu_B B_1 S_x
 
 where:
 
@@ -96,7 +96,7 @@ In general, we recomend use RWA only for isotropic case. For the anisotropic cas
 Circular Polarization
 ~~~~~~~~~~~~~~~~~~~~~
 
-The oscillating magnetic field must be circularly polarized:
+The oscillating magnetic field is assumed to be circularly polarized, aligned with the direction of spin precession, while the counter-rotating component is neglected:
 
 .. math::
 
@@ -104,7 +104,7 @@ The oscillating magnetic field must be circularly polarized:
 
 Linear polarization introduces counter-rotating components that are not eliminated by RWA.
 
-**Why this occurs**: Linear polarization contains both co-rotating and counter-rotating components.
+Linear polarization contains both co-rotating and counter-rotating components.
 The RWA discards the counter-rotating terms, which is valid only when they oscillate at ~2ω and can be neglected.
 
 Commutation with Zero-Field Hamiltonian
@@ -151,8 +151,18 @@ This constraint arises because the rotating frame transformation requires R to c
 Powder Averaging
 ----------------
 
-For disordered samples, spectra are averaged over molecular orientations (α, β).
-Since the RWA assumes an close-to-isotropic g-factor, the γ Euler angle does not affect resonance frequencies
+For disordered samples, spectra are averaged over molecular orientations (α, β). 
+
+Averaging over :math:`\gamma` reduces to averaging the initial
+density matrix:
+
+.. math::
+
+   \hat{\rho}_{\text{aver}}(0) = \frac{1}{2\pi}\int_0^{2\pi}
+      e^{i\hat{S}_z\gamma}\,\hat{\rho}_0(0)\,e^{-i\hat{S}_z\gamma}\,d\gamma.
+
+This integral retains only the part of :math:`\hat{\rho}_0(0)` that commutes with
+:math:`\hat{S}_z`; all non‑commuting components average to zero.
 
 Applicability
 -------------

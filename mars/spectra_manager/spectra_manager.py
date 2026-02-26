@@ -302,6 +302,12 @@ class ComputationalDetails:
     intensity_threshold : float, default=1e-2
         Transitions with intensity below this fraction of the maximum intensity
         are discarded.
+
+    time_evolution_angle_average_steps : int, default=4
+        The number of discretization steps used in the propagator computation to
+        average the signal over rotations around the z-axis. This parameter controls
+        the sampling density of the third Euler angle (γ) during orientational averaging.
+
     """
     integration_chunk_size: int = 128
     integration_gaussian_cutoff: float = 2.24
@@ -313,6 +319,7 @@ class ComputationalDetails:
     res_field_r_tol: float = 1e-5
     res_field_split_max_iterations: int = 20
     intensity_threshold: float = 1e-2
+    time_evolution_angle_average_steps: int = 4
 
 
 class BaseProcessing(nn.Module, ABC):
@@ -376,7 +383,9 @@ class BaseProcessing(nn.Module, ABC):
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__()
-        self.register_buffer("threshold", torch.tensor(1e-3, device=device, dtype=dtype))
+        self.register_buffer("threshold", torch.tensor(
+            computational_details.intensity_threshold, device=device, dtype=dtype)
+        )
         self.mesh = mesh
         self.post_spectra_processor = post_spectra_processor
         self.spectra_integrator = self._init_spectra_integrator(spectra_integrator, harmonic,
@@ -1106,6 +1115,7 @@ class BaseIntensityCalculator(nn.Module):
                  populator: tp.Optional[tp.Union[BasePopulator, str]] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
                  disordered: bool = True,
+                 computational_details: ComputationalDetails = ComputationalDetails(),
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
@@ -1118,11 +1128,18 @@ class BaseIntensityCalculator(nn.Module):
 
         :param context: Relaxation/population context defining relaxation and initial population. Default is None
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
+
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__()
-        self.populator = self._init_populator(temperature, populator, context, disordered, device, dtype)
+        self.populator = self._init_populator(
+            temperature, populator, context, disordered, computational_details, device, dtype
+        )
         self.spin_system_dim = spin_system_dim
         self.temperature = temperature
         self._compute_magnitization =\
@@ -1133,6 +1150,7 @@ class BaseIntensityCalculator(nn.Module):
     def _init_populator(self,  temperature: tp.Optional[float],
                         populator: tp.Optional[tp.Union[BasePopulator, str]],
                         context: tp.Optional[contexts.BaseContext], disordered: bool,
+                        computational_details: ComputationalDetails,
                         device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
         :param temperature: Sample temperature in Kelvin.
@@ -1140,6 +1158,10 @@ class BaseIntensityCalculator(nn.Module):
         :param populator: Optional custom population function
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
         :param device: Computation device
         :param dtype: Floating-point type
         :return: BasePopulator object
@@ -1218,7 +1240,7 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
     def __init__(self, spin_system_dim: int, temperature: tp.Optional[float],
                  populator: tp.Optional[BasePopulator] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
-                 disordered: bool = True,
+                 disordered: bool = True, computational_details: ComputationalDetails = ComputationalDetails(),
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
         :param spin_system_dim: Dimension of spin system Hilbert space.
@@ -1228,21 +1250,31 @@ class StationaryIntensityCalculator(BaseIntensityCalculator):
         (auto-initialized based as stationary populator)
         :param context: Relaxation/population context defining relaxation and initial population. Default is None
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
-        super().__init__(spin_system_dim, temperature, populator, context, disordered, device=device, dtype=dtype)
+        super().__init__(spin_system_dim, temperature, populator, context, disordered,
+                         computational_details, device=device, dtype=dtype)
 
     def _init_populator(self,
                         temperature: tp.Optional[float], populator: tp.Optional[BasePopulator],
                         context: tp.Optional[contexts.BaseContext],
-                        disordered: bool, device: torch.device, dtype: torch.dtype) -> BasePopulator:
+                        disordered: bool, computational_details: ComputationalDetails,
+                        device: torch.device, dtype: torch.dtype) -> BasePopulator:
         """
         :param temperature: Sample temperature in Kelvin.
 
         :param populator: Optional population computation instance of BasePopulator
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
         :param device: Computation device
         :param dtype: Floating-point type
         :return: BasePopulator object
@@ -1290,6 +1322,7 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
                  populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
                  context: tp.Optional[contexts.BaseContext],
                  disordered: bool = True,
+                 computational_details: ComputationalDetails = ComputationalDetails,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32,
                  ):
         """
@@ -1306,23 +1339,33 @@ class TimeIntensityCalculator(BaseIntensityCalculator):
 
         :param context: Relaxation/population context defining relaxation and initial population.
         :param disordered: If True, use powder averaging; if False, use crystal geometry. Default is True
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
         :param device: Computation device. Default is torch.device("cpu")
         :param dtype: Data type for floating point operations. Default is torch.float32
         """
         super().__init__(
-            spin_system_dim, temperature, populator, context, disordered, device=device, dtype=dtype
+            spin_system_dim, temperature, populator, context, disordered, computational_details,
+            device=device, dtype=dtype
         )
 
     def _init_populator(self,
                         temperature: tp.Optional[float], populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
                         context: tp.Optional[contexts.BaseContext],
-                        disordered: bool, device: torch.device, dtype: torch.dtype) -> BaseTimeDepPopulator:
+                        disordered: bool, computational_details: ComputationalDetails,
+                        device: torch.device, dtype: torch.dtype) -> BaseTimeDepPopulator:
         """
         :param temperature: Sample temperature in Kelvin.
 
         :param populator: Optional BaseTimeDepPopulator object
         :param context: Relaxation/population dynamics context
         :param disordered: True for powder averaging, False for single-crystal
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectra generation.
+            In this class it is used for the getting values of time-evolution equations solving
         :param device: Computation device
         :param dtype: Floating-point type
         :return: BasePopulator object
@@ -1376,18 +1419,25 @@ class TimeDensityCalculator(TimeIntensityCalculator):
     """
     def _init_populator(self, temperature: torch.Tensor,
                         populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
-                        context: tp.Optional[contexts.BaseContext], disordered: bool,
+                        context: tp.Optional[contexts.BaseContext],
+                        disordered: bool, computational_details: ComputationalDetails,
                         device: torch.device, dtype: torch.dtype):
         if populator is None:
             return RWADensityPopulator(
-                context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+                context=context, init_temperature=temperature, disordered=disordered,
+                angle_average_steps=computational_details.time_evolution_angle_average_steps,
+                device=device, dtype=dtype)
         elif isinstance(populator, str):
             if populator == "rwa":
                 return RWADensityPopulator(
-                    context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+                    context=context, init_temperature=temperature, disordered=disordered,
+                    angle_average_steps=computational_details.time_evolution_angle_average_steps,
+                    device=device, dtype=dtype)
             elif populator == "propagator":
                 return PropagatorDensityPopulator(
-                    context=context, init_temperature=temperature, disordered=disordered, device=device, dtype=dtype)
+                    context=context, init_temperature=temperature, disordered=disordered,
+                    angle_average_steps=computational_details.time_evolution_angle_average_steps,
+                    device=device, dtype=dtype)
             else:
                 raise ValueError("populator can be None, user-defined or sting 'rwa' or 'propagator'")
         else:
@@ -1579,6 +1629,7 @@ class BaseSpectra(nn.Module, ABC):
 
         self.intensity_calculator = self._get_intensity_calculator(intensity_calculator,
                                                                    temperature, populator, context,
+                                                                   computational_details,
                                                                    device=device, dtype=dtype)
         self._param_specs = self._get_param_specs()
 
@@ -1743,6 +1794,7 @@ class BaseSpectra(nn.Module, ABC):
                                   temperature: float,
                                   populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
+                                  computational_details: ComputationalDetails,
                                   device: torch.device, dtype: torch.dtype):
         """Instantiate or return the intensity calculator for transition strengths.
 
@@ -1751,13 +1803,18 @@ class BaseSpectra(nn.Module, ABC):
         :param temperature: Sample temperature in Kelvin.
         :param populator: Population model or identifier.
         :param context: Relaxation/population dynamics context.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
         :param device: Computation device.
         :param dtype: Floating-point precision.
         :return: Ready-to-use intensity calculator.
         """
         if intensity_calculator is None:
             return StationaryIntensityCalculator(
-                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+                self.spin_system_dim, temperature, populator, context,
+                disordered=self.mesh.disordered,
+                computational_details=computational_details, device=device, dtype=dtype
             )
         else:
             return intensity_calculator
@@ -2307,6 +2364,7 @@ class StationarySpectra(BaseSpectra):
                                   temperature: float,
                                   populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
+                                  computational_details: ComputationalDetails,
                                   device: torch.device, dtype: torch.dtype):
         """Instantiate or return the intensity calculator for transition strengths.
 
@@ -2314,13 +2372,19 @@ class StationarySpectra(BaseSpectra):
         :param temperature: Sample temperature in Kelvin.
         :param populator: Population model or identifier.
         :param context: Relaxation/population dynamics context.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
         :param device: Computation device.
         :param dtype: Floating-point precision.
         :return: Ready-to-use intensity calculator.
         """
         if intensity_calculator is None:
             return StationaryIntensityCalculator(
-                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+                self.spin_system_dim, temperature, populator, context,
+                disordered=self.mesh.disordered,
+                computational_details=computational_details,
+                device=device, dtype=dtype
             )
         else:
             return intensity_calculator
@@ -2495,10 +2559,14 @@ class TruncTimeSpectra(BaseSpectra):
                                   temperature: float,
                                   populator: tp.Optional[BaseTimeDepPopulator],
                                   context: tp.Optional[contexts.BaseContext],
+                                  computational_details: ComputationalDetails,
                                   device: torch.device, dtype: torch.dtype):
         if intensity_calculator is None:
             return TimeIntensityCalculator(
-                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+                self.spin_system_dim, temperature, populator, context,
+                disordered=self.mesh.disordered,
+                computational_details=computational_details,
+                device=device, dtype=dtype
             )
         else:
             return intensity_calculator
@@ -2780,10 +2848,14 @@ class DensityTimeSpectra(CoupledTimeSpectra):
                                   temperature: float,
                                   populator: tp.Optional[tp.Union[BaseTimeDepPopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
+                                  computational_details: ComputationalDetails,
                                   device: torch.device, dtype: torch.dtype):
         if intensity_calculator is None:
             return TimeDensityCalculator(
-                self.spin_system_dim, temperature, populator, context, device=device, dtype=dtype
+                self.spin_system_dim, temperature, populator, context,
+                disordered=self.mesh.disordered,
+                computational_details=computational_details,
+                device=device, dtype=dtype
             )
         else:
             return intensity_calculator
@@ -2949,6 +3021,7 @@ class StationaryFreqSpectra(StationarySpectra):
                                   temperature: float,
                                   populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
+                                  computational_details: ComputationalDetails,
                                   device: torch.device, dtype: torch.dtype):
         """Instantiate or return the intensity calculator for transition strengths.
 
@@ -2956,6 +3029,9 @@ class StationaryFreqSpectra(StationarySpectra):
         :param temperature: Sample temperature in Kelvin.
         :param populator: Population model or identifier.
         :param context: Relaxation/population dynamics context.
+        :param computational_details: ComputationalDetails
+            computational_details : ComputationalDetails, optional
+            Configuration object that governs the numerical aspects of spectrum generation.
         :param device: Computation device.
         :param dtype: Floating-point precision.
         :return: Ready-to-use intensity calculator.

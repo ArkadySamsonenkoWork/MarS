@@ -22,7 +22,8 @@ def time_spectrum_calculation(
         n_points: int = 1000,
         n_warmup: int = 5,
         n_iterations: int = 50,
-        temperature: float = 298.0
+        temperature: float = 298.0,
+        computational_details: spectra_manager.ComputationalDetails = spectra_manager.ComputationalDetails(),
 ) -> tp.Tuple[tp.Union[float, np.ndarray], tp.Union[float, np.ndarray], tp.List[float]]:
     """
     Measure spectrum calculation time with warmup iterations.
@@ -69,6 +70,7 @@ def time_spectrum_calculation(
         freq=freq,
         sample=sample,
         temperature=temperature,
+        computational_details=computational_details,
         device=device,
         dtype=dtype
     )
@@ -103,7 +105,8 @@ def time_spectrum_calculation_full_pipeline(
         n_points: int = 1000,
         n_warmup: int = 5,
         n_iterations: int = 50,
-        temperature: float = 298.0
+        temperature: float = 298.0,
+        computational_details: spectra_manager.ComputationalDetails = spectra_manager.ComputationalDetails(),
 ) -> tp.Tuple[tp.Union[float, np.ndarray], tp.Union[float, np.ndarray], tp.List[float]]:
     """
     Measure full spectrum calculation time including sample creation.
@@ -170,6 +173,7 @@ def time_spectrum_calculation_full_pipeline(
             freq=freq,
             sample=sample,
             temperature=temperature,
+            computational_details=computational_details,
             device=device,
             dtype=dtype
         )
@@ -198,6 +202,7 @@ def time_spectrum_calculation_full_pipeline(
             freq=freq,
             sample=sample,
             temperature=temperature,
+            computational_details=computational_details,
             device=device,
             dtype=dtype
         )
@@ -316,6 +321,8 @@ def _plot_benchmark_results(results: dict, device: torch.device, dtype: torch.dt
 def benchmark_several_configurations(
         config_creators: tp.Dict[str, tp.Tuple[str, tp.Callable]],
         mesh_configs: tp.Optional[tp.List[tp.Union[None, tp.Tuple[int, int]]]] = None,
+        freq: float = 9.8e9,
+        field_range: tp.Tuple[float, float] = (0.30, 0.40),
         device: torch.device = torch.device("cpu"),
         dtype: torch.dtype = torch.float32,
         plot_results: bool = True,
@@ -330,6 +337,10 @@ def benchmark_several_configurations(
         Example: {"2e": ("Two electrons", create_2_electrons_sample), ...}
     mesh_configs : list of (None or tuple), optional
         List of mesh configurations to test. Default tests coarse, medium, fine.
+    freq : float, optional
+        Microwave frequency in Hz. Default is 9.8 GHz (X-band).
+    field_range : tuple of (float, float), optional
+        Magnetic field range (min, max) in Tesla.
     device : torch.device, optional
         Computation device. Default is cpu.
     dtype : torch.dtype, optional
@@ -369,13 +380,12 @@ def benchmark_several_configurations(
 
             sample = creator_func(mesh=mesh, device=device, dtype=dtype)
 
-            field_range = (0.30, 0.40)
-
             mean_ms, std_ms, _ = time_spectrum_calculation(
                 sample,
                 n_warmup=n_warmup,
                 n_iterations=n_iterations,
-                field_range=field_range
+                field_range=field_range,
+                freq=freq,
             )
 
             if hasattr(sample.mesh, 'initial_size'):

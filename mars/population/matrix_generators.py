@@ -20,8 +20,8 @@ class BaseGenerator(ABC):
                  context: contexts.BaseContext,
                  init_temperature: torch.Tensor,
                  res_fields: tp.Optional[torch.Tensor],
-                 full_system_vectors: tp.Optional[torch.Tensor],
                  energies: tp.Optional[torch.Tensor],
+                 full_system_vectors: tp.Optional[torch.Tensor],
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32,
                  *args, **kwargs):
@@ -34,6 +34,9 @@ class BaseGenerator(ABC):
         :param res_fields:
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
+        :param energies:
+            Eigenenergies of the spin system, shape [..., M, N], where M is the number of resonance energies,
+            and N is the number of energy levels.
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
@@ -41,10 +44,6 @@ class BaseGenerator(ABC):
             make the creator to compute these vectors.
             The default behavior, whether to calculate vectors or not,
             depends on the specific Spectra Manager and its settings.
-
-        :param energies:
-            Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
-            and N is the number of energy levels.
 
         :param device: Computation device
         :param dtype:
@@ -141,45 +140,60 @@ class LevelBasedGenerator(BaseGenerator):
         else:
             time_dep_values = None
 
-        temp = self._temperature(time_dep_values)
-        free_probs = self._base_transition_probs(time_dep_values)
-        driven_probs = self._driven_transition_probs(time_dep_values)
-        out_probs = self._outgoing_transition_probs(time_dep_values)
-        return temp.unsqueeze(-1).unsqueeze(-1), free_probs, driven_probs, out_probs
+        temperature = self._temperature(time_dep_values)
+        free_probs = self._base_transition_probs(time_dep_values, temperature)
+        driven_probs = self._driven_transition_probs(time_dep_values, temperature)
+        out_probs = self._outgoing_transition_probs(time_dep_values, temperature)
+        return temperature.unsqueeze(-1).unsqueeze(-1), free_probs, driven_probs, out_probs
 
     def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t."""
         return self.init_temperature
 
-    def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+    def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor], temperature: torch.Tensor) ->\
+            tp.Optional[torch.Tensor]:
         """Retrieve spontaneous (free) transition probabilities transformed
         into the eigenbasis.
 
         These rates are subject to Boltzmann detailed balance.
         :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: Tensor of shape [..., N, N] representing equilibrium transition rates.
         """
-        return self.context.get_transformed_free_probs(self.full_system_vectors, time_dep_values)
+        return self.context.get_transformed_free_probs(
+            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature
+        )
 
-    def _driven_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+    def _driven_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor], temperature: torch.Tensor) ->\
+            tp.Optional[torch.Tensor]:
         """Retrieve non-thermal (driven) transition probabilities in the
         eigenbasis.
 
         These rates are not modified by thermal constraints and represent external perturbations.
         :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: Tensor of shape [..., N, N] or None if no driven processes are defined.
         """
-        return self.context.get_transformed_driven_probs(self.full_system_vectors, time_dep_values)
+        return self.context.get_transformed_driven_probs(
+            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature
+        )
 
-    def _outgoing_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+    def _outgoing_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor], temperature: torch.Tensor) ->\
+            tp.Optional[torch.Tensor]:
         """Retrieve irreversible loss rates from each energy level in the
         eigenbasis.
 
         These represent population removal from the spin system (e.g., phosphorescence).
         :param time_dep_values: Optional time-dependent scaling factors from the Context profile.
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: Vector of shape [..., N] or None if no loss processes are defined.
         """
-        return self.context.get_transformed_out_probs(self.full_system_vectors, time_dep_values)
+        return self.context.get_transformed_out_probs(
+            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature
+        )
 
 
 class TempDepGenerator(LevelBasedGenerator):
@@ -219,8 +233,8 @@ class DensityRWAGenerator(BaseGenerator):
                  context: contexts.BaseContext,
                  init_temperature: torch.Tensor,
                  res_fields: torch.Tensor,
-                 full_system_vectors: tp.Optional[torch.Tensor],
                  energies: tp.Optional[torch.Tensor],
+                 full_system_vectors: tp.Optional[torch.Tensor],
                  stationary_hamiltonian: torch.Tensor,
                  lvl_down: torch.Tensor, lvl_up: torch.Tensor,
                  device: torch.device = torch.device("cpu"),
@@ -237,6 +251,10 @@ class DensityRWAGenerator(BaseGenerator):
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
 
+        :param energies:
+            Eigenenergies of the spin system, shape [..., M, N], where M is number of transitions each batch point,
+            and N is the number of energy levels.
+
         :param full_system_vectors:
             Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
             where M is number of transitions, N is number of levels
@@ -245,9 +263,6 @@ class DensityRWAGenerator(BaseGenerator):
             The default behavior, whether to calculate vectors or not,
             depends on the specific Spectra Manager and its settings.
 
-        :param energies:
-            Eigenenergies of the spin system, shape [..., M, N], where M is the number of field/orientation points,
-            and N is the number of energy levels.
 
         :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
             -For RWA it uses full Hamiltonian in rotating frame.
@@ -267,7 +282,7 @@ class DensityRWAGenerator(BaseGenerator):
         :param args:
         :param kwargs:
         """
-        super().__init__(context, init_temperature, res_fields, full_system_vectors, energies, device, dtype)
+        super().__init__(context, init_temperature, res_fields, energies, full_system_vectors, device, dtype)
         self.stationary_hamiltonian = stationary_hamiltonian
         self.level_down = lvl_down
         self.level_up = lvl_up
@@ -297,32 +312,38 @@ class DensityRWAGenerator(BaseGenerator):
         else:
             time_dep_values = None
 
-        temp = self._temperature(time_dep_values)
-        free_superop = self._base_superop(time_dep_values)
-        driven_superop = self._driven_superop(time_dep_values)
-        return temp, self.stationary_hamiltonian, free_superop, driven_superop
+        temperature = self._temperature(time_dep_values)
+        free_superop = self._base_superop(time_dep_values, temperature)
+        driven_superop = self._driven_superop(time_dep_values, temperature)
+        return temperature, self.stationary_hamiltonian, free_superop, driven_superop
 
     def _temperature(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t."""
         return self.init_temperature
 
-    def _base_superop(self, time_dep_values: tp.Optional[torch.Tensor]) -> torch.Tensor:
+    def _base_superop(self, time_dep_values: tp.Optional[torch.Tensor], temperature) -> torch.Tensor:
         """Retrieve spontaneous relaxation superoperator in Liouville space.
 
         Includes spontaneous transitions, losses, and dephsing, and is corrected for detailed balance.
         :param time_dep_values: Optional time-dependent scaling from Context profile.
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: Superoperator tensor of shape [..., N^2, N^2].
         """
-        return self.context.get_transformed_free_superop(self.full_system_vectors, time_dep_values)
+        return self.context.get_transformed_free_superop(
+            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature)
 
-    def _driven_superop(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
+    def _driven_superop(self, time_dep_values: tp.Optional[torch.Tensor], temperature) -> tp.Optional[torch.Tensor]:
         """Retrieve non-thermal relaxation superoperator in Liouville space.
 
         Represents external driving not constrained by thermal equilibrium.
         :param time_dep_values: Optional time-dependent scaling from Context profile.
+        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
+        The shape is [] or [t], where t is number of time-steps
         :return: Superoperator tensor of shape [..., N^2, N^2] or None.
         """
-        return self.context.get_transformed_driven_superop(self.full_system_vectors, time_dep_values)
+        return self.context.get_transformed_driven_superop(
+            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature)
 
 
 class DensityPropagatorGenerator(DensityRWAGenerator):
@@ -355,7 +376,7 @@ class DensityPropagatorGenerator(DensityRWAGenerator):
                 "Propagator solution of evolution doesn't support time dependant relaxation rates"
             )
         time_dep_values = None
-        temp = self._temperature(time_dep_values)
-        free_superop = self._base_superop(time_dep_values)
-        driven_superop = self._driven_superop(time_dep_values)
-        return temp, self.stationary_hamiltonian, free_superop, driven_superop
+        temperature = self._temperature(time_dep_values)
+        free_superop = self._base_superop(time_dep_values, temperature)
+        driven_superop = self._driven_superop(time_dep_values, temperature)
+        return temperature, self.stationary_hamiltonian, free_superop, driven_superop

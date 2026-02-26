@@ -23,6 +23,8 @@ def plot_2d_timeresolved(
         interpolation: str = "bicubic",
         colorbar: bool = True,
         colorbar_label: str = "Intensity (arb. units)",
+        vmax_percentile: tp.Optional[float] = None,
+        vmax_clip: tp.Optional[float] = None,
         **kwargs
 ) -> None:
     """
@@ -38,6 +40,11 @@ def plot_2d_timeresolved(
     :param interpolation: Interpolation method for imshow
     :param colorbar: Whether to show colorbar
     :param colorbar_label: Label for colorbar
+    :param vmax_percentile: Percentile (0–100) of absolute data values to use for vmax.
+                            If None, uses the actual maximum. Useful for enhancing contrast
+                            when a few outlier values dominate the scale.
+    :param vmax_clip: Absolute maximum value for color normalization. Values above this
+                      are clipped for display. Takes precedence over vmax_percentile if both are set.
     :param kwargs: Additional arguments passed to imshow
     """
     ax = plt.gca()
@@ -56,11 +63,22 @@ def plot_2d_timeresolved(
     if abs_max == 0:
         abs_max = 1e-10
 
+    if vmax_clip is not None:
+        vmax = vmax_clip
+    elif vmax_percentile is not None:
+        vmax = np.percentile(np.abs(result), vmax_percentile)
+        vmax = max(vmax, 1e-10)  # Avoid zero
+    else:
+        vmax = abs_max
+
+    vmax *= 1.05
+
     norm = TwoSlopeNorm(
-        vmin=-abs_max * 1.05,
+        vmin=-vmax,
         vcenter=0,
-        vmax=abs_max * 1.05
+        vmax=vmax
     )
+
     extent = [time_conv[0], time_conv[-1], fields_conv[0], fields_conv[-1]]
     img = ax.imshow(
         result,

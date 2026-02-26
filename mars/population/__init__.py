@@ -5,4 +5,4 @@ from .populators.level_population import LevelBasedPopulator, T1Populator
 from .populators.density_population import RWADensityPopulator, PropagatorDensityPopulator
 from .parametric_dependance import profiles, rates
 from .concatination import concat_contexts
-from .redfield import RedfieldRelaxationChannel
+from .redfield import RedfieldRelaxationChannel, RedfieldManager

@@ -321,6 +321,170 @@ The relaxation superoperator transforms in Liouville space:
    R_new = transform_superop_to_new_basis(R_old, T_liouville)
    # Applies: T @ R_old @ T.conj().T
 
+Derivation of Transition Probabilities from the Lindblad Master Equation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The transformation rules for kinetic coefficients (loss probabilities and transition probabilities) 
+are rigorously derived from the Lindblad master equation formalism. This section connects the 
+basis transformation rules used in MarS to the transformation of Lindblad operators, ensuring 
+physical consistency across different representations.
+
+The Lindblad Master Equation
+""""""""""""""""""""""""""""
+
+The time evolution of the density matrix :math:`\hat{\rho}` under Markovian dissipation is given by:
+
+.. math::
+
+   \frac{d\hat{\rho}}{dt} = -i[\hat{H}, \hat{\rho}] + \sum_k \gamma_k \mathcal{D}[\hat{L}_k](\hat{\rho})
+
+where the Lindblad dissipator is:
+
+.. math::
+
+   \mathcal{D}[\hat{L}](\hat{\rho}) = \hat{L} \hat{\rho} \hat{L}^\dagger - \frac{1}{2} \{ \hat{L}^\dagger \hat{L}, \hat{\rho} \}
+
+Here, :math:`\gamma_k` are the rates (kinetic coefficients) and :math:`\hat{L}_k` are the jump operators. 
+When changing the basis from :math:`\{|i\rangle\}` to :math:`\{|\alpha\rangle\}` via a unitary matrix 
+:math:`U` (where :math:`|\alpha\rangle = \sum_i U_{\alpha i} |i\rangle`), the operators transform, 
+necessitating a corresponding transformation of the rates :math:`\gamma_k`.
+
+Loss Probabilities (Out Probabilities)
+""""""""""""""""""""""""""""""""""""""
+
+Loss probabilities :math:`\Gamma_i` represent decay rates from state :math:`|i\rangle` to outside 
+the system (e.g., radiative decay). The corresponding jump operator is:
+
+.. math::
+
+   \hat{L}_i = |\text{vac}\rangle\langle i|
+
+where :math:`|\text{vac}\rangle` represents the state outside the computational subspace. 
+In the new basis, the loss operator becomes:
+
+.. math::
+
+   \hat{L}_\alpha = |\text{vac}\rangle\langle\alpha| = \sum_i U_{\alpha i}^* |\text{vac}\rangle\langle i| 
+   = \sum_i U_{\alpha i}^* \hat{L}_i
+
+**Proof of Rate Transformation:**
+
+The total loss rate from state :math:`|\alpha\rangle` is obtained by computing the expectation 
+value of the loss superoperator:
+
+.. math::
+
+   \Gamma'_\alpha = \langle\alpha| \sum_i \Gamma_i \hat{L}_i^\dagger \hat{L}_i |\alpha\rangle
+
+Substituting the transformation :math:`\hat{L}_i^\dagger \hat{L}_i = |i\rangle\langle i|`:
+
+.. math::
+
+   \begin{aligned}
+   \Gamma'_\alpha &= \sum_i \Gamma_i \langle\alpha| i\rangle\langle i | \alpha\rangle \\
+   &= \sum_i \Gamma_i |\langle\alpha|i\rangle|^2 \\
+   &= \sum_i |U_{\alpha i}|^2 \Gamma_i
+   \end{aligned}
+
+In matrix form, this is :math:`\boldsymbol{\Gamma}' = |U|^2 \cdot \boldsymbol{\Gamma}`. 
+This confirms that loss probabilities transform via the element-wise squared transformation 
+matrix, consistent with probability conservation.
+
+Transition Probabilities: Formal Lindblad Derivation
+""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+This section provides a rigorous derivation of the transition probability transformation rule
+using the Lindblad master equation formalism. We explicitly show how the secular approximation
+leads to the bilinear probability rule :math:`W' = |U|^2 W (|U|^2)^\top`.
+
+Lindblad Gain Term in Old Basis
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Consider the gain part of the Lindblad dissipator for transition rates :math:`W_{ij}` 
+(from state :math:`|j\rangle` to :math:`|i\rangle`) in the old basis:
+
+.. math::
+
+   \mathcal{L}_{\text{gain}}^{\text{old}}(\hat{\rho}) = \sum_{i,j} W_{ij} \, \hat{L}_{ij} \hat{\rho} \hat{L}_{ij}^\dagger
+
+where the jump operators are defined as :math:`\hat{L}_{ij} = |i\rangle\langle j|`.
+
+Transformation to New Basis
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We transform the jump operators to the new basis :math:`\{|\alpha\rangle\}` using the unitary matrix 
+:math:`U`, where :math:`|\alpha\rangle = \sum_k U_{\alpha k} |k\rangle`. The inverse relation is 
+:math:`|k\rangle = \sum_\alpha U_{\alpha k}^* |\alpha\rangle`.
+
+Substituting this into the jump operator definition:
+
+.. math::
+
+   \hat{L}_{ij} = |i\rangle\langle j| = \left( \sum_\alpha U_{\alpha i}^* |\alpha\rangle \right) 
+   \left( \sum_\beta U_{\beta j} \langle\beta| \right) = \sum_{\alpha,\beta} U_{\alpha i}^* U_{\beta j} \, |\alpha\rangle\langle\beta|
+
+Define the new basis jump operators as :math:`\hat{L}_{\alpha\beta} = |\alpha\rangle\langle\beta|`. Then:
+
+.. math::
+
+   \hat{L}_{ij} = \sum_{\alpha,\beta} U_{\alpha i}^* U_{\beta j} \, \hat{L}_{\alpha\beta}
+
+Now substitute this expansion into the Lindblad gain term:
+
+.. math::
+
+   \begin{aligned}
+   \mathcal{L}_{\text{gain}}^{\text{old}}(\hat{\rho}) &= \sum_{i,j} W_{ij} \left( \sum_{\alpha,\beta} U_{\alpha i}^* U_{\beta j} \hat{L}_{\alpha\beta} \right) \hat{\rho} 
+   \left( \sum_{\gamma,\delta} U_{\gamma i} U_{\delta j}^* \hat{L}_{\gamma\delta}^\dagger \right) \\
+   &= \sum_{\alpha,\beta,\gamma,\delta} \left[ \sum_{i,j} W_{ij} \, U_{\alpha i}^* U_{\gamma i} \, U_{\beta j} U_{\delta j}^* \right] 
+   \hat{L}_{\alpha\beta} \hat{\rho} \hat{L}_{\gamma\delta}^\dagger
+   \end{aligned}
+
+Secular Approximation
+^^^^^^^^^^^^^^^^^^^^^
+
+The expression above contains cross-terms where :math:`(\alpha,\beta) \neq (\gamma,\delta)`. 
+In the interaction picture, the operator product :math:`\hat{L}_{\alpha\beta} \hat{\rho} \hat{L}_{\gamma\delta}^\dagger` 
+oscillates at frequency :math:`\omega_{\alpha\beta} - \omega_{\gamma\delta}`, where 
+:math:`\omega_{\alpha\beta} = E_\alpha - E_\beta`.
+
+The **secular approximation** assumes that relaxation processes are slow compared to coherent 
+precession. Terms with non-zero frequency differences (:math:`\omega_{\alpha\beta} \neq \omega_{\gamma\delta}`) 
+average to zero over the relaxation timescale. We retain only the stationary terms where 
+:math:`\alpha = \gamma` and :math:`\beta = \delta`.
+
+Applying this approximation (:math:`\delta_{\alpha\gamma} \delta_{\beta\delta}`):
+
+.. math::
+
+   \mathcal{L}_{\text{gain}}^{\text{new}}(\hat{\rho}) \approx \sum_{\alpha,\beta} \left[ \sum_{i,j} W_{ij} \, |U_{\alpha i}|^2 \, |U_{\beta j}|^2 \right] 
+   \hat{L}_{\alpha\beta} \hat{\rho} \hat{L}_{\alpha\beta}^\dagger
+
+Identification of New Rates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We define the new transition rates :math:`W'_{\alpha\beta}` such that the master equation retains 
+its Lindblad form in the new basis:
+
+.. math::
+
+   \mathcal{L}_{\text{gain}}^{\text{new}}(\hat{\rho}) = \sum_{\alpha,\beta} W'_{\alpha\beta} \, \hat{L}_{\alpha\beta} \hat{\rho} \hat{L}_{\alpha\beta}^\dagger
+
+By comparing coefficients, we obtain the transformation rule:
+
+.. math::
+
+   W'_{\alpha\beta} = \sum_{i,j} |U_{\alpha i}|^2 \, W_{ij} \, |U_{\beta j}|^2
+
+In matrix notation, letting :math:`P = |U|^2` be the element-wise squared transformation matrix:
+
+.. math::
+
+   W' = P \, W \, P^\top
+
+This confirms that transition probabilities transform via the bilinear probability rule, 
+consistent with the interpretation of :math:`W_{ij}` as incoherent transition rates between states.
+
 Basis Transformation in Multiplied Contexts
 -------------------------------------------
 

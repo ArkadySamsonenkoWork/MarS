@@ -70,11 +70,11 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
                                   res_fields: torch.Tensor,
-                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   lvl_down: torch.Tensor,
                                   lvl_up: torch.Tensor, energies: torch.Tensor,
                                   vector_down: torch.Tensor,
                                   vector_up: torch.Tensor,
+                                  full_system_vectors: tp.Optional[torch.Tensor],
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """
         Function creates TransitionMatrixGenerator - it is object that can compute probabilities of transitions.
@@ -87,14 +87,6 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             Resonance fields of transitions.
             Shape: [..., M], where M is the number of resonance energies.
 
-        :param full_system_vectors:
-            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
-            where M is number of transitions, N is number of levels
-            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
-            make the creator to compute these vectors.
-            The default behavior, whether to calculate vectors or not,
-            depends on the specific Spectra Manager and its settings.
-
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
             Shape: [time, ..., N], where time is the time dimension and
@@ -106,7 +98,7 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             N is the number of energy levels.
 
         :param energies:
-            The energies of spin states. The shape is [..., N]
+            The energies of spin states. The shape is [..., M, N]
 
         :param vector_down:
             Eigenvectors of the lower energy states. The shape is [...., M, N],
@@ -115,6 +107,14 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         :param vector_up:
             Eigenvectors of the upper energy states.The shape is [...., M, N],
             where M is number of transitions, N is number of levels
+
+        :param full_system_vectors:
+            Eigenvectors of the full set of energy levels. The shape os [...., M, N, N],
+            where M is number of transitions, N is number of levels
+            For some cases it can be None. The parameter of the creator 'output_eigenvector- == True'
+            make the creator to compute these vectors.
+            The default behavior, whether to calculate vectors or not,
+            depends on the specific Spectra Manager and its settings.
 
         :param args: tuple, optional.
         :param kwargs : dict, optional
@@ -183,9 +183,9 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         The shape is [T, ...., Tr]
         """
         initial_populations = self._initial_populations(energies, lvl_down, lvl_up, full_system_vectors)
-        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields, full_system_vectors,
+        tr_matrix_generator = self._init_tr_matrix_generator(time, res_fields,
                                                              lvl_down, lvl_up, energies, vector_down,
-                                                             vector_up, *args, **kwargs)
+                                                             vector_up, full_system_vectors, *args, **kwargs)
         evo = tr_utils.EvolutionMatrix(energies)
         if initial_populations.dim() == 1:
             initial_populations = initial_populations.unsqueeze(-2)

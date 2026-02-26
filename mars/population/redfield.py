@@ -75,13 +75,12 @@ class ThermalBalanceMode(Enum):
 
 
 class BasisRadfieldManager(torch.nn.Module):
-    def __init__(self, basis: tp.Optional[torch.Tensor]):
+    def __init__(self, eigen_basis_flag: bool):
         """
         :param basis: basis initialized in the appropriate Context
         """
         super().__init__()
-        self.basis = basis
-        self.transformation_unitary = None
+        self.eigen_basis_flag = eigen_basis_flag
         self._setup_transformers()
 
     def _setup_transformers(self):
@@ -92,89 +91,22 @@ class BasisRadfieldManager(torch.nn.Module):
         When no transformation is needed (eigenbasis):
         - All transformation methods become identity operations (_transformed_skip)
         """
-        if self.basis is None:
-            self.apply_kronecker = self._skip_kronecker
-            self.apply_zaro_pad = self._skip_zeros
+        if self.eigen_basis_flag:
             self.apply_basis_transform = self._transform_skip
         else:
-            self.apply_kronecker = self._transform_kronecker
-            self.apply_zaro_pad = self._transform_zeros
             self.apply_basis_transform = self._transform_unitary
 
-    def _compute_transformation_unitary(self, full_system_vectors: torch.Tensor) -> torch.Tensor:
-        if self.transformation_unitary is not None:
-            self.transformation_unitary = transform.basis_transformation(self.basis, full_system_vectors)
-        return self.transformation_unitary
-
     def _transform_skip(
-            self, operators: tp.List[torch.Tensor],  full_system_vectors: tp.Optional[torch.Tensor]
+            self, operators: tp.List[torch.Tensor],  transformation_unitary: tp.Optional[torch.Tensor]
     ) -> tp.List[torch.Tensor]:
         return operators
 
     def _transform_unitary(
-            self, operators: tp.List[torch.Tensor], full_system_vectors: torch.Tensor
+            self, operators: tp.List[torch.Tensor], transformation_unitary: torch.Tensor
     ) -> tp.List[torch.Tensor]:
-        coeffs  = self._compute_transformation_unitary(full_system_vectors)
-        return [transform.transform_operator_to_new_basis(coeffs, op) for op in operators]
-
-    def _skip_kronecker(
-            self, left_dim: int, right_dim: int) -> None:
-        """
-        skip kronecker transformation
-
-       :param left_dim: Size of the left identity matrix (L). If 0, skipped.
-       :param right_dim: Size of the right identity matrix (R). If 0, skipped.
-        """
-        pass
-
-    def _transform_kronecker(
-            self, left_dim: int, right_dim: int) -> None:
-        """
-       Compute I_L ⊗ A ⊗ I_R for the basis vector.
-
-       It is used when the system is part of a larger composite Hilbert space.
-       Note: This modifies the stored 'operator_components' list, so it should be
-       called before 'build_coupling_operator' or the components should be re-registered.
-       Mathematical formulation
-
-       Given an operator component O of size N x N, the expanded component O' is:
-       O' = I_L ⊗ O ⊗ I_R
-       The resulting dimension is D = L * N * R.
-
-       :param left_dim: Size of the left identity matrix (L). If 0, skipped.
-       :param right_dim: Size of the right identity matrix (R). If 0, skipped.
-        """
-        self.basis = _expand_op_kronecker(self.basis, left_dim, right_dim)
-
-    def _skip_zeros(self, left_dim: int, right_dim: int):
-        """
-         skip zeros basis transform
-
-         O' = [ 0_L  0   0  ]
-              [ 0    O   0  ]
-              [ 0    0   0_R ]
-         Resulting shape: (L + N + R) x (L + N + R).
-
-         :param left_dim: Size of the top-left zero block (L).
-         :param right_dim: Size of the bottom-right zero block (R).
-         """
-        pass
-
-    def _transform_zeros(self, left_dim: int, right_dim: int):
-        """
-         pass the basis by zeros
-
-         Mathematical formulation
-
-         O' = [ 0_L  0   0  ]
-              [ 0    O   0  ]
-              [ 0    0   0_R ]
-         Resulting shape: (L + N + R) x (L + N + R).
-
-         :param left_dim: Size of the top-left zero block (L).
-         :param right_dim: Size of the bottom-right zero block (R).
-         """
-        self.basis = _expand_op_zeros(self.basis, left_dim, right_dim)
+        return [transform.transform_operator_to_new_basis(
+            transformation_unitary, op.to(transformation_unitary.dtype)
+        ) for op in operators]
 
 
 class RedfieldRelaxationChannel(torch.nn.Module):
@@ -190,7 +122,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
     │ Coupling operators A:        dimensionless│
     └─────────────────────────────────────────┘
 
-    The Redfield tensor scales as |A|² × J(ω) so the total dimension of this multiplication must be rad / s
+    The Redfield tensor scales as |A|² × J(ω) so the total dimension
+    of this multiplication must be rad / s
     By default we ask to set |A|^2 as dimensionless then
     J(ω) must return rad/s to produce rates in rad/s.
 
@@ -225,8 +158,10 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             H_coupling = sum_k (O_static_k + field * O_dependent_k).
 
             For each tuple (O_static, O_dependent):
-            1. The first operator (field-independent) is not multiplied by the external field.
-            2. The second operator (field-dependent) is multiplied by the external field
+            1. The first operator (field-independent)
+            is not multiplied by the external field.
+            2. The second operator (field-dependent)
+            is multiplied by the external field
                (e.g., Magnetic Field in Tesla).
 
             If a specific term is not necessary for the system, the corresponding tensor
@@ -237,7 +172,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             The final units of O_static we ask to be dimensionless,
             O_dependent must be 1 / Tesla.
 
-            The Redfield tensor scales as |A|² × J(ω) so the total dimension of this multiplication must be rad / s
+            The Redfield tensor scales as |A|² × J(ω) so the total
+            dimension of this multiplication must be rad / s
             By default we ask to set |A|^2 as dimensionless then
             J(ω) must return rad/s to produce rates in rad/s.
 
@@ -246,20 +182,23 @@ class RedfieldRelaxationChannel(torch.nn.Module):
                 Signature: func(omega_rad_s: Tensor) -> Tensor
                 - Input: Transition frequencies in rad/s (can be negative).
                 - Output: Spectral density values.
-                - Units: Must match `dimension_convention`. For 'rad_per_s', output must be rad/s.
+                - Units: Must match `dimension_convention`.
+                For 'rad_per_s', output must be rad/s.
 
             The Redfield rate is: W = |A|² × J(ω)
             Since |A|² is dimensionless and probabilities must be positive,
             J(ω) should return non-negative values in rad/s.
 
             Mathematical formulation:
-            The spectral density describes the bath correlation function in frequency domain:
+            The spectral density describes the bath correlation function
+            in frequency domain:
             J(omega) = ∫ dt exp(i * omega * t) * <B(t)B(0)>
 
             For classical noise, J(omega) is real, even, and non-negative:
             J(-omega) = J(omega) >= 0
 
-            For quantum baths, detailed balance can be enforced by _compute_density() depending of flag:
+            For quantum baths,
+            detailed balance can be enforced by _compute_density() depending of flag:
             J(-omega) = J(omega) * exp(-h * omega / (k_B * T))
 
         :param thermal_balance_mode: Strategy for enforcing thermal detailed balance.
@@ -270,7 +209,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             - "symmetric" (or `ThermalBalanceMode.SYMMETRIC`): Symmetrizes the
               spectral density and enforces detailed balance on all transitions.
               Both upward and downward rates are adjusted to preserve the average
-              coupling strength while satisfying $J(-\omega) = J(\omega)e^{-\hbar\omega/k_BT}$.
+              coupling strength while satisfying
+              $J(-\omega) = J(\omega)e^{-\hbar\omega/k_BT}$.
               *Default if None is provided.*
             - "complement" (or `ThermalBalanceMode.COMPLEMENT`): Fills only
               missing zero entries in the upward transition matrix ($\omega < 0$)
@@ -289,7 +229,9 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             self.thermal_balance_mode = thermal_balance_mode
         elif isinstance(thermal_balance_mode, str):
             try:
-                self.thermal_balance_mode = ThermalBalanceMode(thermal_balance_mode.lower())
+                self.thermal_balance_mode = ThermalBalanceMode(
+                    thermal_balance_mode.lower()
+                )
             except ValueError:
                 valid_modes = [mode.value for mode in ThermalBalanceMode]
                 raise ValueError(
@@ -303,17 +245,22 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             )
         self._initialize_components(operator_components)
         self.spectral_density_func = spectral_density_func
+        self.eigen_basis_flag = None
+        self.spectral_density_modifier = self._spectral_density_factory()
 
-    def post_init(self, basis: tp.Optional[torch.Tensor], secular: bool = False) -> None:
+    def post_init(self, eigen_basis_flag: bool = False, secular: bool = False) -> None:
         """
         Post-Initialize the Redfield relaxation logic.
-        :param basis: Basis got in the context or user-defined
+        :param eigen_basis_flag: The flag should the eigen basis be used. Or there is not None trasnformation matrix.
+        If True then the basis will be None, and no transformation will be performed
         :param secular: Whether to apply the secular approximation.
         """
         self.secular = secular
-        self.basis_manager = BasisRadfieldManager(basis)
+        self.basis_manager = BasisRadfieldManager(eigen_basis_flag)
+        self.eigen_basis_flag = eigen_basis_flag
 
-    def _spectral_density_factory(self) -> tp.Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
+    def _spectral_density_factory(self) ->\
+            tp.Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
         """
         Factory method to select the spectral density modification function.
 
@@ -337,22 +284,26 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             return self._modify_density_complement
 
     def _initialize_components(
-            self, operator_components: tp.List[tp.Tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]]) -> None:
+            self,
+            operator_components: OperatorComponentsType) -> None:
         """
         Register and preprocess the base operator components.
 
-        Calls the abstract 'register_operator_components' which should return a list
+        Check that init take a list
         of tuples. Each tuple contains (field-independent, field-dependent) operators.
         Adds a singleton dimension at index -3 to each tensor. This dimension
         facilitates broadcasting when applying field-dependent coefficients to build
         the final coupling operators.
 
-        self.operator_components will be a List[Tuple[Optional[Tensor], Optional[Tensor]]].
+        self.operator_components will be a
+        List[Tuple[Optional[Tensor], Optional[Tensor]]].
 
         :param operator_components: operator components to set the coupling operators
         """
         if not isinstance(operator_components, list):
-            raise TypeError("register_operator_components must return a list of tuples.")
+            raise TypeError(
+                "operator_components must return a list of tuples."
+            )
 
         self.operator_components = []
         for raw_ops in operator_components:
@@ -362,9 +313,12 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             d = dep.unsqueeze(-3) if dep is not None else None
             self.operator_components.append((s, d))
 
-    def _validate_register_components(self, raw_ops: tp.Tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]):
+    def _validate_register_components(
+            self,
+            raw_ops: tp.Tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]
+    ):
         """
-        Validate the output of 'register_operator_components'.
+        Validate the input of init function
 
         Ensures that exactly two operator components are returned, corresponding
         to the linear coupling model: H_coupling = O_static + field * O_dependent.
@@ -376,20 +330,15 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         :raises ValueError: If the tuple does not contain exactly two elements.
         """
         if len(raw_ops) != 2:
-            raise ValueError("In 'register_operator_components' you must return a tuple of two operators "
-                             "(field-independent, field-dependent). If one term is not needed, set it to None.")
+            raise ValueError(
+                "In the Readfield channel you should pass the "
+                "tuple of two operators "
+                "(field-independent, field-dependent)."
+                "If one term is not needed, set it to None."
+            )
 
-    @abstractmethod
-    def register_operator_components(self) -> tp.List[tp.Tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]]:
-        """
-        Return a
-
-        :return: A list of tuples. Each tuple contains two tensors (or None),
-            each with shape (..., N, N).
-        """
-        pass
-
-    def build_coupling_operator(self, fields: torch.Tensor) -> tp.List[torch.Tensor]:
+    def build_coupling_operator(
+            self, fields: tp.Optional[torch.Tensor]) -> tp.List[torch.Tensor]:
         """
         Construct the single final system-bath coupling operator from base components.
 
@@ -401,24 +350,24 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         The effective coupling operator O is constructed as a linear combination:
         O(fields) = O_static + sum_k(field_k * O_dependent_k)
 
-        In this implementation, 'fields' is broadcast against the 'field_dependent_component'.
-        If 'field_dependent_component' represents a vector of operators (e.g. [Sx, Sy, Sz]),
-        ensure 'fields' matches the dimensions for the dot product, or handle the summation
+        In this implementation, 'fields' is broadcast against the
+        'field_dependent_component'.
+        If 'field_dependent_component' represents a vector of operators
+        (e.g. [Sx, Sy, Sz]),
+        ensure 'fields' matches the dimensions for the dot product,
+        or handle the summation
         externally. Here we assume element-wise multiplication broadcasting.
 
         :param fields: Tensor of external fields (e.g., magnetic fields).
             Shape: (..., K), where K is number of transition.
 
-        :param field_components: The field-coupled operator components.
-            Each element is tuple with two perators
-            field_independent_component: The static operator component (O_static).
-                Shape: (..., 1, N, N) or None.
-            field_dependent_component: The field-coupled operator component (O_dependent).
-                Shape: (..., 1, N, N) or None.
         :return: The list of coupling  operator. Shape of each (..., 1, N, N).
         """
         operators = []
-        field_expanded = fields.unsqueeze(-1).unsqueeze(-1)
+        if fields is not None:
+            field_expanded = fields.unsqueeze(-1).unsqueeze(-1)
+        else:
+            field_expanded = 0.0
 
         for static, dep in self.operator_components:
             static_term = static if static is not None else 0
@@ -426,7 +375,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
             op = dep_term * field_expanded + static_term
             operators.append(op)
-
         return operators
 
     def expand_kronecker(
@@ -459,7 +407,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             results.append((new_static, new_dep))
         self.operator_components = results
 
-    def _compute_boltzmann_factor(self, omega_hz: torch.Tensor, temp: torch.Tensor) -> torch.Tensor:
+    def _compute_boltzmann_factor(self, omega_hz: torch.Tensor,
+                                  temperature: torch.Tensor) -> torch.Tensor:
         """
         Compute the Boltzmann factor for thermal balance.
 
@@ -471,10 +420,10 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         :param omega_hz: Transition frequencies in Hz. Shape: (..., N, N).
             omega_hz[i, j] = E_j - E_i (positive for upward transitions).
-        :param temp: Temperature in Kelvin. Shape: (...) or scalar.
+        :param temperature: temperature in Kelvin. Shape: (...) or scalar.
         :return: Boltzmann factor. Shape: (..., N, N).
         """
-        return torch.exp(constants.unit_converter(omega_hz, "Hz_to_K") / temp)
+        return torch.exp(constants.unit_converter(omega_hz, "Hz_to_K") / temperature)
 
     def expand_zeros(
             self, left_dim: int, right_dim: int) -> None:
@@ -499,15 +448,19 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             new_static = None
             new_dep = None
             if static is not None:
-                new_static = torch.nn.functional.pad(static, (left_dim, right_dim, left_dim, right_dim))
+                new_static = torch.nn.functional.pad(
+                    static, (left_dim, right_dim, left_dim, right_dim)
+                )
             if dep is not None:
-                new_dep = torch.nn.functional.pad(dep, (left_dim, right_dim, left_dim, right_dim))
+                new_dep = torch.nn.functional.pad(
+                    dep, (left_dim, right_dim, left_dim, right_dim)
+                )
             results.append((new_static, new_dep))
         self.operator_components = results
 
     def _modify_density_skip(self, J_raw: torch.Tensor,
                              omega_hz: torch.Tensor,
-                             temp: torch.Tensor) -> torch.Tensor:
+                             temperature: torch.Tensor) -> torch.Tensor:
         """
         No modification to spectral density.
 
@@ -518,14 +471,14 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         :param J_raw: Raw spectral density from spectral_density(). Units: rad/s.
         :param omega_hz: Transition frequencies in Hz.
-        :param temp: Temperature in Kelvin.
+        :param temperature: Temperature in Kelvin.
         :return: Unmodified spectral density. Units: rad/s.
         """
         return J_raw
 
     def _modify_density_symmetric(self, J_raw: torch.Tensor,
                                   omega_hz: torch.Tensor,
-                                  temp: torch.Tensor) -> torch.Tensor:
+                                  temperature: torch.Tensor) -> torch.Tensor:
         """
         Symmetrize spectral density using Boltzmann factors.
 
@@ -537,7 +490,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         J(ω) = 2 * J_sym(ω) / (1 + exp(-hω/k_B T))
         J(-ω) = J(ω) * exp(-hω/k_B T)
 
-        This ensures thermal equilibrium while preserving the average coupling strength.
+        This ensures thermal equilibrium
+        while preserving the average coupling strength.
 
         Use this for:
         - Thermal baths where only symmetric coupling is known
@@ -545,20 +499,20 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         :param J_raw: Raw spectral density. Units: rad/s.
         :param omega_hz: Transition frequencies in Hz. omega[i,j] = E_j - E_i.
-        :param temp: Temperature in Kelvin.
+        :param temperature: Temperature in Kelvin.
         :return: Symmetrized spectral density. Units: rad/s.
         """
         J_raw_neg = J_raw.transpose(-2, -1)
         J_sym = (J_raw + J_raw_neg) / 2.0
 
-        boltzmann = self._compute_boltzmann_factor(omega_hz, temp)
+        boltzmann = self._compute_boltzmann_factor(omega_hz, temperature)
         J_thermal = 2.0 * J_sym / (1.0 + boltzmann)
 
         return J_thermal
 
     def _modify_density_complement(self, J_raw: torch.Tensor,
                                    omega_hz: torch.Tensor,
-                                   temp: torch.Tensor) -> torch.Tensor:
+                                   temperature: torch.Tensor) -> torch.Tensor:
         """
         Enforce quantum detailed balance: J(-ω) = J(ω) × exp(-ℏω / k_B T)
 
@@ -597,13 +551,13 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         :param omega_hz: Transition frequencies in Hz.
             omega_hz[i, j] = E_j - E_i.
             omega_hz > 0: downward (emission), omega_hz < 0: upward (absorption).
-        :param temp: Temperature in Kelvin.
+        :param temperature: Temperature in Kelvin.
         :return: Completed spectral density matrix. Units: rad/s.
             Only upward transitions (omega < 0) are modified.
         """
         J_result = J_raw.clone()
         energy_diff_K = constants.unit_converter(omega_hz, "Hz_to_K")
-        temp_safe = torch.clamp(temp, min=1e-10)
+        temp_safe = torch.clamp(temperature, min=1e-10)
         boltzmann = torch.exp(energy_diff_K / temp_safe)
         J_transpose = J_raw.transpose(-2, -1)
         J_filled = J_transpose * boltzmann
@@ -613,19 +567,24 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         return J_result
 
-    def _get_spectral_density_matrix(self, energies: torch.Tensor, temp: torch.Tensor) -> torch.Tensor:
+    def _get_spectral_density_matrix(self, energies: torch.Tensor,
+                                     temperature: torch.Tensor) -> torch.Tensor:
         """
         Compute the matrix J_cd = J(omega_cd) for all pairs of eigenstates.
 
-        :param energies: Tensor of eigenenergies. Shape: (..., N).
+        :param energies: Tensor of eigenenergies in Hz. Shape: (..., N).
         :return: Tensor of shape (..., N, N) with J(omega_cd).
         """
         # omega_cd = E_c - E_d
         omega_hz = energies.unsqueeze(-1) - energies.unsqueeze(-2)
 
-        return self.spectral_density_modifier(self.spectral_density_func(omega_hz / 2 * math.pi), omega_hz, temp)
+        return self.spectral_density_modifier(
+            self.spectral_density_func(omega_hz / 2 * math.pi), omega_hz, temperature
+        )
 
-    def get_coupling_operators(self, coeffs: torch.Tensor, fields: torch.Tensor) -> tp.List[torch.Tensor]:
+    def get_coupling_operators(
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: torch.Tensor) -> tp.List[torch.Tensor]:
         """
         Wrapper to get the final field-dependent coupling operators in the eigenbasis.
 
@@ -633,20 +592,15 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         the list of effective operators, then transforms them to the eigenbasis
         using the provided unitary transformation matrix.
 
-        :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis via: A_eigen = U @ A @ U^dagger.
-            This is typically computed as U = basis_new^dagger @ basis_old, where
-            basis_old contains the original basis vectors as columns and basis_new
-            contains the eigenbasis vectors as columns.
-            Shape: (..., 1, N, N).
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
         :param fields: External fields (e.g., magnetic field). Shape: (..., K).
         :return: A list of coupling operators in the eigenbasis.
             Each has Shape: (..., N, N).
         """
         ops_original = self.build_coupling_operator(fields)
-        ops_eigen = []
-        for op in ops_original:
-            ops_eigen.append(transform.transform_operator_to_new_basis(coeffs, op))
+        ops_eigen = self.basis_manager.apply_basis_transform(
+            ops_original, transformation_unitary)
         return ops_eigen
 
     def _compute_transition_probs(self, operators: tp.List[torch.Tensor],
@@ -680,25 +634,27 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         return W
 
     def transition_probabilities(
-            self, coeffs: torch.Tensor,
-            fields: torch.Tensor, energies: torch.Tensor,
-            temp: torch.Tensor) -> torch.Tensor:
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor], energies: torch.Tensor,
+            temperature: torch.Tensor) -> torch.Tensor:
         """
         Compute the population transfer rate matrix.
 
-        :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis via: A_eigen = U @ A @ U^dagger.
-            Shape: (..., 1, N, N).
-        :param fields: External fields.
-        :param energies: System eigenenergies.
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system stationary temperature  in Kelvin.
+        The shape is [] or [t], where t is number of time-steps.
         :return: Rate matrix W.
         """
-        operators = self.get_coupling_operators(coeffs, fields)
-        spec_density = self._get_spectral_density_matrix(energies, temp)
+        operators = self.get_coupling_operators(transformation_unitary, fields)
+        spec_density = self._get_spectral_density_matrix(energies, temperature)
         return self._compute_transition_probs(operators, spec_density)
 
     def _compute_dephasing_matrix(
-            self, operators: tp.List[torch.Tensor], spec_density: torch.Tensor) -> torch.Tensor:
+            self, operators: tp.List[torch.Tensor],
+            spec_density: torch.Tensor) -> torch.Tensor:
         """
         Compute pure dephasing rates for coherences rho_ab (a != b).
 
@@ -737,24 +693,27 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         return gamma_pop + pure_dephasing
 
     def dephasing_matrix(
-            self, coeffs: torch.Tensor, fields: torch.Tensor,
-            energies: torch.Tensor, temp: torch.Tensor) -> torch.Tensor:
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor, temperature: torch.Tensor) -> torch.Tensor:
         """
         Public wrapper for dephasing rate calculation.
 
-        :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis.
-            Shape: (..., 1, N, N).
-        :param fields: External fields.
-        :param energies: System eigenenergies.
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system stationary temperature  in Kelvin.
+        The shape is [] or [t], where t is number of time-steps.
         :return: Dephasing rates.
         """
-        operators = self.get_coupling_operators(coeffs, fields)
-        spec_density = self._get_spectral_density_matrix(energies, temp)
+        operators = self.get_coupling_operators(transformation_unitary, fields)
+        spec_density = self._get_spectral_density_matrix(energies, temperature)
         return self._compute_dephasing_matrix(operators, spec_density)
 
     def _secular_superoperator_4d(
-            self, operators: tp.List[torch.Tensor], spec_density: torch.Tensor) -> torch.Tensor:
+            self, operators: tp.List[torch.Tensor],
+            spec_density: torch.Tensor) -> torch.Tensor:
         """
         Compute the Redfield tensor under the secular approximation.
 
@@ -766,38 +725,32 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         The 4D tensor R_abcd has three main contributions:
         1. Population Transfer (a=b, c=d): R_aacc = W_a<-c for a != c.
-        2. Population Loss (a=b=c=d): R_aaaa = - sum_k W_k<-a.
-        3. Coherence Decay (a!=b, c=a, d=b): R_abab = -Gamma_ab.
+        2. Coherence Decay including population loss because of population (a!=b, c=a, d=b): R_abab = -Gamma_ab.
         All other terms are zero.
 
         :param operators: List of coupling operators.
         :param spec_density: Spectral density matrix.
         :return: 4D Relaxation tensor. Shape: (..., N, N, N, N).
         """
-        ref_op = operators[0] if operators else torch.zeros_like(spec_density).unsqueeze(-3)
-        N = ref_op.shape[-1]
-        device = ref_op.device
-        R = torch.zeros(ref_op.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
-
         W = self._compute_transition_probs(operators, spec_density)
-        rate_out = W.sum(dim=-2, keepdim=True).transpose(-1, -2)  # Shape: (..., 1, N)
         gamma = self._compute_dephasing_matrix(operators, spec_density)
+
+        N = W.shape[-1]
+        device = W.device
+        R = torch.zeros(
+            W.shape[:-2] + (N, N, N, N), dtype=W.dtype, device=device)
 
         idx = torch.arange(N, device=device)
         i, j = torch.meshgrid(idx, idx, indexing="ij")
 
-        R[..., idx, idx, idx, idx] = -rate_out[..., 0, idx]
-
         R[..., i, i, j, j] = W
+        R[..., i, j, i, j] = -gamma
 
-        diag_mask = torch.eye(N, device=device, dtype=torch.bool)
-        gamma_off_diag = gamma.clone()
-        gamma_off_diag[..., diag_mask] = 0
-        R[..., i, j, i, j] = -gamma_off_diag
         return R
 
     def _non_secular_superoperator_4d(
-            self, operators: tp.List[torch.Tensor], spec_density: torch.Tensor) -> torch.Tensor:
+            self, operators: tp.List[torch.Tensor],
+            spec_density: torch.Tensor) -> torch.Tensor:
         """
         Compute the full Redfield tensor without secular approximation.
 
@@ -820,7 +773,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         """
         if not operators:
             N = spec_density.shape[-1]
-            return torch.zeros(spec_density.shape[:-2] + (N, N, N, N), dtype=spec_density.dtype,
+            return torch.zeros(
+                spec_density.shape[:-2] + (N, N, N, N), dtype=spec_density.dtype,
                                device=spec_density.device)
 
         ref_op = operators[0]
@@ -828,7 +782,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         device = ref_op.device
 
         # Sum A_Aconj over all operators
-        A_Aconj_sum = torch.zeros(ref_op.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
+        A_Aconj_sum = torch.zeros(
+            ref_op.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
         for op in operators:
             A_Aconj_sum += torch.einsum("...ab,...cd->...abcd", op, op.conj())
 
@@ -854,19 +809,25 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         return R
 
     def compute_relaxation_superoperator_4d(
-            self, coeffs: torch.Tensor, fields: torch.Tensor, energies: torch.Tensor, temp: torch.Tensor) -> torch.Tensor:
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> torch.Tensor:
         """
-       Compute the 4D Redfield relaxation tensor.
+         Compute the 4D Redfield relaxation tensor.
 
-       :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis.
-            Shape: (..., 1, N, N).
-       :param fields: External fields.
-       :param energies: System eigenenergies.
-       :return: Tensor R_abcd. Shape: (..., N, N, N, N).
-       """
-        operators = self.get_coupling_operators(coeffs, fields)
-        spec_density_matrix = self._get_spectral_density_matrix(energies, temp)
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system stationary temperature  in Kelvin.
+        The shape is [] or [t], where t is number of time-steps.
+        :return: Tensor R_abcd. Shape: (..., N, N, N, N).
+        """
+        operators = self.get_coupling_operators(transformation_unitary, fields)
+        spec_density_matrix = self._get_spectral_density_matrix(
+            energies, temperature
+        )
 
         if self.secular:
             return self._secular_superoperator_4d(operators, spec_density_matrix)
@@ -874,8 +835,9 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             return self._non_secular_superoperator_4d(operators, spec_density_matrix)
 
     def compute_relaxation_superoperator(
-            self, coeffs: torch.Tensor, fields: torch.Tensor,
-            energies: torch.Tensor, temp: torch.Tensor) -> torch.Tensor:
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor, temperature: torch.Tensor) -> torch.Tensor:
         """
         Compute the 2D Liouvillian relaxation superoperator.
 
@@ -890,20 +852,22 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         The row-major index for element (i, j) is i * N + j.
         The superoperator maps index (c, d) to (a, b).
 
-        :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis.
-            Shape: (..., 1, N, N).
-        :param fields: External fields.
-        :param energies: System eigenenergies.
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system temperature in K.
+        The shape is [] or [t], where t is number of time-steps
         :return: Superoperator matrix. Shape: (..., N^2, N^2).
         """
-        R4 = self.compute_relaxation_superoperator_4d(coeffs, fields, energies, temp)
+        R4 = self.compute_relaxation_superoperator_4d(transformation_unitary, fields, energies, temperature)
         N = R4.shape[-1]
         return R4.reshape(R4.shape[:-4] + (N * N, N * N))
 
     def get_dephasing_vector(
-            self, coeffs: torch.Tensor, fields: torch.Tensor, energies: torch.Tensor,
-            temp: torch.Tensor) -> torch.Tensor:
+            self, transformation_unitary: tp.Optional[torch.Tensor], fields: torch.Tensor,
+            energies: torch.Tensor,
+            temperature: torch.Tensor) -> torch.Tensor:
         """
         Compute the level-specific dephasing vector gamma_i for Lindblad operators L_i = |i><i|.
 
@@ -920,21 +884,146 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         This ensures that the coherence decay due to population transfer is correctly modeled
         by Lindblad operators L_i = sqrt(gamma_i) |i><i|.
 
-        :param coeffs: Unitary matrix U that transforms operators
-            from the original basis to the eigenbasis.
-            Shape: (..., 1, N, N).
-        :param fields: External fields.
-        :param energies: System eigenenergies.
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system tempreature in K
+        The shape is [] or [t], where t is number of time-steps
         :return: Dephasing vector gamma. Shape: (..., N).
         """
-        operators = self.get_coupling_operators(coeffs, fields)
-        spec_density = self._get_spectral_density_matrix(energies, temp)
+        operators = self.get_coupling_operators(transformation_unitary, fields)
+        spec_density = self._get_spectral_density_matrix(energies, temperature)
 
         W = self._compute_transition_probs(operators, spec_density)
         gamma_vector = W.sum(dim=-2)
         return gamma_vector
 
+    def close(self):
+        """
+        close redfield channel
+        """
+        self.basis_manager.transformation_unitary = None
 
-class ReadfieldManager:
+
+class RedfieldManager:
+    """
+    The manager is used to manage the several redfield_channels.
+    Each redfield_channel can have any number of coupling operators but only one spectral desnity
+    """
     def __init__(self, redfield_channels: tp.List[RedfieldRelaxationChannel]):
         self.redfield_channels = redfield_channels
+        self.eigen_basis_flag = self.redfield_channels[0].eigen_basis_flag
+
+    def expand_zeros(
+            self, left_dim: int, right_dim: int) -> None:
+        """
+         Embed each operator in each channel into a larger zero-padded matrix.
+
+         It is used for open quantum systems where the relaxation only acts on a
+         subspace.
+
+         Mathematical formulation
+
+         O' = [ 0_L  0   0  ]
+              [ 0    O   0  ]
+              [ 0    0   0_R ]
+         Resulting shape: (L + N + R) x (L + N + R).
+
+         :param left_dim: Size of the top-left zero block (L).
+         :param right_dim: Size of the bottom-right zero block (R).
+         """
+        for channel in self.redfield_channels:
+            channel.expand_zeros(left_dim, right_dim)
+
+    def expand_kronecker(
+            self, left_dim: int, right_dim: int) -> None:
+        """
+       Compute I_L ⊗ A ⊗ I_R for the coupling operators in each channel.
+
+       It is used when the system is part of a larger composite Hilbert space.
+       Note: This modifies the stored 'operator_components' list, so it should be
+       called before 'build_coupling_operator' or the components should be re-registered.
+       Mathematical formulation
+
+       Given an operator component O of size N x N, the expanded component O' is:
+       O' = I_L ⊗ O ⊗ I_R
+       The resulting dimension is D = L * N * R.
+
+       :param left_dim: Size of the left identity matrix (L). If 0, skipped.
+       :param right_dim: Size of the right identity matrix (R). If 0, skipped.
+        """
+        for channel in self.redfield_channels:
+            channel.expand_kronecker(left_dim, right_dim)
+
+    def compute_transition_probabilities(
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor], energies: torch.Tensor,
+            temperature: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the population transfer rate matrix. The diagonal elements are zeros
+
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies In Hz. The shape [..., N]
+        :param temperature: The system temperature in K
+        The shape is [] or [t], where t is number of time-steps
+        :return: Rate matrix W.
+        """
+        return sum(
+            channel.transition_probabilities(
+                transformation_unitary, fields, energies, temperature
+            ) for channel in self.redfield_channels
+        )
+
+    def compute_relaxation_superoperator(
+            self, transformation_unitary: tp.Optional[torch.Tensor], fields: tp.Optional[torch.Tensor],
+            energies: torch.Tensor, temperature: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the 2D Liouvillian relaxation superoperator.
+
+        Mathematical formulation
+
+        The density matrix rho is vectorized in row-major order:
+        |rho>> = [rho_00, rho_01, ..., rho_0N, rho_10, ...]^T
+        The superoperator R acts as:
+        d/dt |rho>> = R |rho>>
+        where R_(ab),(cd) = R_abcd.
+
+        The row-major index for element (i, j) is i * N + j.
+        The superoperator maps index (c, d) to (a, b).
+
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies in Hz. The shape [..., N]
+        :param temperature: The system temperature in Kelvin.
+        The shape is [] or [t], where t is number of time-steps
+        :return: Superoperator matrix. Shape: (..., N^2, N^2).
+        """
+        return sum(
+            channel.compute_relaxation_superoperator(
+                transformation_unitary, fields, energies, temperature) for channel in
+            self.redfield_channels
+        )
+
+def combine_redfield_managers(redfield_managers: tp.List[tp.Optional[RedfieldManager]]) -> RedfieldManager:
+    """
+    Combine multiple Redfield managers into a single manager.
+
+    Conceptually, this merges all relaxation channels from different subsystems
+    into one unified manager, safely ignoring any missing (None) entries.
+
+    :param redfield_managers: List of managers to combine. Some items may be None.
+    :return: A new RedfieldManager containing all valid channels.
+    """
+    channels = [
+        channel
+        for manager in redfield_managers
+        if manager is not None
+        for channel in manager.redfield_channels
+    ]
+
+    return RedfieldManager(channels) if channels else None
+
