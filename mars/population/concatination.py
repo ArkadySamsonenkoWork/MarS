@@ -28,8 +28,8 @@ def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
         if manager is None:
             continue
 
-        left_dim = np.prod(dims[:idx]) if idx > 0 else 1
-        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 1
+        left_dim = np.prod(dims[:idx]) if idx > 0 else 0
+        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 0
 
         manager.expand_zeros(left_dim, right_dim)
 

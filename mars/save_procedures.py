@@ -276,7 +276,7 @@ class EasySpinSaverSampleDict:
         zero_field = {}
         for el_idx_1, el_idx_2, interaction in electron_electron:
             if el_idx_1 != el_idx_2:
-                coupling_dict[(el_idx_1, el_idx_2)] = interaction
+                coupling_dict[(min(el_idx_1, el_idx_2), max(el_idx_1, el_idx_2))] = interaction
             else:
                 zero_field[(el_idx_1, el_idx_2)] = interaction
         position_zfs = 0
@@ -294,7 +294,6 @@ class EasySpinSaverSampleDict:
                     J_tensor[position_dip_dip] = J
                     dipole_tensor[position_dip_dip] = dip
                     dipole_frame_tensor[position_dip_dip] = self._convert_tensor(interaction.frame)
-                    position_dip_dip += 1
 
                 if (el_idx_1, el_idx_2) in zero_field:
                     zfs_flag = True
@@ -308,7 +307,7 @@ class EasySpinSaverSampleDict:
                     strain = self._convert_tensor(strain) if strain is not None else [0, 0]
 
                     D = 3 * tensor[-1] / 2
-                    E = abs((tensor[0] - tensor[1]) / 2)
+                    E = (tensor[0] - tensor[1]) / 2
 
                     zfs_array[position_zfs] = np.array([D, E])
                     zfs_frame[position_zfs] = frame
@@ -320,6 +319,8 @@ class EasySpinSaverSampleDict:
 
                 if el_idx_1 == el_idx_2:
                     position_zfs += 1
+                else:
+                    position_dip_dip += 1
 
         out_dict = {}
         if zfs_flag:

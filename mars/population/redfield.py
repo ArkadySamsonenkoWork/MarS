@@ -11,6 +11,7 @@ from .. import constants
 
 OperatorComponentsType = tp.List[tp.Tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]]
 
+
 def _expand_op_kronecker(op: torch.Tensor, left_dim: int, right_dim: int) -> torch.Tensor:
     """Helper to expand a single operator."""
     N = op.shape[-1]
@@ -105,7 +106,7 @@ class BasisRadfieldManager(torch.nn.Module):
             self, operators: tp.List[torch.Tensor], transformation_unitary: torch.Tensor
     ) -> tp.List[torch.Tensor]:
         return [transform.transform_operator_to_new_basis(
-            transformation_unitary, op.to(transformation_unitary.dtype)
+            op.to(transformation_unitary.dtype), transformation_unitary
         ) for op in operators]
 
 
@@ -116,7 +117,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
     Units Convention:
     ┌─────────────────────────────────────────┐
     │ Input energies/frequencies:  Hz          │
-    │ Spectral density input ω:    Hz          │
+    │ Spectral density input ω:    rad/s       │
     │ Spectral density output J:   rad/s       │
     │ All rates (W, Γ, R):         rad/s       │
     │ Coupling operators A:        dimensionless│
@@ -575,9 +576,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         :param energies: Tensor of eigenenergies in Hz. Shape: (..., N).
         :return: Tensor of shape (..., N, N) with J(omega_cd).
         """
-        # omega_cd = E_c - E_d
-        omega_hz = energies.unsqueeze(-1) - energies.unsqueeze(-2)
-
+        # omega_cd = E_up - E_down
+        omega_hz = energies.unsqueeze(-2) - energies.unsqueeze(-1)
         return self.spectral_density_modifier(
             self.spectral_density_func(omega_hz / 2 * math.pi), omega_hz, temperature
         )
@@ -627,7 +627,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         for op in operators:
             sq = op.abs() ** 2
             W += sq * J_trans
-
         N = operators[0].shape[-1] if operators else spec_density.shape[-1]
         diag_mask = torch.eye(N, device=W.device, dtype=torch.bool)
         W = W.masked_fill(diag_mask, 0.0)
@@ -754,34 +753,40 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         """
         Compute the full Redfield tensor without secular approximation.
 
-        Mathematical formulation
+        Mathematical formulation (Section 3.4)
 
-        Includes all terms R_abcd allowing for coherence transfer between transitions
-        with similar frequencies.
+        The relaxation superoperator elements R_{abcd} are computed using the
+        Bloch-Redfield formalism. The total Hamiltonian is partitioned into
+        system, bath, and interaction terms, where the interaction is defined
+        by coupling operators A^k and bath operators B^k.
 
-        The full Redfield tensor consists of four terms summed over coupling operators k:
-        1. Gain term: delta_bd * sum_p Gamma_apcp(omega_pa)
-        2. Loss term: delta_ac * sum_p Gamma_dpbp*(omega_pd)
-        3. Transfer term 1: - Gamma_dbac(omega_ca)
-        4. Transfer term 2: - Gamma_dbac*(omega_ab)
+        The intermediate tensor Gamma_{abcd}(omega) is defined as:
+        Gamma_{abcd}(omega) = sum_k A^k_{ab} A^k_{cd}* J_k(omega)
 
-        Where Gamma_abcd(omega) = sum_k A^k_ab * A^k_cd* * J(omega).
+        The full Redfield tensor R_{abcd} consists of four terms summed over
+        intermediate states e:
+        R_{abcd} = 0.5 * sum_e [
+            Gamma_{aece}(omega_{ea}) * delta_{bd} +
+            Gamma_{debe}*(omega_{ed}) * delta_{ac} -
+            Gamma_{acbd}(omega_{db}) -
+            Gamma_{cadb}*(omega_{db})
+        ]
 
-        :param operators: List of coupling operators.
-        :param spec_density: Spectral density matrix.
-        :return: 4D Relaxation tensor. Shape: (..., N, N, N, N).
+        This includes all terms allowing for coherence transfer between transitions
+        with similar frequencies (non-secular).
+
+        :param operators: List of coupling operators A^k. Shape: (..., N, N).
+        :param spec_density: Spectral density matrix J_k(omega).
+                             Shape: (..., N, N) corresponding to transition frequencies.
+        :return: 4D Relaxation tensor R_{abcd}. Shape: (..., N, N, N, N).
         """
-        if not operators:
-            N = spec_density.shape[-1]
-            return torch.zeros(
-                spec_density.shape[:-2] + (N, N, N, N), dtype=spec_density.dtype,
-                               device=spec_density.device)
-
         ref_op = operators[0]
+        spec_density = spec_density.to(ref_op.dtype)
         N = ref_op.shape[-1]
         device = ref_op.device
 
-        # Sum A_Aconj over all operators
+        # Compute sum_k A^k_{ab} A^k_{cd}*
+        # This corresponds to the operator part of Gamma_{abcd}
         A_Aconj_sum = torch.zeros(
             ref_op.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
         for op in operators:
@@ -789,12 +794,14 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         R = torch.zeros_like(A_Aconj_sum)
 
-        term3_part = A_Aconj_sum.permute(0, 3, 1, 2)
-        J_ca = spec_density.unsqueeze(-3).unsqueeze(-3)
-        R -= term3_part * J_ca
+        permute_indices = list(range(A_Aconj_sum.dim() - 4)) + [-1, -3, -4, -2]
+        term3_part = A_Aconj_sum.permute(permute_indices)
 
-        J_ab = spec_density.unsqueeze(-2).unsqueeze(-1)
-        R -= term3_part.conj() * J_ab
+        J_db = spec_density.unsqueeze(-3).unsqueeze(-3)
+        R -= term3_part * J_db
+
+        J_db_expanded = spec_density.unsqueeze(-2).unsqueeze(-1)
+        R -= term3_part.conj() * J_db_expanded
 
         diag_sum = torch.einsum("...apcp,...pa->...ac", A_Aconj_sum, spec_density)
         I_bd = torch.eye(N, device=device, dtype=ref_op.dtype)
@@ -805,6 +812,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         I_ac = torch.eye(N, device=device, dtype=ref_op.dtype)
         term2 = torch.einsum("...db,ac->...abcd", diag_sum2.conj(), I_ac)
         R += term2
+        R *= 0.5
 
         return R
 
@@ -913,7 +921,14 @@ class RedfieldManager:
     """
     def __init__(self, redfield_channels: tp.List[RedfieldRelaxationChannel]):
         self.redfield_channels = redfield_channels
+
         self.eigen_basis_flag = self.redfield_channels[0].eigen_basis_flag
+        if not all(channel.eigen_basis_flag == self.eigen_basis_flag
+                   for channel in self.redfield_channels):
+            raise ValueError(
+                "All redfield channels must have the same eigen_basis_flag "
+                "(all True or all False)"
+            )
 
     def expand_zeros(
             self, left_dim: int, right_dim: int) -> None:
@@ -1007,6 +1022,7 @@ class RedfieldManager:
                 transformation_unitary, fields, energies, temperature) for channel in
             self.redfield_channels
         )
+
 
 def combine_redfield_managers(redfield_managers: tp.List[tp.Optional[RedfieldManager]]) -> RedfieldManager:
     """

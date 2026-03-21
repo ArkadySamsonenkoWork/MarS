@@ -610,7 +610,6 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         """
         H0 = self._get_initial_Hamiltonian(energies) * self.two_pi
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
-
         Gx, Gy, Sz_eigen = self._compute_hamiltonian_operators(
             Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
         return self._compute_out(
@@ -877,7 +876,6 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :return:
             Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
         """
-
         tau = 1 / resonance_frequency
         delta_phi = self.two_pi / self.n_steps
         res_omega = resonance_frequency * self.two_pi
@@ -1020,7 +1018,6 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         Gx, Gy, Sz_eigen = self._compute_hamiltonian_operators(
             Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
-
         return self._compute_out(
             time, res_fields,
             lvl_down, lvl_up,

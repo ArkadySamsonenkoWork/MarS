@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 
-from mars import spin_model, mesher, constants, spectra_manager
+from mars import spin_model, mesher, constants, spectra_manager, population
 
 
 def time_spectrum_calculation(
@@ -99,7 +99,9 @@ def time_spectrum_calculation(
 
 def time_spectrum_calculation_full_pipeline(
         sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
+        context: tp.Optional[population.Context] = None,
         sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        creator_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
         freq: float = 9.8e9,
         field_range: tp.Tuple[float, float] = (0.30, 0.40),
         n_points: int = 1000,
@@ -155,6 +157,15 @@ def time_spectrum_calculation_full_pipeline(
     if sample_kwargs is None:
         sample_kwargs = {}
 
+    if creator_kwargs is None:
+        creator_kwargs = {}
+
+    if context is None:
+        creator_kwargs["harmonic"] = 1
+    else:
+        creator_kwargs["context"] = context
+        creator_kwargs["harmonic"] = 0
+
     times_ms = []
     for _ in range(n_warmup):
         sample = sample_creation_func(**sample_kwargs)
@@ -175,7 +186,8 @@ def time_spectrum_calculation_full_pipeline(
             temperature=temperature,
             computational_details=computational_details,
             device=device,
-            dtype=dtype
+            dtype=dtype,
+            **creator_kwargs,
         )
         _ = creator(sample, fields)
         if device.type == "cuda":
@@ -204,9 +216,147 @@ def time_spectrum_calculation_full_pipeline(
             temperature=temperature,
             computational_details=computational_details,
             device=device,
-            dtype=dtype
+            dtype=dtype,
+            **creator_kwargs
         )
         _ = creator(sample, fields)
+
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+        end = time.perf_counter()
+
+        elapsed_ms = (end - start) * 1000.0
+        times_ms.append(elapsed_ms)
+
+    mean_time = np.mean(times_ms)
+    std_time = np.std(times_ms)
+
+    return mean_time, std_time, times_ms
+
+def time_spectrum_calculation_full_pipeline_freqdep(
+        sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
+        context: tp.Optional[population.Context] = None,
+        sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        creator_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        field: float = 10.0,
+        freq_range: tp.Tuple[float, float] = (0.0, 1e9),
+        n_points: int = 1000,
+        n_warmup: int = 5,
+        n_iterations: int = 50,
+        temperature: float = 298.0,
+        computational_details: spectra_manager.ComputationalDetails = spectra_manager.ComputationalDetails(),
+) -> tp.Tuple[tp.Union[float, np.ndarray], tp.Union[float, np.ndarray], tp.List[float]]:
+    """
+    Measure full spectrum calculation time including sample creation.
+
+    This function measures the complete execution time including:
+    - Sample creation (spin system, interactions, etc.)
+    - StationaryFreq object initialization
+    - Spectrum computation
+    - All associated overhead
+
+    Parameters
+    ----------
+    sample_creation_func : callable
+        Function that creates a MultiOrientedSample (e.g., create_2_electrons_sample).
+    sample_kwargs : dict, optional
+        Keyword arguments to pass to the sample creation function.
+        Default is None (uses function defaults).
+    field : float, optional
+        Stationary magnetic field in Hz. Default is 9.8 GHz (X-band).
+    freq_range : tuple of (float, float), optional
+        Microwave freq range (min, max) in Tesla.
+    n_points : int, optional
+        Number of field points in simulation. Default is 1000.
+    n_warmup : int, optional
+        Number of warmup iterations (discarded from timing). Default is 5.
+    n_iterations : int, optional
+        Number of timed iterations. Default is 50.
+    temperature : float, optional
+        Sample temperature in Kelvin. Default is 298 K (room temp).
+
+    Returns
+    -------
+    mean_time_ms : float
+        Mean execution time in milliseconds (full pipeline).
+    std_time_ms : float
+        Standard deviation of execution times in milliseconds.
+    all_times_ms : list of float
+        Raw timing measurements for all iterations.
+
+    See Also
+    --------
+    time_spectrum_calculation : Measures only computation time (excludes init).
+    time_spectrum_calculation_with_init : Measures computation + spectra init (excludes sample creation).
+
+    """
+    if sample_kwargs is None:
+        sample_kwargs = {}
+
+    if creator_kwargs is None:
+        creator_kwargs = {}
+
+    if context is None:
+        creator_kwargs["harmonic"] = 0
+    else:
+        creator_kwargs["context"] = context
+        creator_kwargs["harmonic"] = 0
+
+    times_ms = []
+    for _ in range(n_warmup):
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        freq = torch.linspace(
+            freq_range[0],
+            freq_range[1],
+            n_points,
+            device=device,
+            dtype=dtype
+        )
+
+        creator = spectra_manager.StationaryFreqSpectra(
+            field=field,
+            sample=sample,
+            temperature=temperature,
+            computational_details=computational_details,
+            device=device,
+            dtype=dtype,
+            **creator_kwargs,
+        )
+        _ = creator(sample, freq)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+    for _ in range(n_iterations):
+        if sample_kwargs.get("device", torch.device("cpu")).type == "cuda":
+            torch.cuda.synchronize()
+
+        start = time.perf_counter()
+
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        freq = torch.linspace(
+            freq_range[0],
+            freq_range[1],
+            n_points,
+            device=device,
+            dtype=dtype
+        )
+        creator = spectra_manager.StationaryFreqSpectra(
+            field=field,
+            sample=sample,
+            temperature=temperature,
+            computational_details=computational_details,
+            device=device,
+            dtype=dtype,
+            **creator_kwargs
+        )
+        _ = creator(sample, freq)
 
         if device.type == "cuda":
             torch.cuda.synchronize()

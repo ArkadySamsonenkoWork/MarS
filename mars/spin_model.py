@@ -994,6 +994,106 @@ class Interaction(BaseInteraction):
         interaction.set_strain(new_strain, correlation_matrix)
         return interaction
 
+    def get_rotation_derivative_along_axis(self, axis: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the derivative of the interaction tensor with respect to rotation around a given axis.
+
+        This method calculates the rate of change of the tensor Q when rotated by an infinitesimal
+        angle dθ around the specified axis vector. The derivative is computed using the commutator
+        formula from Lie algebra:
+
+            dQ/dθ = [n]_× Q - Q [n]_×
+
+        where [n]_× is the skew-symmetric cross-product matrix of the normalized axis vector,
+        and Q is the full interaction tensor in the interaction frame (self.tensor).
+
+        -----------------------------------------------------------------------
+        FRAME REFERENCE AND INTERNAL STATE
+        -----------------------------------------------------------------------
+        This method operates on the interaction-frame tensor, which is constructed from
+        internal state variables defined earlier in the class:
+
+        • self.components  : Principal values [λ₁, λ₂, λ₃] in the principal frame
+                             (diagonal tensor representation).
+        • self._frame      : Euler angles [α, β, γ] (ZYZ' convention) defining
+                             the rotation from principal frame to interaction frame.
+        • self._rot_matrix : Rotation matrix R derived from self._frame.
+        • self.tensor      : Full tensor Q = R · diag(components) · Rᵀ in the
+                             interaction frame.
+
+        The derivative is computed on self.tensor (interaction frame). Therefore, the
+        rotation axis 'n' must also be specified in the interaction frame.
+
+        Transformation Chain:
+            Q_interaction = R(self._frame) · diag(self.components) · R(self._frame)ᵀ
+            dQ_interaction/dθ = [n_interaction]_× Q_interaction - Q_interaction [n_interaction]_×
+
+        :param axis: Tensor of shape [..., 3] representing the rotation axis vector(s)
+                     in the interaction frame. The last dimension corresponds to Cartesian
+                     components (x, y, z). Vectors will be normalized internally to
+                     unit length.
+        :return: Tensor of shape [..., 3, 3] containing the derivative dQ/dθ for each
+                 corresponding axis vector. The derivative tensor is symmetric if Q is
+                 symmetric. This derivative is expressed in the interaction frame.
+        """
+        axis_norm = torch.norm(axis, dim=-1, keepdim=True)
+        axis_norm = torch.where(axis_norm > 0, axis_norm, torch.ones_like(axis_norm))
+        n = axis / axis_norm
+        Q = self.tensor
+        nx, ny, nz = n[..., 0], n[..., 1], n[..., 2]
+
+        zeros = torch.zeros_like(nx)
+        Omega = torch.stack([
+            torch.stack([zeros, -nz, ny], dim=-1),
+            torch.stack([nz, zeros, -nx], dim=-1),
+            torch.stack([-ny, nx, zeros], dim=-1)
+        ], dim=-2)
+
+        Omega_Q = torch.matmul(Omega, Q)
+        Q_Omega = torch.matmul(Q, Omega)
+        dQ_dtheta = Omega_Q - Q_Omega
+        return dQ_dtheta
+
+    def get_directional_derivative(self, axis: torch.Tensor,
+                                   tensor_gradient: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the directional derivative of the tensor field along a given spatial direction.
+
+        This method calculates the rate of change of the tensor Q when displaced by an
+        infinitesimal distance ds along the specified direction vector. This requires
+        the spatial gradient of the tensor field ∇Q (i.e., how tensor components vary
+        with position).
+
+        The directional derivative is computed as:
+
+            "∂Q/∂s = ∇Q · n = Σ_k (∂Q_ij/∂x_k) * n_k"
+
+        where n is the unit direction vector and "∂Q_ij/∂x_k" are the spatial derivatives
+        of each tensor component.
+
+        :param axis: Tensor of shape [..., 3] representing the direction vector(s)
+                          in the interaction frame. The last dimension corresponds to
+                          Cartesian components (x, y, z). Vectors will be normalized
+                          internally to unit length.
+
+        :param tensor_gradient: Tensor of shape [..., 3, 3, 3] representing the spatial
+                                gradient "∂Q_ij/∂x_k" in the interaction frame. The
+                                dimensions are:
+                                  - ... : Batch dimensions (must be broadcastable with
+                                          direction)
+                                  - 3, 3 : Tensor components (i, j)
+                                  - 3 : Spatial derivatives (∂/∂x, ∂/∂y, ∂/∂z)
+
+        :return: Tensor of shape [..., 3, 3] containing the directional derivative
+                 ∂Q/∂s for each corresponding direction vector.
+        """
+        dir_norm = torch.norm(axis, dim=-1, keepdim=True)
+        dir_norm = torch.where(dir_norm > 0, dir_norm, torch.ones_like(dir_norm))
+        n = axis / dir_norm
+        dQ_ds = torch.sum(tensor_gradient * n.unsqueeze(-2).unsqueeze(-2), dim=-1)
+
+        return dQ_ds
+
 
 class DEInteraction(Interaction):
     def __init__(self, components: tp.Union[torch.Tensor, tp.Sequence, float],
@@ -1007,7 +1107,7 @@ class DEInteraction(Interaction):
         Dy = -D * 1/3 - E
         Dz = D * 2/3
 
-                Note on DE Interaction vs. Simple Interaction
+        Note on DE Interaction vs. Simple Interaction
         The DE Interaction is equivalent to simple Interaction in terms of components when
         the trace of the tensor equals zero,
         but they are not equivalent in terms of strains.
@@ -1137,7 +1237,6 @@ class MultiOrientedInteraction(BaseInteraction):
         This method change the interaction frame rotating it with given rotation matrix:
 
         Rotate _oriented_tensor and _strained_derivatives with according to rotation_matrix
-
 
         :param rotation_matrix: [..., 3, 3] rotation matrix.
         :return: None
@@ -2544,8 +2643,8 @@ class BaseSample(nn.Module):
             batch_size = lorentz.shape[0] if hasattr(self.lorentz, 'shape') else len(self.lorentz)
             lines.append(f"BATCHED (batch_size={batch_size}) - showing first instance:")
 
-            lines.append(f"lorentz: {lorentz[0].item():.5f} T")
-            lines.append(f"gauss: {gauss[0].item():.5f} T")
+            lines.append(f"lorentz: {lorentz[0].item():.5f} T (Hz)")
+            lines.append(f"gauss: {gauss[0].item():.5f} T (Hz)")
 
             ham_str = self.base_ham_strain.flatten(0, -2)[0]
             ham_components = [f"{val:.4e}" if abs(val) >= 1e4 else f"{val:.4f}"
@@ -2772,6 +2871,18 @@ class MultiOrientedSample(BaseSample):
         """
         return rotation_matrices[..., -1, :]
 
+
+    def _get_effective_rotation_matrices(self) -> torch.Tensor:
+        """
+        Get the effective rotation matrices combining mesh orientation and spin system frame.
+
+        :return: Rotation matrices of shape [..., orientations, 3, 3].
+        """
+        rotation_matrices = self.mesh.rotation_matrices
+        if self._spin_system_frame is not None:
+            rotation_matrices = torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
+        return rotation_matrices
+
     def build_ham_strain(self) -> torch.Tensor:
         """Constructs the zero-field strained part of Hamiltonian."""
         return self._ham_strain
@@ -2881,3 +2992,215 @@ class MultiOrientedSample(BaseSample):
             self.modified_spin_system = SpinSystemOrientator()(
                 self.base_spin_system, torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
         )
+
+    def get_oriented_electron_electron_interaction(self, interaction: torch.Tensor, idx_1: int, idx_2: int) ->\
+            torch.Tensor:
+        """
+        Compute the electron-electron operator term for all orientations.
+
+        This method rotates the interaction tensor (e.g., dipolar or exchange coupling)
+        from interaction tensor frame to the laboratory frame for each orientation in the
+        mesh, then contracts it with the corresponding spin operators.
+
+        The resulting Hamiltonian term is: ``H = S_1 · Q · S_2``, where Q is the rotated
+        interaction tensor.
+
+        :param interaction: Interaction tensor of shape ``[..., 3, 3]`` in the
+                           interaction tensor frame (before orientation rotation).
+        :param idx_1: Index of the first electron spin operator.
+        :param idx_2: Index of the second electron spin operator.
+        :return: operator of shape ``[..., orientations, dim, dim]`` in the
+                complex dtype
+        """
+        rotation_matrices = self._get_effective_rotation_matrices()
+        interaction_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
+        S1 = self.base_spin_system.operator_cache[idx_1]
+        S2 = self.base_spin_system.operator_cache[idx_2]
+        return scalar_tensor_multiplication(S1, S2, interaction_rotated)
+
+    def get_oriented_electron_nuclei_interaction(self, interaction: torch.Tensor, el_idx: int, nuc_idx: int) ->\
+            torch.Tensor:
+        """
+        Compute the electron-nucleus hyperfine operator term for all orientations.
+
+        This method rotates the hyperfine tensor (A-tensor) from its interaction tensor frame
+        to the laboratory frame for each orientation in the mesh, then contracts it
+        with the electron and nucleus spin operators.
+
+        The resulting Hamiltonian term is: ``H = S · A · I``, where A is the rotated
+        hyperfine tensor.
+
+        :param interaction: Hyperfine tensor of shape ``[..., 3, 3]`` in the
+                            interaction tensor frame (before orientation rotation).
+        :param el_idx: Index of the electron spin operator.
+        :param nuc_idx: Index of the nucleus spin operator.
+        :return: operator of shape ``[..., orientations, dim, dim]`` in the
+                 complex dtype
+        """
+        rotation_matrices = self._get_effective_rotation_matrices()
+        interaction_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
+
+        S = self.base_spin_system.operator_cache[el_idx]
+        I = self.base_spin_system.operator_cache[len(self.modified_spin_system.electrons) + nuc_idx]
+        return scalar_tensor_multiplication(S, I, interaction_rotated)
+
+    def get_oriented_nuclei_nuclei_interaction(self, interaction: torch.Tensor, nuc_idx_1: int, nuc_idx_2: int) -> torch.Tensor:
+        """
+        Compute the nucleus-nucleus interaction operator for all orientations.
+
+        This method rotates the interaction tensor (e.g., nuclear dipolar)
+        from its interaction tensor frame to the laboratory frame for each orientation in the
+        mesh, then contracts it with the corresponding nucleus spin operators.
+
+        The resulting Hamiltonian term is: ``H = I_1 · Q · I_2``, where Q is the rotated
+        interaction tensor.
+
+        :param interaction: Interaction tensor of shape ``[..., 3, 3]`` in the
+                            interaction tensor frame (before orientation rotation).
+        :param nuc_idx_1: Index of the first nucleus spin operator.
+        :param nuc_idx_2: Index of the second nucleus spin operator.
+        :return: operator of shape ``[..., orientations, dim, dim]`` in the
+                 complex dtype.
+        """
+        rotation_matrices = self._get_effective_rotation_matrices()
+        interaction_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
+
+        offset = len(self.modified_spin_system.electrons)
+        I1 = self.base_spin_system.operator_cache[offset + nuc_idx_1]
+        I2 = self.base_spin_system.operator_cache[offset + nuc_idx_2]
+        return scalar_tensor_multiplication(I1, I2, interaction_rotated)
+
+    def get_oriented_zeeman_interaction(self, interaction: torch.Tensor, el_idx: int) -> torch.Tensor:
+        """
+        Compute the electron Zeeman interaction operator for all orientations.
+
+        Compute the electron Zeeman interaction operator for all orientations.
+        This method rotates the g-tensor from its interaction tensor frame to the laboratory
+        frame for each orientation in the mesh, then contracts it with the electron
+        spin operator z-projection
+
+        The external magnetic field is applied separately when constructing the full
+        Hamiltonian.
+
+        Hamiltonian term: ``H = (μ_B/h) · S · interaction · B``, where g is the rotated interaction
+        and B is the external magnetic field (applied externally).
+
+        :param interaction: interaction of shape ``[..., 3, 3]`` in the interaction tensor frame
+        :param el_idx: Index of the electron spin operator in the operator cache.
+        :return: Zeeman operator of shape ``[..., orientations, dim, dim, 3]`` in
+                 complex dtype. The last dimension corresponds to the magnetic field
+                 components (Bx, By, Bz). Multiply by the field vector to get the
+                 final Hamiltonian term.
+
+        Note:
+            This method returns the operator contracted with the g-tensor but NOT yet
+            multiplied by the magnetic field. To get the full Zeeman term:
+            ``H_zeeman = self.get_oriented_zeeman_interaction(g_tensor, el_idx) * B_field``
+
+            The result is scaled by μ_B/h to convert to frequency units (Hz) for
+            spectral simulation.
+        """
+        rotation_matrices = self._get_effective_rotation_matrices()
+        g_tensor_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
+
+        S = self.base_spin_system.operator_cache[el_idx]
+        zeeman_term = transform_tensor_components(S, g_tensor_rotated)
+        zeeman_term *= (constants.BOHR / constants.PLANCK)
+        return zeeman_term
+
+    def get_librations_along_axis(self, axis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute the Hamiltonian derivative with respect to small rotational librations
+        around a given axis.
+
+        This method calculates how the spin Hamiltonian changes when the molecular
+        frame undergoes infinitesimal rotational oscillations (librations) around
+        the specified axis. The result is split into field-independent and
+        field-dependent contributions.
+
+        The rotation derivative is computed using the commutator formula:
+            dQ/dθ = [n]_ Q - Q [n]_
+        where [n]_x is the skew-symmetric cross-product matrix of the axis vector.
+
+        :param axis: Tensor of shape ``[..., 3]`` representing the rotation axis
+                     vector(s) in the interaction frame. The last dimension
+                     corresponds to Cartesian components (x, y, z).
+        :return: Tuple of two operators:
+                 - ``O_static``: Field-independent operator of shape
+                   ``[..., orientations, dim, dim]`` from zero-field terms
+                   (ZFS, hyperfine, dipolar). Not multiplied by external field.
+                 - ``O_dependent``: Field-dependent operator of shape
+                   ``[..., orientations, dim, dim, 3]`` from Zeeman terms.
+                   Must be multiplied by the magnetic field vector
+                   ``(Bx, By, Bz)`` to get the full contribution.
+                 Both operators are in complex dtype.
+        The total Hamiltonian derivative for a field B is:
+        ``dH/dθ = O_static + O_dependent @ B``
+
+        Note:
+            O_static is measured in the Hz
+            O_dependent is measured in the Hz / T
+
+            So, for many computations they should be transformed to s^-1 by muttiplication on 2π
+        """
+        axis_norm = torch.norm(axis, dim=-1, keepdim=True)
+        axis_norm = torch.where(axis_norm > 0, axis_norm, torch.ones_like(axis_norm))
+        n = axis / axis_norm
+
+        nx, ny, nz = n[..., 0], n[..., 1], n[..., 2]
+        zeros = torch.zeros_like(nx)
+        Omega = torch.stack([
+            torch.stack([zeros, -nz, ny], dim=-1),
+            torch.stack([nz, zeros, -nx], dim=-1),
+            torch.stack([-ny, nx, zeros], dim=-1)
+        ], dim=-2)
+
+        operator_cache = self.modified_spin_system.operator_cache
+        config_shape = self.config_shape
+        dim = self.spin_system_dim
+        device = self.device
+        complex_dtype = self.complex_dtype
+
+        O_static = torch.zeros((*config_shape, dim, dim), dtype=complex_dtype, device=device)
+
+        for e_idx_1, e_idx_2, interaction in self.base_spin_system.electron_electron:
+            Q = interaction.tensor
+            dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
+            O_static += scalar_tensor_multiplication(
+                operator_cache[e_idx_1],
+                operator_cache[e_idx_2],
+                dQ_dtheta.to(complex_dtype)
+            )
+
+        for e_idx, n_idx, interaction in self.base_spin_system.electron_nuclei:
+            Q = interaction.tensor
+            dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
+            O_static += scalar_tensor_multiplication(
+                operator_cache[e_idx],
+                operator_cache[len(self.modified_spin_system.electrons) + n_idx],
+                dQ_dtheta.to(complex_dtype)
+            )
+
+        for n_idx_1, n_idx_2, interaction in self.base_spin_system.nuclei_nuclei:
+            Q = interaction.tensor
+            dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
+            O_static += scalar_tensor_multiplication(
+                operator_cache[len(self.modified_spin_system.electrons) + n_idx_1],
+                operator_cache[len(self.modified_spin_system.electrons) + n_idx_2],
+                dQ_dtheta.to(complex_dtype))
+
+        O_dependent = torch.zeros((*config_shape, 3, dim, dim), dtype=complex_dtype, device=device)
+        for idx, g_interaction in enumerate(self.base_spin_system.g_tensors):
+            Q = g_interaction.tensor
+            dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
+            dQ_dtheta = dQ_dtheta.to(complex_dtype)
+
+            S_comp = operator_cache[idx]
+            O_dependent += transform_tensor_components(S_comp, dQ_dtheta)
+
+        O_dependent *= (constants.BOHR / constants.PLANCK)
+        #O_dependent = O_dependent.transpose(-3, -1)
+
+        return O_static, O_dependent[..., -1, :, :]
+
+

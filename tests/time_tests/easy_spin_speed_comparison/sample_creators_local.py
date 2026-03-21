@@ -180,8 +180,8 @@ def create_1_high_spin_electron_1_nuclei_sample(
 
     sample = spin_model.MultiOrientedSample(
         base_spin_system=spin_sys,
-        gauss=0.002,
-        lorentz=0.002,
+        gauss=0.0015,
+        lorentz=0.0015,
         mesh=mesh,
         device=device,
         dtype=dtype
@@ -224,7 +224,7 @@ def create_2_middle_spin_sample(
     )
 
     dipolar = spin_model.DEInteraction(
-        [100e6, 10e6],
+        [0e6, 0e6],
         device=device,
         dtype=dtype
     )
@@ -239,6 +239,242 @@ def create_2_middle_spin_sample(
         electrons=[3/2, 3/2],
         g_tensors=[g_tensor, g_tensor],
         electron_electron=[(0, 0, zfs), (0, 0, zfs), (0, 1, dipolar + exchange)],
+        device=device,
+        dtype=dtype
+    )
+
+    sample = spin_model.MultiOrientedSample(
+        base_spin_system=spin_sys,
+        gauss=0.0015,
+        lorentz=0.0015,
+        mesh=mesh,
+        device=device,
+        dtype=dtype
+    )
+
+    return sample
+
+
+def create_3_middle_spin_sample(
+        mesh: tp.Optional[tp.Union[mesher.BaseMesh, tp.Tuple[int, int]]] = None,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float64
+) -> spin_model.MultiOrientedSample:
+    """
+    Create a sample with 3 Cobalt spins
+
+    Models Mn(II) ion system with zero-field splitting and hyperfine coupling.
+    Hilbert space dimension = 36 states. Computationally intensive due to
+    large matrix diagonalization requirements.
+
+    Parameters
+    ----------
+    mesh : BaseMesh or tuple of (int, int), optional
+        Orientation mesh. Coarse mesh recommended for initial timing tests.
+    device : torch.device, optional
+        Computation device. GPU essential for reasonable performance.
+    dtype : torch.dtype, optional
+        Floating point precision. float64 required for ZFS accuracy.
+
+    Returns
+    -------
+    MultiOrientedSample
+
+    """
+    g_tensor = spin_model.Interaction((2.00, 2.01, 2.02), device=device, dtype=dtype)
+
+    zfs = spin_model.DEInteraction(
+        [constants.unit_converter(-100.0, "cm-1_to_Hz"), constants.unit_converter(0.0, "cm-1_to_Hz")],
+        device=device,
+        dtype=dtype
+    )
+
+    dipolar = spin_model.DEInteraction(
+        [100e6, 10e6],
+        device=device,
+        dtype=dtype
+    )
+
+    exchange = spin_model.Interaction(
+        constants.unit_converter(0.001, "cm-1_to_Hz"),
+        device=device,
+        dtype=dtype
+    )
+
+    spin_sys = spin_model.SpinSystem(
+        electrons=[3/2, 1/2, 3/2],
+        g_tensors=[g_tensor, g_tensor, g_tensor],
+        electron_electron=[(0, 0, zfs), (2, 2, zfs), (0, 1, dipolar + exchange), (2, 1, dipolar + exchange)],
+        device=device,
+        dtype=dtype
+    )
+
+    sample = spin_model.MultiOrientedSample(
+        base_spin_system=spin_sys,
+        gauss=0.0015,
+        lorentz=0.0015,
+        mesh=mesh,
+        device=device,
+        dtype=dtype
+    )
+
+    return sample
+
+
+def create_heterospin_sample(
+        mesh: tp.Optional[tp.Union[mesher.BaseMesh, tp.Tuple[int, int]]] = None,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float64
+) -> spin_model.MultiOrientedSample:
+    """
+    Create a sample with 2 Cobalt spins exchange connected to radical spin
+
+    Parameters
+    ----------
+    mesh : BaseMesh or tuple of (int, int), optional
+        Orientation mesh. Coarse mesh recommended for initial timing tests.
+    device : torch.device, optional
+        Computation device. GPU essential for reasonable performance.
+    dtype : torch.dtype, optional
+        Floating point precision. float64 required for ZFS accuracy.
+
+    Returns
+    -------
+    MultiOrientedSample
+
+    """
+    g_tensor = spin_model.Interaction((2.00, 2.01, 2.10), device=device, dtype=dtype)
+    g_tensor_rad = spin_model.Interaction((2.000, 2.002, 2.004), device=device, dtype=dtype)
+
+    zfs = spin_model.DEInteraction(
+        [constants.unit_converter(-100.0, "cm-1_to_Hz"), constants.unit_converter(-10.0, "cm-1_to_Hz")],
+        device=device,
+        dtype=dtype
+    )
+
+    exchange = spin_model.Interaction(
+        constants.unit_converter(0.01, "cm-1_to_Hz"),
+        device=device,
+        dtype=dtype
+    )
+
+    spin_sys = spin_model.SpinSystem(
+        electrons=[3/2, 1/2, 3/2],
+        g_tensors=[g_tensor, g_tensor_rad, g_tensor],
+        electron_electron=[(0, 0, zfs), (2, 2, zfs), (0, 1, exchange), (1, 2, exchange)],
+        device=device,
+        dtype=dtype
+    )
+
+    sample = spin_model.MultiOrientedSample(
+        base_spin_system=spin_sys,
+        gauss=0.0015,
+        lorentz=0.0015,
+        mesh=mesh,
+        device=device,
+        dtype=dtype
+    )
+
+    return sample
+
+
+def create_heterospin_sample_freq_domain(
+        mesh: tp.Optional[tp.Union[mesher.BaseMesh, tp.Tuple[int, int]]] = None,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float64
+) -> spin_model.MultiOrientedSample:
+    """
+    Create a sample with 2 Cobalt spins exchange connected to radical spin
+
+    Parameters
+    ----------
+    mesh : BaseMesh or tuple of (int, int), optional
+        Orientation mesh. Coarse mesh recommended for initial timing tests.
+    device : torch.device, optional
+        Computation device. GPU essential for reasonable performance.
+    dtype : torch.dtype, optional
+        Floating point precision. float64 required for ZFS accuracy.
+
+    Returns
+    -------
+    MultiOrientedSample
+
+    """
+    g_tensor = spin_model.Interaction((2.00, 2.01, 2.10), device=device, dtype=dtype)
+    g_tensor_rad = spin_model.Interaction((2.000, 2.002, 2.004), device=device, dtype=dtype)
+
+    zfs = spin_model.DEInteraction(
+        [constants.unit_converter(-100.0, "cm-1_to_Hz"), constants.unit_converter(-10.0, "cm-1_to_Hz")],
+        device=device,
+        dtype=dtype
+    )
+
+    exchange = spin_model.Interaction(
+        constants.unit_converter(0.01, "cm-1_to_Hz"),
+        device=device,
+        dtype=dtype
+    )
+
+    spin_sys = spin_model.SpinSystem(
+        electrons=[3/2, 1/2, 3/2],
+        g_tensors=[g_tensor, g_tensor_rad, g_tensor],
+        electron_electron=[(0, 0, zfs), (2, 2, zfs), (0, 1, exchange), (1, 2, exchange)],
+        device=device,
+        dtype=dtype
+    )
+
+    sample = spin_model.MultiOrientedSample(
+        base_spin_system=spin_sys,
+        gauss=2e10,
+        lorentz=2e10,
+        mesh=mesh,
+        device=device,
+        dtype=dtype
+    )
+
+    return sample
+
+
+def create_tripletfission_sample(
+        mesh: tp.Optional[tp.Union[mesher.BaseMesh, tp.Tuple[int, int]]] = None,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float64
+) -> spin_model.MultiOrientedSample:
+    """
+    Create a sample of 2 triplets with fission
+
+    Parameters
+    ----------
+    mesh : BaseMesh or tuple of (int, int), optional
+        Orientation mesh. Coarse mesh recommended for initial timing tests.
+    device : torch.device, optional
+        Computation device. GPU essential for reasonable performance.
+    dtype : torch.dtype, optional
+        Floating point precision. float64 required for ZFS accuracy.
+
+    Returns
+    -------
+    MultiOrientedSample
+
+    """
+    g_tensor = spin_model.Interaction((2.000, 2.002, 2.004), device=device, dtype=dtype)
+
+    zfs = spin_model.DEInteraction(
+        [1000.0e6, 100.0e6],
+        device=device,
+        dtype=dtype
+    )
+
+    exchange = spin_model.Interaction(
+        1.0e11,
+        device=device,
+        dtype=dtype
+    )
+
+    spin_sys = spin_model.SpinSystem(
+        electrons=[1.0, 1.0],
+        g_tensors=[g_tensor, g_tensor],
+        electron_electron=[(0, 0, zfs), (1, 1, zfs), (0, 1, exchange)],
         device=device,
         dtype=dtype
     )

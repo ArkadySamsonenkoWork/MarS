@@ -1156,6 +1156,43 @@ def reshape_superoperators_list_to_direct_sum_basis(
     return total_superop
 
 
+def extract_transition_matrix(superoperator: torch.Tensor) -> torch.Tensor:
+    """Extracts the population transfer matrix from a Superoperator.
+
+    This function get the dynamics of the diagonal elements (populations)
+    of the density matrix from the full superoperator evolution. It selects
+    the rows and columns corresponding to the diagonal elements of the
+    vectorized density matrix.
+
+    :param superoperator: torch.Tensor
+        Superoperator acting on vectorized density matrices.
+        Shape: [..., N^2, N^2]
+
+    :return: torch.Tensor
+        Population transfer matrix describing population dynamics.
+        Shape: [..., N, N]
+
+    Mathematical Formulation:
+    -------------------------
+    Given a superoperator L acting on vec(ρ), the population transfer matrix T
+    is extracted by selecting indices corresponding to diagonal elements ρ_ii.
+    In standard vectorization, these indices are k = i * (N + 1).
+
+        T_ij = L_{k_i, k_j}
+    """
+    dim_vec = superoperator.shape[-1]
+
+    N = int(dim_vec ** 0.5)
+    pop_indices = torch.arange(0, dim_vec, N + 1, device=superoperator.device)
+    temp = superoperator[..., pop_indices, :]
+    population_transfer_matrix = temp[..., :, pop_indices]
+
+    diag_indices = torch.arange(N, device=superoperator.device)
+    population_transfer_matrix[..., diag_indices, diag_indices] = 0
+
+    return population_transfer_matrix
+
+
 class Liouvilleator:
     @staticmethod
     def commutator_superop(operator: torch.Tensor) -> torch.Tensor:

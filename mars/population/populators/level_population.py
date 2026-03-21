@@ -189,7 +189,6 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
         evo = tr_utils.EvolutionMatrix(energies)
         if initial_populations.dim() == 1:
             initial_populations = initial_populations.unsqueeze(-2)
-
         pop_difference = self.solver(
             time, initial_populations, evo, tr_matrix_generator, lvl_down, lvl_up)
         pop_difference = self._post_compute(pop_difference)

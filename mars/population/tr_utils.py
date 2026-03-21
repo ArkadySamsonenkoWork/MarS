@@ -213,7 +213,9 @@ class EvolutionMatrix(EvolutionBase):
         indices = torch.arange(self.energy_diff.shape[-1], device=self.energy_diff.device)
         if free_probs is not None:
             probs_matrix = self._free_transform(temp, free_probs)
-            probs_matrix[..., indices, indices] = -probs_matrix.sum(dim=-2)
+            n = probs_matrix.size(-1)
+            mask = 1.0 - torch.eye(n, dtype=probs_matrix.dtype, device=probs_matrix.device)
+            probs_matrix[..., indices, indices] = -(probs_matrix * mask).sum(dim=-2)
             transition_matrix = probs_matrix
         else:
             transition_matrix = 0

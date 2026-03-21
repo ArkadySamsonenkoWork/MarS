@@ -1572,6 +1572,7 @@ class ResField(nn.Module):
         """
         baselign_sign = self._compute_zero_field_resonance(F / resonance_frequency,
                                                            resonance_frequency / resonance_frequency)
+
         if baselign_sign.all():
             locator = self.general_locator
             interval_solver = self.general_solver
