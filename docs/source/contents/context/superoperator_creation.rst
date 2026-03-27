@@ -101,7 +101,7 @@ This term:
 - Decreases population of :math:`|j\rangle` at rate :math:`\sum_i w_{ij} \rho_{jj}`
 
 
-**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dissipator_superop` for the full construction.
+**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dissipator_from_rates` for the full construction.
 
 Driven Probabilities → Stimulated Transition Operators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ For driven transitions :math:`|j\rangle \to |i\rangle` at rate :math:`d_{ij}`:
 
 This term is same form as free probabilities, but not modified by detailed balance constraints.
 
-**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dissipator_superop` for the full construction.
+**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dissipator_from_rates` for the full construction.
 
 Dephasing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +143,7 @@ For off-diagonal elements (:math:`i \neq j`):
 
    \frac{d\rho_{ij}}{dt}\Big|_{\text{deph}} = -\frac{\gamma_i + \gamma_j}{2} \, \rho_{ij}
 
-**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dephasing_superop` for the construction.
+**Implementation:** See :func:`mars.population.transform.Liouvilleator.lindblad_dephasing_from_rates` for the construction.
 
 Separation into Free and Driven Components
 -------------------------------------------
@@ -188,6 +188,36 @@ where :math:`\mathbb{I}` is the identity operator.
 - :func:`mars.population.transform.Liouvilleator.vec` - Convert density matrix to vector
 - :func:`mars.population.transform.Liouvilleator.unvec` - Convert vector back to matrix
 - :func:`mars.population.transform.Liouvilleator.hamiltonian_superop` - Create Hamiltonian superoperator
+
+Custom Lindblad Operators
+--------------------------
+
+Beyond the predefined relaxation parameter types,
+MarS allows you to construct relaxation superoperators directly from arbitrary Lindblad jump operators.
+This is useful when you have physically motivated jump channels that do not fit the standard population-transfer or dephasing templates.
+
+To build a dissipator from a single jump operator :math:`\hat{L}`, use:
+
+.. code-block:: python
+
+   from mars.population.transform import Liouvilleator
+   dissipator = Liouvilleator.lindblad_dissipator_from_operator(L)
+
+:func:`~mars.population.transform.Liouvilleator.lindblad_dissipator_from_operator` implements the full Lindblad term:
+
+.. math::
+
+   \mathcal{D}[\hat{\rho}] = \hat{L} \hat{\rho} \hat{L}^\dagger - \frac{1}{2} \{\hat{L}^\dagger \hat{L}, \hat{\rho}\}
+
+**Notes:**
+
+- The input ``L`` can be any complex-valued tensor of shape ``[..., d, d]``
+- The output superoperator has shape ``[..., d**2, d**2]`` in Liouville space
+- For multiple independent jump channels :math:`\{\hat{L}_k\}`, simply sum their individual dissipators:  
+  ``total_R = sum(lindblad_dissipator_from_operator(L_k) for L_k in operators)``
+- The resulting superoperator is guaranteed to be trace-preserving and, when combined with Hamiltonian evolution, positivity-preserving
+
+The buit superoperator should be pass as user defined superoperator in :class:`mars.population.contexts.Context`
 
 
 References

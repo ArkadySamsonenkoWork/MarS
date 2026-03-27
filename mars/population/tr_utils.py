@@ -429,7 +429,7 @@ class EvolutionPopulationSolver(EvolutionSolver):
         """
         indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
 
-        dt = (time[1:] - time[:-1])
+        dt = (time[..., 1:] - time[..., :-1])
         M = evo(*matrix_generator(time))
         dt = dt[:, None, None, None, None]
         exp_M = torch.matrix_exp(M[:-1] * dt)
@@ -460,24 +460,24 @@ class EvolutionPopulationSolver(EvolutionSolver):
         :param matrix_generator: Generator evaluated only at time[0].
         :param lvl_down: Indices of lower levels.
         :param lvl_up: Indices of upper levels.
-        :return: Signal intensity over time, shape [T, ..., R].
+        :return: Signal intensity over time, shape [..., T ..., R],
+        where the first ... is batch dimensions, the next ... is orientations, resonance and so on
         """
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
         indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
-
         intermediate = torch.linalg.solve(
             eig_vecs,
             initial_populations.unsqueeze(-1).to(eig_vecs.dtype)
         ).squeeze(-1)
-
         dims_to_add = M.dim() - 1
-        reshape_dims = [len(time)] + [1] * dims_to_add
+        reshape_dims = list(time.shape) + [1] * (dims_to_add - time.dim() + 1)
         time_reshaped = time.reshape(reshape_dims)
-        exp_factors = torch.exp(time_reshaped * eig_vals)
-        torch.mul(intermediate, exp_factors, out=exp_factors)
+        exp_factors = torch.exp(time_reshaped * eig_vals.unsqueeze(-4))
+
+        torch.mul(intermediate.unsqueeze(-4), exp_factors, out=exp_factors)
         eig_vecs = eig_vecs[..., indexes, lvl_down, :] - eig_vecs[..., indexes, lvl_up, :]
-        return (eig_vecs.unsqueeze(0) * exp_factors).real.sum(-1)
+        return (eig_vecs.unsqueeze(-4) * exp_factors).real.sum(-1)
 
 
 class EvolutionRWASolver(EvolutionSolver):
@@ -542,7 +542,7 @@ class EvolutionRWASolver(EvolutionSolver):
         :param detection_vector: Detection operator in vectorized form, shape [..., N²].
         :return: Signal intensity over time, shape [T, ..., R].
         """
-        dt = (time[1] - time[0])
+        dt = (time[..., 1] - time[..., 0])
         M = evo(*matrix_generator(time))
         exp_M = torch.matrix_exp(M * dt)
 
@@ -572,7 +572,8 @@ class EvolutionRWASolver(EvolutionSolver):
         :param evo: EvolutionMatrix.
         :param matrix_generator: Evaluated only once at time[0].
         :param detection_vector: Detection operator in vectorized form, shape [..., N²].
-        :return: Signal intensity over time, shape [T, ..., R].
+        :return: Signal intensity over time, shape [..., T ..., R],
+        where the first ... is batch dimensions, the next ... is orientations, resonance and so on
         """
         M = evo(*matrix_generator(time[0]))
         eig_vals, eig_vecs = torch.linalg.eig(M)
@@ -583,13 +584,13 @@ class EvolutionRWASolver(EvolutionSolver):
         ).squeeze(-1)
 
         dims_to_add = M.dim() - 1
-        reshape_dims = [len(time)] + [1] * dims_to_add
+        reshape_dims = list(time.shape) + [1] * (dims_to_add - time.dim() + 1)
         time_reshaped = time.reshape(reshape_dims)
-        exp_factors = torch.exp(time_reshaped * eig_vals)
-        torch.mul(intermediate, exp_factors, out=exp_factors)
+        exp_factors = torch.exp(time_reshaped * eig_vals.unsqueeze(-4))
+        torch.mul(intermediate.unsqueeze(-4), exp_factors, out=exp_factors)
         #eig_vecs = eig_vecs[..., indexes, lvl_down, :] - eig_vecs[..., indexes, lvl_up, :]
         out = torch.matmul(detection_vector.unsqueeze(-2), eig_vecs).squeeze(-2)
-        return (out.unsqueeze(0) * exp_factors).real.sum(dim=-1)
+        return (out.unsqueeze(-4) * exp_factors).real.sum(dim=-1)
 
 
 class EvolutionPropagatorSolver(EvolutionSolver):
@@ -663,8 +664,21 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         return integral
 
     def _U_N_batched(self, U_2pi: torch.Tensor, powers: tp.Union[list[int], torch.Tensor]):
+        """
+        :param U_2pi: U(2pi). The shape is [..., ..., N^2, N^2].
+        The first ... is batch dimension, the second is orientation, resonance fields and so on.
+        :param powers: U(2pi). The shape is [..., T],
+        where T is time dimension and ... is batch dimension
+        :return:
+        """
         eigvel, eigbasis = torch.linalg.eig(U_2pi)
-        embedings = torch.stack([torch.pow(eigvel, m) for m in powers], dim=-2)
+        #embedings = torch.stack([torch.pow(eigvel, m) for m in powers], dim=-2)
+
+        dims_to_add = U_2pi.dim() - 1
+        reshape_dims = list(powers.shape) + [1] * (dims_to_add - powers.dim() + 1)
+        powers = powers.reshape(reshape_dims)
+
+        embedings = torch.pow(eigvel.unsqueeze(-4), powers)
         return eigbasis, torch.linalg.pinv(eigbasis), embedings
 
     def _compute_out(self,
@@ -688,19 +702,18 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         :param detective_vector: Vector form of Gx or Gy operators. The shape is [..., n^2]
         :param integral: Integral term from the equation rho(t) * sin(wt) dt. The shape is [..., n^2, n^2]
         :param eigen_basis: Eigen basis of U_2pi propagator. The shape is [..., n^2, n^2]
-        :param time_dep_values: The eigen values of U_2pi propagator in time powers. The shape is [..., time_steps, n^2]
+        :param time_dep_values: The eigen values of U_2pi propagator in time powers. The shape is [..., time_steps ... n^2]
         :param eigen_basis_inv: Inversion of eigen basis of U_2pi propagator. The shape is [..., n^2, n^2]
         :param density_vector: The density at zero time in vector form. The shape is [..., n^2]
-        :return:
-            The output signal, the shape is [tau, ...]
+        :return: Signal intensity over time, shape [..., T ..., R],
+        where the first ... is batch dimensions, the next ... is orientations, resonance and so on
         """
-
-        temp = torch.einsum('...i,...ji->...j', density_vector, eigen_basis_inv).unsqueeze(-2)
+        temp = torch.einsum("...i,...ji->...j", density_vector, eigen_basis_inv).unsqueeze(-4)
         temp = time_dep_values * temp
-        temp = torch.einsum('...ti,...ji->...tj', temp, eigen_basis)
-        temp = torch.einsum('...ti,...ji->...tj', temp, integral)
-        result = torch.einsum('...i,...ti->...t', detective_vector, temp)
-        result = -result.movedim(-1, 0).real
+        temp = torch.einsum('...i,...ji->...j', temp, eigen_basis.unsqueeze(-5))
+        temp = torch.einsum('...i,...ji->...j', temp, integral.unsqueeze(-5))
+
+        result = -torch.einsum('...i,...i->...', detective_vector.unsqueeze(-4), temp).real
         return result
 
     def stationary_rate_solver(
@@ -723,7 +736,8 @@ class EvolutionPropagatorSolver(EvolutionSolver):
         :param delta_phi: Phase increment per period.
         :param measurement_time: Total measurement duration.
         :param n_steps: Number of RK4 integration steps.
-        :return: Time-dependent expectation values of shape [time_steps, ...].
+                :return: Signal intensity over time, shape [..., T ..., R],
+        where the first ... is batch dimensions, the next ... is orientations, resonance and so on
         """
         liouvilleator = transform.Liouvilleator
 

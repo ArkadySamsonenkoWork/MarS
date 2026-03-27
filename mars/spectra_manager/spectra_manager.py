@@ -86,28 +86,20 @@ class PostSpectraProcessing(nn.Module):
             - tesla (T) for field-dependent spectra,
             - hertz (Hz) for frequency-dependent spectra.
 
-        :param magnetic_field: Tensor of shape [N] or [*batch_dims, N]
-        :param spec: Spectrum tensor of shape [N] or [*batch_dims, N]
-        :return: Broadened spectrum, same shape as spec
+        :param magnetic_field: Tensor of shape [N] or [*batch_dims, N] or [*bathc_dims, T, N]
+        :param spec: Spectrum tensor of shape [N] or [*batch_dims, N] or [*bathc_dims, T, N]
+        :return: Broadened spectrum, same shape as spec with the shape [N] or [*batch_dims, N]
+        or [*batch_dims, T, N] or [T, N] depending on input
         """
-        squeeze_output = False
-        if gauss.dim() == 0:
-            gauss = gauss.unsqueeze(0)
-        if lorentz.dim() == 0:
-            lorentz = lorentz.unsqueeze(0)
-        if magnetic_field.dim() == 1:
-            magnetic_field = magnetic_field.unsqueeze(0)
-            squeeze_output = True
-        if spec.dim() == 1:
-            spec = spec.unsqueeze(0)
+        target_batch_dims = spec.dim() - 1
+        if gauss.dim() < target_batch_dims:
+            gauss = gauss.reshape(*gauss.shape, *(1,) * (target_batch_dims - gauss.dim()))
+
+        if lorentz.dim() < target_batch_dims:
+            lorentz = lorentz.reshape(*lorentz.shape, *(1,) * (target_batch_dims - lorentz.dim()))
 
         _broading_method = self._broading_fabric(gauss, lorentz)
-        result = _broading_method(gauss, lorentz, magnetic_field, spec)
-
-        if squeeze_output:
-            result = result.squeeze(0)
-
-        return result
+        return _broading_method(gauss, lorentz, magnetic_field, spec)
 
     def _build_lorentz_kernel(self, magnetic_field: torch.Tensor, fwhm_lorentz: torch.Tensor) -> torch.Tensor:
         """
@@ -1023,7 +1015,7 @@ class Broadener(nn.Module):
                           tensor_components_A: torch.Tensor, tensor_components_B: torch.Tensor,
                           transformation_matrix: torch.Tensor, correlation_matrix: torch.Tensor) -> torch.Tensor:
         return torch.einsum(
-            '...pij,jkl,ikl,...bk,...bl,ph->...hb',
+            "...pij,jkl,ikl,...bk,...bl,ph->...hb",
             transformation_matrix, tensor_components_A, tensor_components_B, torch.conj(vector), vector,
             correlation_matrix
         ).real
@@ -1032,7 +1024,7 @@ class Broadener(nn.Module):
                           tensor_components: torch.Tensor,
                           transformation_matrix: torch.Tensor, correlation_matrix: torch.Tensor) -> torch.Tensor:
         return torch.einsum(
-            '...pi, ikl,...bk,...bl,ph->...hb',
+            "...pi, ikl,...bk,...bl,ph->...hb",
             transformation_matrix, tensor_components, torch.conj(vector), vector, correlation_matrix
         ).real
 
@@ -2598,7 +2590,7 @@ class TruncTimeSpectra(BaseSpectra):
             time, res_fields, lvl_down, lvl_up,
             resonance_energies, vector_down, vectors_up, full_system_vectors, *extras
         )
-        intensities = (intensities.unsqueeze(0) * population)
+        intensities = (intensities.unsqueeze(-3) * population)
         return res_fields, intensities, width
 
     def _init_spectra_processor(self,

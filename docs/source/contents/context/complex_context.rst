@@ -666,3 +666,73 @@ Order of Operations
    #  They are equivalent
    result_1 = mars.concat((context_1, context_2)) + mars.concat((context_3, context_4))
    result_2 = mars.concat((context_1, context_4)) + mars.concat((context_3, context_2))
+
+
+.. _dephasing_concatenation:
+
+Dephasing in Concatenated Systems
+---------------------------------
+
+There is a distinction between concatenating Context objects directly versus concatenating their pre-computed relaxation superoperators.
+When using :func:`mars.concat` on a list of Context objects, the library constructs the composite relaxation superoperator from the combined rate parameters.
+This ensures that coherences between states belonging to different subsystems, for example coherence between state i in subsystem 1 and state j in subsystem 2, decay correctly according to the sum of their individual dephasing rates.
+
+In contrast, if relaxation superoperators are computed separately for each subsystem and then combined into a block-diagonal matrix, the off-diagonal blocks connecting the subsystems remain zero.
+This implies that inter-system coherences do not decay due to relaxation, meaning the time derivative of the density matrix element :math:`\rho_{12}` is zero for cross-subsystem elements.
+
+When the superoperator is computed via the Lindblad equation from concatenated rates,
+these terms appear naturally since the population changes in subsystem 1 and subsystem 2 contribute to the decay of the coherence between them.
+Therefore, to preserve the Lindblad structure where inter-system coherences decay due to local noise, users should concatenate Context objects before computing the superoperator.
+
+The following example demonstrates this difference.
+
+.. code-block:: python
+
+    import torch
+    from mars import population, concat
+    sample_1, sample_2, sample_3 = create_samples()
+
+    # Define dephasing rates for two independent subsystems
+    dephasing_1 = torch.tensor([1e6, 1e6], dtype=torch.float64)
+    dephasing_2 = torch.tensor([1.5e6, 1.5e6], dtype=torch.float64)
+
+    # Create Contexts with defined dephasing and zero population transfer
+    context_1 = population.Context(
+       sample=sample_1,
+       basis="eigen",
+       dephasing=dephasing_1,
+       free_probs=torch.zeros(2, 2, dtype=torch.float64)
+    )
+
+    context_2 = population.Context(
+       sample=sample_2,
+       basis="eigen",
+       dephasing=dephasing_2,
+       free_probs=torch.zeros(2, 2, dtype=torch.float64)
+    )
+
+    # Context Concatenation
+    # The superoperator is generated from the combined rate structure
+    context_combined = concat([context_1, context_2])
+    sup_combined = context_combined.get_transformed_free_superop(None)
+
+    # Superoperator Combination
+    # Compute superoperators for each subsystem independently
+    sup_1 = context_1.get_transformed_free_superop(None)
+    sup_2 = context_2.get_transformed_free_superop(None)
+
+    # Manually construct block-diagonal superoperator
+    # This lacks the cross-terms required for inter-system coherence decay
+    sup_manual = transform.reshape_superoperators_list_to_direct_sum_basis((sup_1, sup_2))
+
+    # Verification: The two superoperators are not equal
+    # The difference lies in the off-diagonal blocks corresponding to 
+    # coherences between subsystem 1 and subsystem 2
+    assert not torch.allclose(sup_combined, sup_manual)
+
+    print(f"Combined superoperator includes inter-system dephasing: {not torch.allclose(sup_combined, sup_manual)}")
+
+Using the manual superoperator combination will result in sustained coherences between subsystems even though local noise should destroy them. Concatenate Context objects to ensure physical accuracy in the relaxation model.
+
+
+

@@ -1358,15 +1358,19 @@ class SpinSystem(nn.Module):
         complex_dtype = utils.float_to_complex_dtype(dtype)
 
         self.electrons = self._init_electrons(electrons, device, complex_dtype)
-        self.g_tensors = nn.ModuleList(g_tensors)
-        self.nuclei = self._init_nuclei(nuclei, device, complex_dtype) if nuclei else []
 
+        if len(g_tensors) != len(self.electrons):
+            if len(self.electrons) == 1 and not self.electrons[0].spin:
+                pass
+            else:
+                raise ValueError("the number of g tensors must be equal to the number of electrons")
+
+        self.g_tensors = nn.ModuleList(g_tensors)
+
+        self.nuclei = self._init_nuclei(nuclei, device, complex_dtype) if nuclei else []
         self.electron_nuclei_interactions = nn.ModuleList()
         self.electron_electron_interactions = nn.ModuleList()
         self.nuclei_nuclei_interactions = nn.ModuleList()
-
-        if len(self.g_tensors) != len(self.electrons):
-            raise ValueError("the number of g tensors must be equal to the number of electrons")
 
         self.en_indices = []
         self.ee_indices = []
@@ -1471,7 +1475,10 @@ class SpinSystem(nn.Module):
 
         :return: A tuple-like shape (e.g., (N_samples,) or (N_batch, N_sites)).
         """
-        return self.g_tensors[0].config_shape
+        if hasattr(self, "g_tensors") and self.g_tensors and len(self.g_tensors) > 0:
+            return self.g_tensors[0].config_shape
+        else:
+            return torch.Size([])
 
     @property
     def spin_system_dim(self) -> int:
@@ -2163,7 +2170,10 @@ class BaseSample(nn.Module):
         else:
             width = torch.tensor(width, device=device, dtype=dtype)
             if width.shape != self.base_spin_system.config_shape:
-                raise ValueError(f"width batch shape must be equel to base_spin_system config shape")
+                raise ValueError(
+                    f"width batch shape must be equal to base_spin_system config shape."
+                    f"The current width shape is {width.shape}, expected {self.base_spin_system.config_shape}"
+                )
         return width
 
     def _init_ham_str(
@@ -2870,7 +2880,6 @@ class MultiOrientedSample(BaseSample):
         :return:
         """
         return rotation_matrices[..., -1, :]
-
 
     def _get_effective_rotation_matrices(self) -> torch.Tensor:
         """

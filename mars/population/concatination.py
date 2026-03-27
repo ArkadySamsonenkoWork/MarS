@@ -1,5 +1,6 @@
 import typing as tp
 import warnings
+import copy
 
 import torch
 import numpy as np
@@ -23,7 +24,7 @@ def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
         entire composite system.
     """
     dims = [context.spin_system_dim for context in contexts]
-    managers = [context.redfield_manager for context in contexts]
+    managers = [copy.deepcopy(context.redfield_manager) for context in contexts]
     for idx, manager in enumerate(managers):
         if manager is None:
             continue

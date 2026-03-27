@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import math
 import itertools
 import functools
+import copy
 
 import torch
 from torch import nn
@@ -298,7 +299,7 @@ def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -
         entire composite system.
     """
     dims = [context.spin_system_dim for context in contexts]
-    managers = [context.redfield_manager for context in contexts]
+    managers = [copy.deepcopy(context.redfield_manager) for context in contexts]
     for idx, manager in enumerate(managers):
         if manager is None:
             continue
@@ -308,7 +309,6 @@ def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -
         manager.expand_kronecker(left_dim, right_dim)
 
     return combine_redfield_managers(managers)
-
 
 
 def _multiply_homogeneous_contexts_to_context(contexts: tp.Sequence[Context]) -> Context:
@@ -875,14 +875,20 @@ class TransformedContext(BaseContext):
 
     def _secular_mask(self) -> torch.Tensor:
         """
+        Secular approximation mask:
+        - Populations can transfer between each other
+        - Each coherence evolves independently
+
         :return: the secular mask with the non-zero
-        values corresponding the elements of superoperator where a - b = c - d
+        values corresponding the elements of superoperator
+        where Ea - Eb = Ec - Ed under the approximation that all energy levels have different energy difference
         """
-        idx = torch.arange(self.spin_system_dim, dtype=torch.long)
-        coherence_diff_2d = idx[:, None] - idx[None, :]
-        coherence_diff_1d = coherence_diff_2d.reshape(-1)
-        mask = coherence_diff_1d[:, None] == coherence_diff_1d[None, :]
-        return mask.to(self.device)
+        N = self.spin_system_dim
+        dim_liouville = N * N
+        mask = torch.eye(dim_liouville, dtype=torch.bool)
+        pop_indices = torch.arange(0, dim_liouville, N + 1)
+        mask[pop_indices[:, None], pop_indices[None, :]] = True
+        return mask
 
     def apply_secular_mask(self, superoperator: torch.Tensor) -> torch.Tensor:
         """
@@ -890,7 +896,7 @@ class TransformedContext(BaseContext):
         :return: secularized superoperator if self.enforce_secularity is True, else do not change it
         """
         if self.enforce_secularity:
-            return superoperator @ self._secular_mask().type_as(superoperator)
+            return superoperator * self._secular_mask().type_as(superoperator)
         return superoperator
 
     def get_redfield_transition_probs(
@@ -1181,7 +1187,6 @@ class TransformedContext(BaseContext):
                                                    self.transformed_matrix(_driven_probs, full_system_vectors),
                                                    fields, energies, temperature)
 
-
     def get_transformed_out_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
@@ -1336,7 +1341,7 @@ class TransformedContext(BaseContext):
         if (self.out_probs is not None) and (self.free_probs is not None):
             _out_probs = self._get_out_probs_tensor(time_dep_values)
             _free_probs = self._get_free_probs_tensor(time_dep_values)
-            return self.liouvilleator.lindblad_dissipator_superop(_free_probs) +\
+            return self.liouvilleator.lindblad_dissipator_from_rates(_free_probs) +\
                 torch.diag_embed(
                     self.liouvilleator.anticommutator_superop_diagonal(-0.5 * _out_probs), dim1=-1, dim2=-2)
 
@@ -1347,7 +1352,7 @@ class TransformedContext(BaseContext):
 
         elif (self.out_probs is None) and (self.free_probs is not None):
             _free_probs = self._get_free_probs_tensor(time_dep_values)
-            return self.liouvilleator.lindblad_dissipator_superop(_free_probs)
+            return self.liouvilleator.lindblad_dissipator_from_rates(_free_probs)
 
         else:
             return None
@@ -1360,7 +1365,7 @@ class TransformedContext(BaseContext):
             return None
         else:
             _driven_probs = self._get_driven_probs_tensor(time_dep_values)
-            _relaxation_superop = self.liouvilleator.lindblad_dissipator_superop(_driven_probs)
+            _relaxation_superop = self.liouvilleator.lindblad_dissipator_from_rates(_driven_probs)
             return _relaxation_superop
 
     def _create_free_superop(
@@ -1380,7 +1385,7 @@ class TransformedContext(BaseContext):
         if self.dephasing is not None and _density_condition:
             _dephasing = self._get_dephasing_tensor(time_dep_values)
             _relaxation_superop =\
-                self.liouvilleator.lindblad_dephasing_superop(_dephasing) +\
+                self.liouvilleator.lindblad_dephasing_from_rates(_dephasing) +\
                 self._extract_free_populations_superop(time_dep_values)
             return _relaxation_superop
 
@@ -1389,7 +1394,7 @@ class TransformedContext(BaseContext):
 
         else:
             _dephasing = self._get_dephasing_tensor(time_dep_values)
-            _relaxation_superop = self.liouvilleator.lindblad_dephasing_superop(_dephasing)
+            _relaxation_superop = self.liouvilleator.lindblad_dephasing_from_rates(_dephasing)
             return _relaxation_superop
 
 

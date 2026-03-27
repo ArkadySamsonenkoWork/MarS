@@ -14,6 +14,8 @@ _CONVERTERS = {
     # energy ↔ frequency
     "Hz_to_J": lambda v: v * PLANCK,
     "J_to_Hz": lambda v: v / PLANCK,
+    "Hz_to_eV": lambda v: v * PLANCK / E_CHARGE,
+    "eV_to_Hz": lambda v: v * E_CHARGE / PLANCK,
 
     # energy ↔ temperature
     "J_to_K": lambda v: v / BOLTZMANN,
@@ -63,6 +65,8 @@ def unit_converter(values: tp.Union[torch.Tensor, np.ndarray, float], conversion
         Energy ↔ Frequency:
         - "Hz_to_J": frequency (Hz) → energy (Joules)
         - "J_to_Hz": energy (Joules) → frequency (Hz)
+        - "Hz_to_eV": frequency (Hz) → energy (electron volts)
+        - "eV_to_Hz": energy (electron volts) → frequency (Hz)
 
         Energy ↔ Temperature:
         - "J_to_K": energy (Joules) → temperature (Kelvin)

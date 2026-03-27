@@ -207,16 +207,18 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
             - "skip" (or `ThermalBalanceMode.SKIP`): No modification. Use for
               high-temperature limits ($k_B T \gg \hbar\omega$) or non-thermal baths.
+              *Default if None is provided.*
             - "symmetric" (or `ThermalBalanceMode.SYMMETRIC`): Symmetrizes the
               spectral density and enforces detailed balance on all transitions.
               Both upward and downward rates are adjusted to preserve the average
               coupling strength while satisfying
               $J(-\omega) = J(\omega)e^{-\hbar\omega/k_BT}$.
-              *Default if None is provided.*
             - "complement" (or `ThermalBalanceMode.COMPLEMENT`): Fills only
               missing zero entries in the upward transition matrix ($\omega < 0$)
               using the corresponding downward transitions ($\omega > 0$) and the
               Boltzmann factor. Preserves user-computed downward rates exactly.
+
+            Default is "skip"
 
         :raises ValueError: If `thermal_balance_mode` is a string that does not
             match one of the valid options ("skip", "symmetric", "complement").
@@ -225,7 +227,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         """
         super().__init__()
         if thermal_balance_mode is None:
-            self.thermal_balance_mode = ThermalBalanceMode.SYMMETRIC
+            self.thermal_balance_mode = ThermalBalanceMode.SKIP
         elif isinstance(thermal_balance_mode, ThermalBalanceMode):
             self.thermal_balance_mode = thermal_balance_mode
         elif isinstance(thermal_balance_mode, str):
@@ -424,7 +426,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         :param temperature: temperature in Kelvin. Shape: (...) or scalar.
         :return: Boltzmann factor. Shape: (..., N, N).
         """
-        return torch.exp(constants.unit_converter(omega_hz, "Hz_to_K") / temperature)
+        return torch.exp(-constants.unit_converter(omega_hz, "Hz_to_K") / temperature)
 
     def expand_zeros(
             self, left_dim: int, right_dim: int) -> None:
@@ -562,7 +564,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         boltzmann = torch.exp(energy_diff_K / temp_safe)
         J_transpose = J_raw.transpose(-2, -1)
         J_filled = J_transpose * boltzmann
-        upward_and_missing = (omega_hz < 0) & (J_raw == 0)
+        upward_and_missing = (omega_hz < 0) & torch.isclose(J_raw, torch.zeros_like(J_raw), atol=1e-12)
 
         J_result = torch.where(upward_and_missing, J_filled, J_result)
 
@@ -579,7 +581,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         # omega_cd = E_up - E_down
         omega_hz = energies.unsqueeze(-2) - energies.unsqueeze(-1)
         return self.spectral_density_modifier(
-            self.spectral_density_func(omega_hz / 2 * math.pi), omega_hz, temperature
+            self.spectral_density_func(omega_hz * 2 * math.pi), omega_hz, temperature
         )
 
     def get_coupling_operators(
@@ -622,7 +624,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
            W[a, c] is the rate c -> a. Diagonal is zero.
        """
         W = torch.zeros_like(spec_density)
-        J_trans = spec_density.transpose(-1, -2)
+        J_trans = spec_density
 
         for op in operators:
             sq = op.abs() ** 2
@@ -665,7 +667,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         where W_sum_i is the total rate out of state i.
 
         Additionally, pure dephasing (elastic scattering) contributes:
-        Gamma_ab_pure = sum_k |A^k_aa - A^k_bb|^2 * J(0)
+        Gamma_ab_pure = 0.5 * sum_k |A^k_aa - A^k_bb|^2 * J(0)
 
         This method computes the total dephasing rate.
 
@@ -682,12 +684,11 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         J0 = spec_density.diagonal(offset=0, dim1=-2, dim2=-1)
 
         pure_dephasing = torch.zeros_like(gamma_pop)
-
         for op in operators:
             op_diag = torch.diagonal(op, offset=0, dim1=-2, dim2=-1)
-            diff = op_diag.unsqueeze(-1) - op_diag.unsqueeze(-2)
+            diff = op_diag.unsqueeze(-2) - op_diag.unsqueeze(-1)
             sq_diff = diff.abs() ** 2
-            pure_dephasing += sq_diff * J0.unsqueeze(-2)
+            pure_dephasing += sq_diff * J0.unsqueeze(-1).mul(0.5)
 
         return gamma_pop + pure_dephasing
 
@@ -744,8 +745,10 @@ class RedfieldRelaxationChannel(torch.nn.Module):
 
         R[..., i, i, j, j] = W
         R[..., i, j, i, j] = -gamma
+        dtype = R.dtype
+        complex_dtype = torch.complex128 if dtype == torch.float64 else torch.complex64
 
-        return R
+        return R.to(complex_dtype)
 
     def _non_secular_superoperator_4d(
             self, operators: tp.List[torch.Tensor],
@@ -771,7 +774,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             Gamma_{acbd}(omega_{db}) -
             Gamma_{cadb}*(omega_{db})
         ]
-
+        delta_{bd} == 1 for b==d and 0 otherwise
         This includes all terms allowing for coherence transfer between transitions
         with similar frequencies (non-secular).
 
@@ -785,19 +788,18 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         N = ref_op.shape[-1]
         device = ref_op.device
 
-        # Compute sum_k A^k_{ab} A^k_{cd}*
-        # This corresponds to the operator part of Gamma_{abcd}
         A_Aconj_sum = torch.zeros(
-            ref_op.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
+                spec_density.shape[:-2] + (N, N, N, N), dtype=ref_op.dtype, device=device)
         for op in operators:
             A_Aconj_sum += torch.einsum("...ab,...cd->...abcd", op, op.conj())
 
         R = torch.zeros_like(A_Aconj_sum)
 
-        permute_indices = list(range(A_Aconj_sum.dim() - 4)) + [-1, -3, -4, -2]
+        permute_indices = list(range(A_Aconj_sum.dim() - 4)) + [-4, -2, -3, -1]
         term3_part = A_Aconj_sum.permute(permute_indices)
 
         J_db = spec_density.unsqueeze(-3).unsqueeze(-3)
+
         R -= term3_part * J_db
 
         J_db_expanded = spec_density.unsqueeze(-2).unsqueeze(-1)
@@ -814,7 +816,8 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         R += term2
         R *= 0.5
 
-        return R
+
+        return R.negative_()
 
     def compute_relaxation_superoperator_4d(
             self, transformation_unitary: tp.Optional[torch.Tensor],
@@ -912,6 +915,42 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         close redfield channel
         """
         self.basis_manager.transformation_unitary = None
+
+    def __repr__(self):
+        """
+        Return a string representation of the RedfieldRelaxationChannel.
+
+        Includes configuration details like thermal balance mode, secular approximation,
+        eigenbasis usage, and operator counts. Handles cases where post_init
+        has not yet been called.
+
+        :return: String representation of the channel configuration.
+        """
+        cls_name = self.__class__.__name__
+
+        # Thermal Balance Mode
+        if hasattr(self, "thermal_balance_mode"):
+            mode = self.thermal_balance_mode
+            thermal_mode = mode.value if hasattr(mode, "value") else str(mode)
+        else:
+            thermal_mode = "Not Initialized"
+
+        secular = getattr(self, "secular", "Not Initialized")
+        eigen_basis = getattr(self, "eigen_basis_flag", "Not Initialized")
+
+        num_ops = len(self.operator_components) if hasattr(self, "operator_components") else 0
+
+        spec_func = getattr(self, "spectral_density_func", None)
+        spec_name = spec_func.__name__ if hasattr(spec_func, "__name__") else str(type(spec_func).__name__)
+
+        return (
+            f"{cls_name}(\n"
+            f"thermal_balance_mode={thermal_mode}, \n"
+            f"secular={secular}, \n"
+            f"eigen_basis={eigen_basis}, \n"
+            f"num_operators={num_ops}, \n"
+            f"spectral_density_func={spec_name}) \n"
+        )
 
 
 class RedfieldManager:
@@ -1023,6 +1062,23 @@ class RedfieldManager:
             self.redfield_channels
         )
 
+    def __repr__(self):
+        """
+        Return a string representation of the RedfieldManager.
+
+        Summarizes the number of managed channels and their common
+        eigenbasis configuration.
+
+        :return: String representation of the manager state.
+        """
+        cls_name = self.__class__.__name__
+        num_channels = len(self.redfield_channels) if hasattr(self, "redfield_channels") else 0
+        eigen_basis = getattr(self, "eigen_basis_flag",  "Not Initialized")
+        return (
+            f"{cls_name}( \n"
+            f"num_channels={num_channels}, \n"
+            f"eigen_basis={eigen_basis}) \n"
+        )
 
 def combine_redfield_managers(redfield_managers: tp.List[tp.Optional[RedfieldManager]]) -> RedfieldManager:
     """

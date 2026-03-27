@@ -331,7 +331,6 @@ physical consistency across different representations.
 
 The Lindblad Master Equation
 """"""""""""""""""""""""""""
-
 The time evolution of the density matrix :math:`\hat{\rho}` under Markovian dissipation is given by:
 
 .. math::
@@ -346,7 +345,7 @@ where the Lindblad dissipator is:
 
 Here, :math:`\gamma_k` are the rates (kinetic coefficients) and :math:`\hat{L}_k` are the jump operators. 
 When changing the basis from :math:`\{|i\rangle\}` to :math:`\{|\alpha\rangle\}` via a unitary matrix 
-:math:`U` (where :math:`|\alpha\rangle = \sum_i U_{\alpha i} |i\rangle`), the operators transform, 
+:math:`U` (where :math:`|\alpha\rangle = \sum_i U^{*}_{\alpha i} |i\rangle`), the operators transform, 
 necessitating a corresponding transformation of the rates :math:`\gamma_k`.
 
 Loss Probabilities (Out Probabilities)
@@ -364,8 +363,8 @@ In the new basis, the loss operator becomes:
 
 .. math::
 
-   \hat{L}_\alpha = |\text{vac}\rangle\langle\alpha| = \sum_i U_{\alpha i}^* |\text{vac}\rangle\langle i| 
-   = \sum_i U_{\alpha i}^* \hat{L}_i
+   \hat{L}_\alpha = |\text{vac}\rangle\langle\alpha| = \sum_i U_{\alpha i} |\text{vac}\rangle\langle i| 
+   = \sum_i U_{\alpha i} \hat{L}_i
 
 **Proof of Rate Transformation:**
 

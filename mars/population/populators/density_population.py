@@ -809,7 +809,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param tr_matrix_generator:
             Generator that provides the static part of the relaxation superoperator based on the spin system and context.
         :param time:
-            Time points at which the signal is evaluated, shape [T].
+            Time points at which the signal is evaluated, shape [..., T]. where ... is batch shape
         :param res_fields:
             Resonance fields corresponding to each orientation or transition.
         :param initial_density:
@@ -818,15 +818,18 @@ class PropagatorDensityPopulator(RWADensityPopulator):
             Transformed Zeeman operators (x- and y-components) in the eigenbasis, each of shape [..., 1, N, N].
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
-        :return:
-            Averaged time-dependent signal intensity for powder sample, shape [T, ..., Tr].
+        :return: Signal intensity over time, shape [..., T ..., Tr],
+        where the first ... is batch dimensions, the next ... is orientations, Tr is transition fields
         """
 
         tau = 1 / resonance_frequency
         delta_phi = self.two_pi / self.n_steps
         res_omega = resonance_frequency * self.two_pi
         superop_static = evo(*tr_matrix_generator(time))
-        out = torch.zeros(*(time.shape[0], *Gx.shape[:-2]), dtype=res_fields.dtype, device=res_fields.device)
+
+        target_shape = list(time.shape) + list(Gx.shape[time.dim()-1:-2])
+        out = torch.zeros(target_shape, dtype=res_fields.dtype, device=res_fields.device)
+
         z_axis_angles = torch.linspace(0, 2 * math.pi, self.angle_average_steps + 1)[:-1]
         delta_angle_z_axis = z_axis_angles[1] - z_axis_angles[0]
         for z_axis_angle in z_axis_angles:
@@ -873,14 +876,17 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
 
-        :return:
-            Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
+        :return: Signal intensity over time, shape [..., T ..., Tr],
+        where the first ... is batch dimensions, the next ... is orientations, Tr is transition fields
         """
         tau = 1 / resonance_frequency
         delta_phi = self.two_pi / self.n_steps
         res_omega = resonance_frequency * self.two_pi
         superop_static = evo(*tr_matrix_generator(time))
-        out = torch.zeros(*(time.shape[0], *Gx.shape[:-2]), dtype=res_fields.dtype, device=res_fields.device)
+
+        target_shape = list(time.shape) + list(Gx.shape[time.dim() - 1:-2])
+        out = torch.zeros(target_shape, dtype=res_fields.dtype, device=res_fields.device)
+
         for Gt in [Gx]:
             out += self.solver.stationary_rate_solver(
                 time, initial_density, Gt, superop_static,

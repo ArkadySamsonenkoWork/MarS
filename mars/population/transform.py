@@ -323,7 +323,7 @@ def transform_state_weights_to_new_basis(initial_rates: torch.Tensor, probabilit
     - Valid for populations, state occupancies, and other incoherent quantities
     - Preserves total sum: Σ_i v_new[i] = Σ_j v_old[j]
     """
-    return torch.matmul(probabilities, initial_rates)
+    return torch.einsum("...ij, ...j -> ...i", probabilities, initial_rates)
 
 
 def transform_superop_to_new_basis(
@@ -1105,12 +1105,12 @@ def reshape_superoperators_list_to_direct_sum_basis(
 
     :param superoperators:
             List of subsystem superoperators.
-            Each element Rᵢ has shape ``(N_i^2, N_i^2)`` where N_i is the Hilbert
-            space dimension of subsystem i.
+            Each element Rᵢ has shape ``(..., N_i^2, N_i^2)`` where N_i is the Hilbert
+            space dimension of subsystem i batch dimensions (...) must be broadcastable.
 
     :return:
         total_superop: Composite superoperator acting on vec(ρ_1 ⊕ … ⊕ ρ_n).
-            Shape: ``(N², N²)`` where N = Σᵢ Nᵢ is the total Hilbert space dimension.
+            Shape: ``(..., N^2, N^2)`` where N = Σᵢ Nᵢ is the total Hilbert space dimension.
 
     Mathematical Formulation:
     -------------------------
@@ -1134,26 +1134,98 @@ def reshape_superoperators_list_to_direct_sum_basis(
         R_total[Kᵢ, Kⱼ] = 0   for i ≠ j
 
     """
-    dims = [int(round(math.sqrt(R.shape[0]))) for R in superoperators]
+    dims = [int(round(math.sqrt(R.shape[-1]))) for R in superoperators]
+    batch_shape = superoperators[0].shape[:-2]
 
     N = sum(dims)
     offsets = [0] + torch.cumsum(torch.tensor(dims[:-1]), dim=0).tolist()
 
     device = superoperators[0].device
     dtype = superoperators[0].dtype
-    total_superop = torch.zeros((N * N, N * N), dtype=dtype, device=device)
+    total_superop = torch.zeros(batch_shape + (N * N, N * N), dtype=dtype, device=device)
 
     for R_i, N_i, off in zip(superoperators, dims, offsets):
         a = torch.arange(N_i, device=device)
         b = torch.arange(N_i, device=device)
         grid_a, grid_b = torch.meshgrid(a, b, indexing="ij")
 
-        global_idx = (off + grid_a) * N + (off + grid_b)       # shape (N_i, N_i)
+        global_idx = (off + grid_a) * N + (off + grid_b)
 
-        out_global = global_idx.flatten()                      # length N_i²
-        in_global = out_global                                 # same mapping for input
-        total_superop[out_global[:, None], in_global[None, :]] = R_i
+        out_global = global_idx.flatten()
+        in_global = out_global
+        total_superop[..., out_global[:, None], in_global[None, :]] = R_i
     return total_superop
+
+
+def reshape_direct_sum_basis_to_superoperators_list(
+        superop_tensor: torch.Tensor,
+        subsystem_dims: tp.List[int]
+) -> tp.List[torch.Tensor]:
+    """Extract subsystem superoperators from a direct-sum composite superoperator.
+
+      Given a full superoperator R acting on the vectorized block-diagonal density
+      matrix vec(ρ_1 ⊕ … ⊕ ρ_n), extracts the individual subsystem superoperators
+      {Rᵢ} acting on vec(ρᵢ).
+
+      This is the inverse operation of `reshape_superoperators_list_to_direct_sum_basis`.
+
+      :param superop_tensor:
+              Composite superoperator acting on vec(ρ_1 ⊕ … ⊕ ρ_n).
+              Shape: ``(..., N^2, N^2)`` where N = Σᵢ Nᵢ is the total Hilbert space
+              dimension. Batch dimensions (...) must be consistent across extractions.
+
+      :param subsystem_dims:
+              List of Hilbert space dimensions for each subsystem [N_1, N_2, ..., N_n].
+              Must satisfy Σᵢ Nᵢ = N (where N^2 is the last dimension of superop_tensor).
+
+      :return:
+          superoperators: List of subsystem superoperators.
+              Each element Rᵢ has shape ``(..., N_i^2, N_i^2)`` where N_i is the Hilbert
+              space dimension of subsystem i.
+
+      Mathematical Formulation:
+      -------------------------
+      For a block-diagonal ρ with subsystem dimensions {Nᵢ} and offsets
+      offsetᵢ = Σ_{k<i} N_k:
+
+          ρ[p, q] = ρᵢ[p−offsetᵢ, q−offsetᵢ]   if p,q ∈ [offsetᵢ, offsetᵢ+Nᵢ)
+                  = 0                           otherwise
+
+      Row-major vectorization maps matrix element ρ[p, q] to index:
+
+          k = p·N + q   where N = Σᵢ Nᵢ
+
+      Subsystem i occupies non-contiguous indices in vec(ρ):
+
+          Kᵢ = { (offsetᵢ + a)·N + (offsetᵢ + b) | a,b ∈ [0, Nᵢ) }
+
+      The subsystem superoperator Rᵢ is recovered by slicing the total superoperator
+      at the indices corresponding to subspace Kᵢ:
+
+          Rᵢ = R_total[Kᵢ, Kᵢ]
+      """
+    total_vec_dim = superop_tensor.shape[-1]
+    N_total = int(round(math.sqrt(total_vec_dim)))
+
+    if len(subsystem_dims) > 1:
+        offsets = [0] + torch.cumsum(torch.tensor(subsystem_dims[:-1]), dim=0).tolist()
+    else:
+        offsets = [0]
+
+    extracted_superoperators = []
+    device = superop_tensor.device
+
+    for N_i, off in zip(subsystem_dims, offsets):
+        a = torch.arange(N_i, device=device)
+        b = torch.arange(N_i, device=device)
+        grid_a, grid_b = torch.meshgrid(a, b, indexing="ij")
+        global_idx = (off + grid_a) * N_total + (off + grid_b)
+        flat_idx = global_idx.flatten()
+        R_i = superop_tensor[..., flat_idx[:, None], flat_idx[None, :]]
+
+        extracted_superoperators.append(R_i)
+
+    return extracted_superoperators
 
 
 def extract_transition_matrix(superoperator: torch.Tensor) -> torch.Tensor:
@@ -1190,7 +1262,7 @@ def extract_transition_matrix(superoperator: torch.Tensor) -> torch.Tensor:
     diag_indices = torch.arange(N, device=superoperator.device)
     population_transfer_matrix[..., diag_indices, diag_indices] = 0
 
-    return population_transfer_matrix
+    return population_transfer_matrix.real
 
 
 class Liouvilleator:
@@ -1207,7 +1279,7 @@ class Liouvilleator:
             Operator for the commutator. Shape: [..., d, d]
 
         :return: torch.Tensor
-            Commutator superoperator. Shape: [..., d², d²]
+            Commutator superoperator. Shape: [..., d^2, d^2]
 
         Mathematical Formulation:
         -------------------------
@@ -1285,11 +1357,11 @@ class Liouvilleator:
             Hamiltonian operator. Shape: [..., d, d]
 
         :return: torch.Tensor
-            Hamiltonian superoperator. Shape: [..., d², d²]
+            Hamiltonian superoperator. Shape: [..., d^2, d^2]
 
         Mathematical Formulation:
         -------------------------
-        L = -i (H ⊗ I - I ⊗ Hᵀ)
+        L = -i (H ⊗ I - I ⊗ H^T)
 
         Notes:
         ------
@@ -1311,11 +1383,11 @@ class Liouvilleator:
             Operator for the anticommutator. Shape: [..., d, d]
 
         :return: torch.Tensor
-            Anticommutator superoperator. Shape: [..., d², d²]
+            Anticommutator superoperator. Shape: [..., d^2, d^2]
 
         Mathematical Formulation:
         -------------------------
-        L = A ⊗ I + I ⊗ Aᵀ
+        L = A ⊗ I + I ⊗ A^T
 
         Notes:
         ------
@@ -1345,11 +1417,11 @@ class Liouvilleator:
             Operator for the anticommutator. Shape: ``[..., d,]``
 
         :return: torch.Tensor
-            Anticommutator superoperator. Shape: ``[..., d²]``
+            Anticommutator superoperator. Shape: ``[..., d^2]``
 
         Mathematical Formulation:
         -------------------------
-        L = A ⊗ I + I ⊗ Aᵀ
+        L = A ⊗ I + I ⊗ A^T
         """
         d = operator.shape[-1]
         batch_dims = operator.shape[:-1]
@@ -1360,33 +1432,8 @@ class Liouvilleator:
         return anticomm_diagonal.reshape(*batch_dims, d * d)
 
     @staticmethod
-    def decay_superop(jump_operator: torch.Tensor, rate: float) -> torch.Tensor:
-        """Compute the dissipative superoperator for quantum decay processes.
-
-        :param  jump_operator : torch.Tensor
-            Quantum jump operator. Shape: [..., d, d]
-        rate : float
-            Positive decay rate (Γ > 0)
-
-        :return: torch.Tensor
-            Dissipative superoperator. Shape: [..., d², d²]
-
-        Mathematical Formulation:
-        -------------------------
-        ``L_decay = -(Γ/2) (L†L ⊗ I + I ⊗ (L†L)ᵀ)``
-        where L = jump_operator
-
-        Notes:
-        ------
-        - This is NOT a complete Lindblad dissipator (missing +LρL† term)
-        - Always negative semi-definite for population decay
-        """
-        decay_op = jump_operator.conj().transpose(-1, -2) @ jump_operator
-        return -rate / 2 * Liouvilleator.anticommutator_superop(decay_op)
-
-    @staticmethod
-    def lindblad_dissipator_superop(w: torch.Tensor) -> torch.Tensor:
-        """Construct Lindblad dissipator superoperator from off-diagonal rates.
+    def lindblad_dissipator_from_rates(w: torch.Tensor) -> torch.Tensor:
+        """Construct Lindblad dissipator superoperator from off-diagonal rates (kinetic rates).
 
         Models the dissipator term in the Lindblad equation:
             ``D(ρ) = Σ_{i≠j} w_{ij} [L_{ij} ρ L_{ij}^† - (1/2){L_{ij}^† L_{ij}, ρ}]``
@@ -1441,7 +1488,7 @@ class Liouvilleator:
         return superop_total
 
     @staticmethod
-    def lindblad_dephasing_superop(gamma: torch.Tensor) -> torch.Tensor:
+    def lindblad_dephasing_from_rates(gamma: torch.Tensor) -> torch.Tensor:
         """Construct Lindblad relaxation superoperator from 'dephasing' vector.
 
         It models dephasing
@@ -1487,3 +1534,58 @@ class Liouvilleator:
         rate_vector = rate_vector.clone()
         rate_vector[..., pop_indices] = 0
         return torch.diag_embed(rate_vector)
+
+    @staticmethod
+    def lindblad_dissipator_from_operator(operator: torch.Tensor) -> torch.Tensor:
+        """Construct the full Lindblad superoperator from a single jump operator.
+
+        Models the complete dissipator term in the Lindblad master equation:
+            ``D(ρ) = L ρ L† - (1/2){L†L, ρ}``
+        where L is the jump operator.
+
+        This is the standard form for a single quantum jump channel in open
+        quantum systems, describing both the quantum jump (L ρ L†) and the
+        corresponding decay (-1/2{L†L, ρ}).
+
+        :param operator: torch.Tensor
+            Lindblad jump operator L. Shape: [..., d, d]
+            Can be complex-valued for general quantum operations
+
+        :return: torch.Tensor
+            Lindblad dissipator superoperator. Shape: [..., d^2, d^2]
+
+        Mathematical Formulation:
+        -------------------------
+        The dissipator consists of two parts:
+        1. Jump term: ``L ρ L†`` → ``L ⊗ L*`` in superoperator form
+        2. Decay term: ``-(1/2){L†L, ρ}`` → ``-(1/2)(L†L ⊗ I + I ⊗ (L†L)^T)``
+
+        Combined: ``D = L ⊗ L* - (1/2)(L†L ⊗ I + I ⊗ (L†L)^T)``
+
+        Notes:
+        ------
+        - Uses row-major vectorization convention (matches other Liouvilleator methods)
+        - Preserves trace: Tr(D(ρ)) = 0 for any density matrix ρ
+        - Preserves positivity when combined with Hamiltonian evolution
+        - For multiple jump operators, sum the individual dissipators
+        - The jump operator L can be any operator (not necessarily Hermitian)
+        """
+        d = operator.shape[-1]
+        batch_dims = operator.shape[:-2]
+        device = operator.device
+        dtype = operator.dtype
+
+        L_dagger_L = operator.conj().transpose(-1, -2) @ operator
+
+        L_conj = operator.conj()
+        jump_term = torch.einsum("...ij,...kl->...ikjl", operator, L_conj).reshape(*batch_dims, d * d, d * d)
+
+        I = torch.eye(d, dtype=dtype, device=device)
+        decay_op = L_dagger_L
+        decay_term1 = torch.einsum("...ij,kl->...ikjl", decay_op, I).reshape(*batch_dims, d * d, d * d)
+        decay_term2 = torch.einsum("kl,...ij->...kilj", I, decay_op.transpose(-1, -2)).reshape(*batch_dims, d * d,
+                                                                                               d * d)
+        decay_term = -0.5 * (decay_term1 + decay_term2)
+
+        return jump_term + decay_term
+
