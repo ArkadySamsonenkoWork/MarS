@@ -567,7 +567,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         upward_and_missing = (omega_hz < 0) & torch.isclose(J_raw, torch.zeros_like(J_raw), atol=1e-12)
 
         J_result = torch.where(upward_and_missing, J_filled, J_result)
-
         return J_result
 
     def _get_spectral_density_matrix(self, energies: torch.Tensor,
@@ -678,9 +677,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         W = self._compute_transition_probs(operators, spec_density)
 
         rate_out = W.sum(dim=-2, keepdim=True)
-
         gamma_pop = 0.5 * (rate_out + rate_out.transpose(-1, -2))
-
         J0 = spec_density.diagonal(offset=0, dim1=-2, dim2=-1)
 
         pure_dephasing = torch.zeros_like(gamma_pop)
@@ -747,7 +744,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         R[..., i, j, i, j] = -gamma
         dtype = R.dtype
         complex_dtype = torch.complex128 if dtype == torch.float64 else torch.complex64
-
         return R.to(complex_dtype)
 
     def _non_secular_superoperator_4d(
@@ -815,8 +811,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         term2 = torch.einsum("...db,ac->...abcd", diag_sum2.conj(), I_ac)
         R += term2
         R *= 0.5
-
-
         return R.negative_()
 
     def compute_relaxation_superoperator_4d(
@@ -875,40 +869,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         N = R4.shape[-1]
         return R4.reshape(R4.shape[:-4] + (N * N, N * N))
 
-    def get_dephasing_vector(
-            self, transformation_unitary: tp.Optional[torch.Tensor], fields: torch.Tensor,
-            energies: torch.Tensor,
-            temperature: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the level-specific dephasing vector gamma_i for Lindblad operators L_i = |i><i|.
-
-        This vector satisfies Gamma_ij approx 0.5 * (gamma_i + gamma_j) for the population
-        relaxation contribution. Note that the pure dephasing term (J(0)) cannot be exactly
-        represented by diagonal Lindblad operators and is excluded from this vector to
-        maintain mathematical consistency with the Lindblad form.
-
-        Mathematical formulation
-
-        The returned vector gamma corresponds to the total transition probability out of state i:
-        gamma_i = sum_{k != i} W_{k<-i}
-
-        This ensures that the coherence decay due to population transfer is correctly modeled
-        by Lindblad operators L_i = sqrt(gamma_i) |i><i|.
-
-        :param transformation_unitary: Transformation matrix from one basis to another
-            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
-        :param fields: External magnetic fields in T. The shape [..., N, N]
-        :param energies: System eigenenergies in Hz. The shape [..., N]
-        :param temperature: The system tempreature in K
-        The shape is [] or [t], where t is number of time-steps
-        :return: Dephasing vector gamma. Shape: (..., N).
-        """
-        operators = self.get_coupling_operators(transformation_unitary, fields)
-        spec_density = self._get_spectral_density_matrix(energies, temperature)
-
-        W = self._compute_transition_probs(operators, spec_density)
-        gamma_vector = W.sum(dim=-2)
-        return gamma_vector
 
     def close(self):
         """

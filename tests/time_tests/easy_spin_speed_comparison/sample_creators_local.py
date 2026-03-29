@@ -197,10 +197,6 @@ def create_2_middle_spin_sample(
     """
     Create a sample with two Cobalt spins
 
-    Models Mn(II) ion system with zero-field splitting and hyperfine coupling.
-    Hilbert space dimension = 36 states. Computationally intensive due to
-    large matrix diagonalization requirements.
-
     Parameters
     ----------
     mesh : BaseMesh or tuple of (int, int), optional
@@ -262,10 +258,6 @@ def create_3_middle_spin_sample(
 ) -> spin_model.MultiOrientedSample:
     """
     Create a sample with 3 Cobalt spins
-
-    Models Mn(II) ion system with zero-field splitting and hyperfine coupling.
-    Hilbert space dimension = 36 states. Computationally intensive due to
-    large matrix diagonalization requirements.
 
     Parameters
     ----------
@@ -385,6 +377,7 @@ def create_heterospin_sample_freq_domain(
 ) -> spin_model.MultiOrientedSample:
     """
     Create a sample with 2 Cobalt spins exchange connected to radical spin
+    The spectra are created in frequency domain
 
     Parameters
     ----------

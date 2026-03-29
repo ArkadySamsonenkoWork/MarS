@@ -97,9 +97,37 @@ def time_spectrum_calculation(
     return mean_time, std_time, times_ms
 
 
+def _prepare_x_axis(
+        field_range: tp.Tuple[float, float],
+        n_points: int,
+        device: torch.device,
+        dtype: torch.dtype,
+        sample: "spin_model.MultiOrientedSample"
+) -> torch.Tensor:
+    """
+    Create field tensor, handling batch expansion if necessary.
+
+    Checks sample.config_shape to determine if data is batched.
+    If len(config_shape) == 2, expands fields to [batch_size, n_points].
+    """
+    fields = torch.linspace(
+        field_range[0],
+        field_range[1],
+        n_points,
+        device=device,
+        dtype=dtype
+    )
+
+    if len(sample.config_shape) == 2:
+        batch_size = sample.config_shape[0]
+        fields = fields.expand(batch_size, -1)
+
+    return fields
+
+
 def time_spectrum_calculation_full_pipeline(
         sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
-        context: tp.Optional[population.Context] = None,
+        context: tp.Optional[tp.Union[population.Context, tp.Callable]] = None,
         sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
         creator_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
         freq: float = 9.8e9,
@@ -160,11 +188,17 @@ def time_spectrum_calculation_full_pipeline(
     if creator_kwargs is None:
         creator_kwargs = {}
 
+    is_context_callable = callable(context)
+
     if context is None:
         creator_kwargs["harmonic"] = 1
-    else:
-        creator_kwargs["context"] = context
+        creator_kwargs.pop("context", None)
+    elif is_context_callable:
         creator_kwargs["harmonic"] = 0
+        creator_kwargs.pop("context", None)  # Will be added inside the loop
+    else:
+        creator_kwargs["harmonic"] = 0
+        creator_kwargs["context"] = context
 
     times_ms = []
     for _ in range(n_warmup):
@@ -172,13 +206,10 @@ def time_spectrum_calculation_full_pipeline(
         device = sample.device
         dtype = sample.dtype
 
-        fields = torch.linspace(
-            field_range[0],
-            field_range[1],
-            n_points,
-            device=device,
-            dtype=dtype
-        )
+        if is_context_callable:
+            creator_kwargs["context"] = context(sample)
+
+        fields = _prepare_x_axis(field_range, n_points, device, dtype, sample)
 
         creator = spectra_manager.StationarySpectra(
             freq=freq,
@@ -203,13 +234,7 @@ def time_spectrum_calculation_full_pipeline(
         device = sample.device
         dtype = sample.dtype
 
-        fields = torch.linspace(
-            field_range[0],
-            field_range[1],
-            n_points,
-            device=device,
-            dtype=dtype
-        )
+        fields = _prepare_x_axis(field_range, n_points, device, dtype, sample)
         creator = spectra_manager.StationarySpectra(
             freq=freq,
             sample=sample,
@@ -234,9 +259,10 @@ def time_spectrum_calculation_full_pipeline(
 
     return mean_time, std_time, times_ms
 
+
 def time_spectrum_calculation_full_pipeline_freqdep(
         sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
-        context: tp.Optional[population.Context] = None,
+        context: tp.Optional[tp.Union[population.Context, tp.Callable]] = None,
         sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
         creator_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
         field: float = 10.0,
@@ -357,6 +383,105 @@ def time_spectrum_calculation_full_pipeline_freqdep(
             **creator_kwargs
         )
         _ = creator(sample, freq)
+
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+        end = time.perf_counter()
+
+        elapsed_ms = (end - start) * 1000.0
+        times_ms.append(elapsed_ms)
+
+    mean_time = np.mean(times_ms)
+    std_time = np.std(times_ms)
+
+    return mean_time, std_time, times_ms
+
+
+def time_spectrum_calculation_full_pipeline_timedep(
+        sample_creation_func: tp.Callable[..., spin_model.MultiOrientedSample],
+        context: tp.Optional[tp.Union[population.Context, tp.Callable]] = None,
+        sample_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        creator_kwargs: tp.Optional[tp.Dict[str, tp.Any]] = None,
+        freq: float = 9.8e9,
+        field_range: tp.Tuple[float, float] = (0.30, 0.40),
+        time_range: tp.Tuple[float, float] = (0.0, 1e-4),
+        n_points: int = 1000,
+        n_points_time: int = 100,
+        n_warmup: int = 5,
+        n_iterations: int = 50,
+        temperature: float = 298.0,
+        simulation_cls=spectra_manager.CoupledTimeSpectra,
+        computational_details: spectra_manager.ComputationalDetails = spectra_manager.ComputationalDetails(),
+) -> tp.Tuple[tp.Union[float, np.ndarray], tp.Union[float, np.ndarray], tp.List[float]]:
+    """
+    """
+    if sample_kwargs is None:
+        sample_kwargs = {}
+
+    if creator_kwargs is None:
+        creator_kwargs = {}
+
+    is_context_callable = callable(context)
+
+    if context is None:
+        creator_kwargs["harmonic"] = 1
+        creator_kwargs.pop("context", None)
+    elif is_context_callable:
+        creator_kwargs["harmonic"] = 0
+        creator_kwargs.pop("context", None)  # Will be added inside the loop
+    else:
+        creator_kwargs["harmonic"] = 0
+        creator_kwargs["context"] = context
+
+    times_ms = []
+    for _ in range(n_warmup):
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        if is_context_callable:
+            creator_kwargs["context"] = context(sample)
+
+        fields = _prepare_x_axis(field_range, n_points, device, dtype, sample)
+        time_simulation = _prepare_x_axis(time_range, n_points_time, device, dtype, sample)
+
+        creator = simulation_cls(
+            freq=freq,
+            sample=sample,
+            temperature=temperature,
+            computational_details=computational_details,
+            device=device,
+            dtype=dtype,
+            **creator_kwargs,
+        )
+        _ = creator(sample, fields, time_simulation)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+    for _ in range(n_iterations):
+        if sample_kwargs.get("device", torch.device("cpu")).type == "cuda":
+            torch.cuda.synchronize()
+
+        start = time.perf_counter()
+
+        sample = sample_creation_func(**sample_kwargs)
+        device = sample.device
+        dtype = sample.dtype
+
+        fields = _prepare_x_axis(field_range, n_points, device, dtype, sample)
+        time_simulation = _prepare_x_axis(time_range, n_points_time, device, dtype, sample)
+
+        creator = simulation_cls(
+            freq=freq,
+            sample=sample,
+            temperature=temperature,
+            computational_details=computational_details,
+            device=device,
+            dtype=dtype,
+            **creator_kwargs
+        )
+        _ = creator(sample, fields, time_simulation)
 
         if device.type == "cuda":
             torch.cuda.synchronize()

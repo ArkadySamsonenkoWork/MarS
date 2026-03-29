@@ -1,0 +1,4 @@
+# {"dtype": "torch.float64", "device": "cpu", "sample_description": "spin S = 1/2 connected with nuclei spins"}
+num_nuclei,mean,std
+0,35.71022000105586,20.46562196667627
+1,72.72131999779958,19.286542815323653

@@ -660,15 +660,19 @@ class BaseContext(nn.Module, ABC):
         Examples include spin-lattice relaxation (T1 processes) that drive the system toward
         thermal equilibrium.
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time points for evaluation if transition probabilities are
-            time-dependent.
-        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
-        It can be used for redfield relaxation evaluation
-        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
-        It can be used for redfield relaxation evaluation
-        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
-        The shape is [] or [t], where t is number of time-steps
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
 
         :return: Transition rate matrix W with shape [..., N, N], where W_{ij} (i≠j) is the
             rate from state j to state i. Diagonal elements are not used directly but are
@@ -699,16 +703,19 @@ class BaseContext(nn.Module, ABC):
 
         These transitions are **not** subject to detailed balance.
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian at each orientation/field,
-                        shape `[..., M, N, N]`, where M is number of transitions, N is number of levels.
-        :param time_dep_values: Optional time points for evaluation if  probabilities are time-dependant
-
-        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
-        It can be used for redfield relaxation evaluation
-        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
-        It can be used for redfield relaxation evaluation
-        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
-        The shape is [] or [t], where t is number of time-steps
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
 
         :return: Matrix of shape `[..., N, N]`.
         """
@@ -730,15 +737,19 @@ class BaseContext(nn.Module, ABC):
         - Phosphorescence decay from triplet states
         - Chemical reaction products leaving the observed spin system
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
-
-        :param fields: Optional External magnetic fields in T. The shape [..., N, N].
-        It can be used for redfield relaxation evaluation
-        :param energies: Optional System eigenenergies In Hz. The shape [..., N].
-        It can be used for redfield relaxation evaluation
-        :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
-        The shape is [] or [t], where t is number of time-steps
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
 
         :return: Loss rate vector O with shape `[..., N]`, where O_i is the rate at which
             population is lost from state i.
@@ -764,8 +775,19 @@ class BaseContext(nn.Module, ABC):
         dephsing) and is transformed to the eigenbasis. It is subsequently modified to
         obey detailed balance at the specified temperature.
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
 
         :return: Superoperator R_free with shape `[..., N², N²]`, where N is the number of
             energy levels. This superoperator acts on vectorized density matrices.
@@ -813,8 +835,19 @@ class BaseContext(nn.Module, ABC):
             `R_new = (U ⊗ U*) · R_old · (U ⊗ U*)`
             where U is the basis transformation matrix and ⊗ denotes Kronecker product
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
         :return: Superoperator R_driven with shape `[..., N², N²]`.
 
         Unlike the free superoperator, NO thermal correction is applied to these elements,
@@ -823,6 +856,86 @@ class BaseContext(nn.Module, ABC):
         Note: If a user provides a complete superoperator directly (bypassing individual
         rates), it is interpreted as an induced superoperator and no thermal correction
         is applied.
+        """
+        pass
+
+    @abstractmethod
+    def get_transformed_dephasing_matrix(
+            self,
+            full_system_vectors: tp.Optional[torch.Tensor],
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
+    ) -> tp.Optional[torch.Tensor]:
+        """Return the coherence dephasing rate matrix in the eigenbasis.
+
+        This method extracts the diagonal elements of the coherence blocks from the
+        Liouville superoperator, representing dephasing (T2) processes. The matrix
+        element [i, j] (where i ≠ j) corresponds to the dephasing rate for coherence
+        ρ_ij (off-diagonal density matrix element between eigenstates i and j).
+
+        Physical interpretation:
+        ------------------------
+        Dephasing describes the decay of coherences.
+        For a coherence ρ_uv between eigenstates u and v, the time evolution includes:
+            d(ρ_uv)/dt = -γ_uv · ρ_uv
+        where γ_uv is the dephasing rate returned by this method.
+
+        The dephasing matrix combines contributions from two distinct terms:
+
+        **Term A: Initial Pure Coherence Dephasing**
+        Extracted from the diagonal elements of coherence blocks in the Liouville
+        superoperator. In the initial basis, this corresponds to L^init_(ij),(ij) for
+        i ≠ j. Sources include:
+        - User-defined dephasing vector (converted to superoperator diagonals)
+        - User-defined relaxation superoperator (coherence block diagonals)
+        - Redfield relaxation (coherence decay matrix )
+
+        **Term B: Population-Transfer-Induced Dephasing**
+        Arises from population transitions in the initial basis that manifest as
+        coherence damping in the eigenbasis. This term is computed from the population
+        transfer matrix L^init_(ii),(jj) using the transformation:
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+
+        Transformation rules:
+        -----------------------------------------
+        For Term A (coherence dephasing):
+            γ_uv^(eig, A) = Σ_{i,j} |U_ui|² |U_vj|² γ_ij^(init)
+
+        For Term B (population-induced):
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+        where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies)
+            and thermal corrections (if applicable).
+
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation. Note:
+            Dephasing rates themselves are NOT thermally corrected (unlike population
+            transfer rates).
+
+        :return: Dephasing rate matrix with shape `[..., N, N]`, where:
+            - dephasing_matrix[i, j] (i ≠ j) is the dephasing rate γ_ij for coherence ρ_ij
+            - dephasing_matrix[i, i] = 0 (populations do not dephase)
+            Returns None if no dephasing sources are defined in the context.
+            Physical constraints:
+            - All elements must be non-negative (γ_ij ≥ 0)
+            - Matrix is symmetric (γ_ij = γ_ji) for reciprocal dephasing processe
+            Only real part of this matrix is returned.
         """
         pass
 
@@ -1175,7 +1288,7 @@ class TransformedContext(BaseContext):
         """
         _relaxation_superop = self._get_driven_superop_tensor(time_dep_values)
         if _relaxation_superop is not None:
-            _driven_probs = transform.extract_transition_matrix(
+            _driven_probs = transform.extract_transition_matrix_from_superoperator(
                 self.transformed_superop(_relaxation_superop, full_system_vectors)
             )
             return self._add_redfield_transition_probs(full_system_vectors,
@@ -1266,8 +1379,19 @@ class TransformedContext(BaseContext):
         dephasing) and is transformed to the eigenbasis. It is subsequently modified to
         obey detailed balance at the specified temperature.
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
 
         :return: Superoperator R_free with shape [..., N², N²], where N is the number of
             energy levels. This superoperator acts on vectorized density matrices.
@@ -1310,9 +1434,19 @@ class TransformedContext(BaseContext):
         constrained by detailed balance. It is transformed to the eigenbasis without
         thermal correction.
 
-        :param full_system_vectors: Eigenvectors of the full Hamiltonian.
-        :param time_dep_values: Optional time_dep_values for evaluation if loss rates are time-dependent.
-
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies).
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation.
         :return: Superoperator R_driven with shape [..., N², N²].
 
         Construction method:
@@ -1396,6 +1530,85 @@ class TransformedContext(BaseContext):
             _dephasing = self._get_dephasing_tensor(time_dep_values)
             _relaxation_superop = self.liouvilleator.lindblad_dephasing_from_rates(_dephasing)
             return _relaxation_superop
+
+    def get_transformed_dephasing_matrix(
+            self,
+            full_system_vectors: tp.Optional[torch.Tensor],
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
+    ) -> tp.Optional[torch.Tensor]:
+        """Return the coherence dephasing rate matrix in the eigenbasis.
+
+        This method extracts the diagonal elements of the coherence blocks from the
+        Liouville superoperator, representing dephasing (T2) processes. The matrix
+        element [i, j] (where i ≠ j) corresponds to the dephasing rate for coherence
+        ρ_ij (off-diagonal density matrix element between eigenstates i and j).
+
+        Physical interpretation:
+        ------------------------
+        Dephasing describes the decay of coherences.
+        For a coherence ρ_uv between eigenstates u and v, the time evolution includes:
+            d(ρ_uv)/dt = -γ_uv · ρ_uv
+        where γ_uv is the dephasing rate returned by this method.
+
+        The dephasing matrix combines contributions from two distinct terms:
+
+        **Term A: Initial Pure Coherence Dephasing**
+        Extracted from the diagonal elements of coherence blocks in the Liouville
+        superoperator. In the initial basis, this corresponds to L^init_(ij),(ij) for
+        i ≠ j. Sources include:
+        - User-defined dephasing vector (converted to superoperator diagonals)
+        - User-defined relaxation superoperator (coherence block diagonals)
+        - Redfield relaxation (coherence decay matrix )
+
+        **Term B: Population-Transfer-Induced Dephasing**
+        Arises from population transitions in the initial basis that manifest as
+        coherence damping in the eigenbasis. This term is computed from the population
+        transfer matrix L^init_(ii),(jj) using the transformation:
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+
+        Transformation rules:
+        -----------------------------------------
+        For Term A (coherence dephasing):
+            γ_uv^(eig, A) = Σ_{i,j} |U_ui|² |U_vj|² γ_ij^(init)
+
+        For Term B (population-induced):
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+        where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies)
+            and thermal corrections (if applicable).
+
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation. Note:
+            Dephasing rates themselves are NOT thermally corrected (unlike population
+            transfer rates).
+
+        :return: Dephasing rate matrix with shape `[..., N, N]`, where:
+            - dephasing_matrix[i, j] (i ≠ j) is the dephasing rate γ_ij for coherence ρ_ij
+            - dephasing_matrix[i, i] = 0 (populations do not dephase)
+            Returns None if no dephasing sources are defined in the context.
+            Physical constraints:
+            - All elements must be non-negative (γ_ij ≥ 0)
+            - Matrix is symmetric (γ_ij = γ_ji) for reciprocal dephasing processe
+            Only real part of this matrix is returned.
+        """
+        pass
 
 
 class Context(TransformedContext):
@@ -2781,7 +2994,6 @@ class SummedContext(BaseContext):
         depends on the specific Spectra Manager and its settings.
 
         :param time_dep_values: the values computed at get_time_dependent_values
-
         :param fields: Optional External magnetic fields in T. The shape [..., N, N].
         It can be used for redfield relaxation evaluation
         :param energies: Optional System eigenenergies In Hz. The shape [..., N].
@@ -2910,6 +3122,91 @@ class SummedContext(BaseContext):
                 full_system_vectors, time_dep_values, fields, energies, temperature)
             if probs is not None:
                 result = probs if result is None else result + probs
+        return result
+
+    def get_transformed_dephasing_matrix(
+            self,
+            full_system_vectors: tp.Optional[torch.Tensor],
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
+    ) -> tp.Optional[torch.Tensor]:
+        """Return the coherence dephasing rate matrix in the eigenbasis.
+
+        This method extracts the diagonal elements of the coherence blocks from the
+        Liouville superoperator, representing dephasing (T2) processes. The matrix
+        element [i, j] (where i ≠ j) corresponds to the dephasing rate for coherence
+        ρ_ij (off-diagonal density matrix element between eigenstates i and j).
+
+        Physical interpretation:
+        ------------------------
+        Dephasing describes the decay of coherences.
+        For a coherence ρ_uv between eigenstates u and v, the time evolution includes:
+            d(ρ_uv)/dt = -γ_uv · ρ_uv
+        where γ_uv is the dephasing rate returned by this method.
+
+        The dephasing matrix combines contributions from two distinct terms:
+
+        **Term A: Initial Pure Coherence Dephasing**
+        Extracted from the diagonal elements of coherence blocks in the Liouville
+        superoperator. In the initial basis, this corresponds to L^init_(ij),(ij) for
+        i ≠ j. Sources include:
+        - User-defined dephasing vector (converted to superoperator diagonals)
+        - User-defined relaxation superoperator (coherence block diagonals)
+        - Redfield relaxation (coherence decay matrix )
+
+        **Term B: Population-Transfer-Induced Dephasing**
+        Arises from population transitions in the initial basis that manifest as
+        coherence damping in the eigenbasis. This term is computed from the population
+        transfer matrix L^init_(ii),(jj) using the transformation:
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+
+        Transformation rules:
+        -----------------------------------------
+        For Term A (coherence dephasing):
+            γ_uv^(eig, A) = Σ_{i,j} |U_ui|² |U_vj|² γ_ij^(init)
+
+        For Term B (population-induced):
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+        where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies)
+            and thermal corrections (if applicable).
+
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation. Note:
+            Dephasing rates themselves are NOT thermally corrected (unlike population
+            transfer rates).
+
+        :return: Dephasing rate matrix with shape `[..., N, N]`, where:
+            - dephasing_matrix[i, j] (i ≠ j) is the dephasing rate γ_ij for coherence ρ_ij
+            - dephasing_matrix[i, i] = 0 (populations do not dephase)
+            Returns None if no dephasing sources are defined in the context.
+            Physical constraints:
+            - All elements must be non-negative (γ_ij ≥ 0)
+            - Matrix is symmetric (γ_ij = γ_ji) for reciprocal dephasing processe
+            Only real part of this matrix is returned.
+        """
+        result = None
+        for context in self.component_contexts:
+            dephasing_matrix = context.get_transformed_dephasing_matrix(
+                full_system_vectors, time_dep_values, fields, energies, temperature)
+            if dephasing_matrix is not None:
+                result = dephasing_matrix if result is None else result + dephasing_matrix
         return result
 
     def __add__(self, other: tp.Union[Context, KroneckerContext, SummedContext]) -> SummedContext:

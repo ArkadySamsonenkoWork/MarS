@@ -1228,7 +1228,7 @@ def reshape_direct_sum_basis_to_superoperators_list(
     return extracted_superoperators
 
 
-def extract_transition_matrix(superoperator: torch.Tensor) -> torch.Tensor:
+def extract_transition_matrix_from_superoperator(superoperator: torch.Tensor) -> torch.Tensor:
     """Extracts the population transfer matrix from a Superoperator.
 
     This function get the dynamics of the diagonal elements (populations)
@@ -1263,6 +1263,123 @@ def extract_transition_matrix(superoperator: torch.Tensor) -> torch.Tensor:
     population_transfer_matrix[..., diag_indices, diag_indices] = 0
 
     return population_transfer_matrix.real
+
+
+def extract_dephasing_matrix_from_superoperator(superoperator: torch.Tensor) -> torch.Tensor:
+    """Extract the coherence dephasing rate matrix from a Liouville superoperator.
+
+    This function extracts the diagonal elements of the superoperator corresponding
+    to coherence decay rates. The output is an N×N matrix where element [i, j]
+    (i ≠ j) represents the dephasing rate for coherence ρ_ij. Diagonal elements
+    (i == j) are set to zero as populations do not dephase.
+
+    :param superoperator: torch.Tensor
+        Liouville superoperator acting on vectorized density matrices.
+        Shape: [..., N², N²] where N is the Hilbert space dimension.
+
+    :return: torch.Tensor
+        Dephasing rate matrix. Shape: [..., N, N]
+        Element [i, j] contains the dephasing rate for coherence ρ_ij (i ≠ j).
+        Diagonal elements are zero.
+
+    Mathematical Formulation:
+    -------------------------
+    Given superoperator L acting on vec(ρ), the dephasing matrix Γ is extracted from
+    the diagonal elements corresponding to coherences:
+
+        Γ[i, j] = Re(L[(ij), (ij)])  for i ≠ j
+        Γ[i, i] = 0                   for i == j
+
+    where index (ij) = i·N + j in row-major vectorization.
+
+    Notes:
+    ------
+    - Population transfer terms are NOT included (use extract_transition_matrix_from_superoperator instead)
+    - Returns positive real part since superoperator diagonals are negative for decay
+    The dephasing matrix extracts L[1,1] and L[2,2] as Γ[0,1] and Γ[1,0].
+    """
+    dim_vec = superoperator.shape[-1]
+    N = int(dim_vec ** 0.5)
+    superop_diag = torch.diagonal(superoperator, dim1=-2, dim2=-1)
+    superop_diag = superop_diag.reshape(*superoperator.shape[:-2], N, N)
+    dephasing_matrix = torch.real(superop_diag)
+    dephasing_matrix[..., torch.arange(N), torch.arange(N)] = 0.0
+    return dephasing_matrix
+
+
+def transform_dephasing_to_new_basis(
+    init_dephasing: torch.Tensor,
+    init_pop_transfer: torch.Tensor,
+    probabilities: torch.Tensor,
+    unitary: torch.Tensor
+) -> torch.Tensor:
+    """Transform complete dephasing rates including population-transfer contributions.
+
+    Combines two contributions to eigenbasis dephasing:
+    - Term A: Initial coherence dephasing transformed via |U|² weights
+    - Term B: Population transitions contributing to coherence damping
+
+    This is the complete transformation required when the initial superoperator
+    contains both coherence dephasing AND population transfer terms.
+
+    :param init_dephasing: torch.Tensor
+        Initial basis dephasing rates. Shape: [..., N, N]
+        Element [i, j] is dephasing rate for coherence ρ_ij (i ≠ j).
+        Diagonal elements should be zero.
+
+    :param init_pop_transfer: torch.Tensor
+        Initial basis population transfer matrix. Shape: [..., N, N]
+        Element [i, j] is rate for population transfer j → i.
+        Diagonal elements are suggested to be zero
+
+    :param probabilities: torch.Tensor
+        Transformation probabilities |⟨new|old⟩|². Shape: [..., N, N]
+        From get_transformation_probabilities().
+
+    :param unitary: torch.Tensor
+        Unitary transformation matrix U. Shape: [..., N, N]
+        From basis_transformation(). U[new, old] = ⟨ψ_new|ψ_old⟩.
+
+    :return: torch.Tensor
+        Complete dephasing rates in new basis. Shape: [..., N, N]
+        Element [u, v] is total dephasing rate for coherence ρ_uv.
+
+    Mathematical Formulation:
+    -------------------------
+    Term A (Initial coherence dephasing):
+        Γ_A[u, v] = Σ_{i,j} |U[u,i]|² · |U[v,j]|² · Γ_old[i, j]
+
+    Term B (Population transfer contribution):
+        Γ_B[u, v] = Σ_{i,k} U[u,i]·U*[v,i] · K_old[i,k] · U*[u,k]·U[v,k]
+
+    Total:
+        Γ_new[u, v] = Γ_A[u, v] + Γ_B[u, v]
+
+    Notes:
+    ------
+    - Diagonal elements are zeroed (populations don't dephase)
+    - Consistent with full Liouville transformation: L_new = (U⊗U*) L_old (U⊗U*)†
+    """
+    N = init_dephasing.shape[-1]
+
+
+    gamma_new = probabilities @ init_dephasing @ probabilities.transpose(-1, -2)
+
+    indices = torch.arange(N, device=N)
+    init_pop_transfer = init_pop_transfer.clone
+
+    # Term B: Population transitions contributing to dephasing
+    # sum_{i,k} U_ui U*_vi L_pop[i,k] U*_uk U_vk
+    term_B = torch.einsum("...ui,...vi,...uk,...vk,...ik->...uv",
+                          unitary, unitary.conj(),
+                          unitary.conj(), unitary,
+                          init_pop_transfer.real)
+    gamma_new = gamma_new + term_B
+    gamma_new = gamma_new.real
+
+    gamma_new[..., torch.arange(N), torch.arange(N)] = 0.0
+
+    return gamma_new
 
 
 class Liouvilleator:
@@ -1588,4 +1705,3 @@ class Liouvilleator:
         decay_term = -0.5 * (decay_term1 + decay_term2)
 
         return jump_term + decay_term
-

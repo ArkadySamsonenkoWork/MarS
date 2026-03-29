@@ -6,7 +6,7 @@ Propagator-Based Density Matrix Evolution
 Overview
 --------
 
-The :class:`mars.population.stationary.PropagatorDensityPopulator` class computes time-resolved EPR signals by explicitly calculating the full time-evolution propagator :math:`\hat{U}(t, 0)` of the density matrix.
+The :class:`mars.population.density_population.PropagatorDensityPopulator` class computes time-resolved EPR signals by explicitly calculating the full time-evolution propagator :math:`\hat{U}(t, 0)` of the density matrix.
 This method imposes no approximations on the g-tensor, zero-field splitting, or relaxation superoperator, making it the most general approach for time-dependent density matrix evolution.
 
 Theory
@@ -59,7 +59,7 @@ Thus, the propagator need only be computed numerically over one microwave period
 
 Implementation Notes
 ~~~~~~~~~~~~~~~~~~~~
-The populator uses a Runge–Kutta method to **compute** :math:`\hat{U}(T, 0)`. This requires the parameter ``n_steps`` (see :meth:`mars.population.stationary.PropagatorDensityPopulator.__init__`).
+The populator uses a Runge–Kutta method to **compute** :math:`\hat{U}(T, 0)`. This requires the parameter ``n_steps`` (see :meth:`mars.population.density_population.PropagatorDensityPopulator.__init__`).
 This parameter is crucial; for systems with fast oscillating terms or strong coupling, ``n_steps`` must be increased to avoid numerical instability.
 
 Signal Detection
@@ -138,7 +138,7 @@ Consequently, the signal depends on all three Euler angles, and the :math:`\gamm
 Full numerical integration over :math:`\gamma \in [0,2\pi]` is therefore the
 default. The number of :math:`\gamma` points can be controlled via the
 ``angle_average_steps`` parameter of
-:class:`mars.population.stationary.PropagatorDensityPopulator`:
+:class:`mars.population.density_population.PropagatorDensityPopulator`:
 
 .. code-block:: python
 
