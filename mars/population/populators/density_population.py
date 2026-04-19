@@ -43,7 +43,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
        - Dephasing of coherences (i = k, j = l).
     """
     def __init__(self,
-                 omega_intensity: tp.Optional[tp.Union[torch.Tensor, float]] = 1e2,
+                 b1_field: tp.Optional[tp.Union[torch.Tensor, float]] = 1e-7,
                  context: tp.Optional[contexts.BaseContext] = None,
                  tr_matrix_generator_cls: tp.Type[matrix_generators.BaseGenerator] =
                  matrix_generators.DensityRWAGenerator,
@@ -55,7 +55,12 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param omega_intensity: The intensity of oscillating magnetic field given at angular frequency (Hz / 2π).
+        :param b1_field:  Peak amplitude of the microwave magnetic field
+        in the laboratory frame. The  field is:
+        B_1(t) = b1_field * cos(ωt) * e_x
+        It represents the full oscillating amplitude.
+        For RWA computations it means that the oscillating part of Hamiltonian H in rotating frame will be:
+        H1 = b1_field * Gx / 2, where Gx is x-component of Zeeman operator
 
         :param context: context is a dataclass / Dict with any objects that are used to compute relaxation matrix.
         :param tr_matrix_generator_cls: class of Matrix Generator
@@ -93,7 +98,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         self.register_buffer(
             "two_pi", torch.tensor(math.pi * 2, device=device, dtype=dtype)
         )
-        self.register_buffer("omega_intensity", torch.tensor(omega_intensity))
+        self.register_buffer("b1_field", torch.tensor(b1_field, device=device, dtype=dtype))
         self.liouvilleator = transform.Liouvilleator
         self.disordered: tp.Optional[bool] = disordered
         self.angle_average_steps = angle_average_steps
@@ -233,6 +238,19 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             out_matrix.append(full_basis.conj().transpose(-1, -2) @ matrix @ full_basis)
         return out_matrix
 
+    def _compute_rabi_magnetic_scale(self):
+        """
+        Compute the magnetic coupling scale factor.
+
+        In the RWA, the oscillating field is decomposed using Euler's formula:
+            cos(ωt) = (e^(iωt) + e^(-iωt)) / 2
+        This yields two counter-rotating components, each with amplitude b1_field/2.
+        Only the resonant component (rotating in the same direction as the spin
+        precession) is retained. Therefore, the effective static field in the
+        rotating frame is exactly half of the lab-frame amplitude.
+        """
+        return self.two_pi * self.b1_field / 2
+
     def _compute_hamiltonian_operators(
             self,
             Gx: torch.Tensor, Gy: torch.Tensor, Oz: torch.Tensor,
@@ -243,7 +261,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             full_system_vectors,
             (Gx.unsqueeze(-3), Gy.unsqueeze(-3), Oz.unsqueeze(-3))
         )
-        scale = constants.unit_converter(self.omega_intensity, "Hz_to_T_e")
+        scale = self._compute_rabi_magnetic_scale()
         Gx = scale * Gx
         Gy = scale * Gy
         return Gx, Gy, Oz
@@ -304,10 +322,11 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param resonance_frequency: Resonance frequency of the spin transition, in (Hz).
         Scalar value (shape: `[]`).
 
-        :param H0: Static (time-independent) part of the spin Hamiltonian, angular frequency expressed in (Hz / 2π) .
+        :param H0: Static (time-independent) part of the spin Hamiltonian, angular frequency expressed in
+                                                                                                    (Hz * 2π = rad/s).
         :param Sz: Electron z-moment projection operator.
         :param Ht: Time-dependent (oscillating) component of the Hamiltonian, given in angular
-        frequency units (Hz / 2π).
+        frequency units (Hz * 2π = rad/s).
 
         :param args: tuple, optional.
         :param kwargs : dict, optional
@@ -316,11 +335,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         -------
         TransitionMatrixGenerator instance
         """
-        shift =\
-            - Sz * constants.unit_converter(
-                self.two_pi * resonance_frequency, "Hz_to_T_e"
-            ) * (constants.BOHR / constants.PLANCK)
-
+        shift = - Sz * self.two_pi * resonance_frequency
         tr_matrix_generator = self.tr_matrix_generator_cls(context=self.context,
                                                            init_temperature=self.init_temperature,
                                                            res_fields=res_fields,
@@ -400,7 +415,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
         :param H0:
-            Static Hamiltonian in eigenbasis.
+            Static Hamiltonian in eigenbasis expressed in Hz * 2pi = rad/s
         :return:
             Averaged time
         """
@@ -462,7 +477,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
         :param H0:
-            Static Hamiltonian in eigenbasis.
+            Static Hamiltonian in eigenbasis, expressed in Hz * 2pi = rad/s
 
         :return:
             Time-dependent signal intensity for a single crystal, shape [T, ..., Tr].
@@ -640,7 +655,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
     such as in single-molecule magnets, metal complexes, or high-field EPR.
     """
     def __init__(self,
-                 omega_intensity: tp.Optional[tp.Union[torch.Tensor, float]] = 1e2,
+                 b1_field: tp.Optional[tp.Union[torch.Tensor, float]] = 1e-7,
                  measurement_time: tp.Optional[float] = None,
                  context: tp.Optional[contexts.BaseContext] = None,
                  tr_matrix_generator_cls: tp.Type[matrix_generators.BaseGenerator] =
@@ -654,7 +669,10 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """
-        :param omega_intensity: The intensity of oscillating magnetic field given at angular frequency (Hz / 2π).
+        :param b1_field:  Peak amplitude of the microwave magnetic field
+        in the laboratory frame. The  field is:
+        B_1(t) = b1_field * cos(ωt) * e_x
+        It represents the full oscillating amplitude.
 
         :param measurement_time: The EPR spectrometer measurements time in seconds.
         The real experimental  time is about 40-200ns.
@@ -696,7 +714,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param dtype: dtype of computation
         """
         super().__init__(
-            omega_intensity, context, tr_matrix_generator_cls, solver,
+            b1_field, context, tr_matrix_generator_cls, solver,
             init_temperature, difference_out, disordered, angle_average_steps, device, dtype
         )
         measurement_time =\
@@ -704,6 +722,12 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                 if measurement_time is not None else measurement_time
         self.register_buffer("measurement_time", measurement_time)
         self.n_steps = n_steps
+
+    def _compute_rabi_magnetic_scale(self):
+        """
+        Compute the magnetic coupling scale factor.
+        """
+        return self.two_pi * self.b1_field
 
     def _init_tr_matrix_generator(self,
                                   time: torch.Tensor,
@@ -758,9 +782,9 @@ class PropagatorDensityPopulator(RWADensityPopulator):
 
         :param resonance_frequency: Resonance frequency of the spin transition, in hertz (Hz).
         Scalar value (shape: `[]`).
-        :param H0: Static (time-independent) part of the spin Hamiltonian, expressed in hertz (Hz).
+        :param H0: Static (time-independent) part of the spin Hamiltonian, expressed in hertz (Hz * 2π = rad / s).
         :param Ht: Time-dependent (oscillating) component of the Hamiltonian, given in angular
-        frequency units (Hz / 2π).
+        frequency units (Hz * 2π = rad/s).
 
         :param args: tuple, optional.
         If the resfield algorithm returns full_system_vectors the full_system_vectors = args[0]
@@ -937,7 +961,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         :param resonance_frequency:
             Microwave frequency in Hz (scalar).
         :param H0:
-            Static Hamiltonian in eigenbasis.
+            Static Hamiltonian in eigenbasis. The values Hz * 2pi (rad / s)
         :return:
             Time-dependent signal intensity, shape [T, ..., Tr].
         """
@@ -956,7 +980,6 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         else:
             return self._compute_crystal(evo, tr_matrix_generator,
                 time, res_fields, initial_density, Gx, Gy, resonance_frequency, *args, **kwargs)
-
 
     def forward(self,
                 time: torch.Tensor, res_fields: torch.Tensor,
@@ -1035,5 +1058,3 @@ class PropagatorDensityPopulator(RWADensityPopulator):
             resonance_frequency,
             H0,
             *args, **kwargs)
-
-

@@ -299,6 +299,36 @@ def transform_rate_matrix_to_new_basis(initial_rates: torch.Tensor, probabilitie
     return probabilities @ initial_rates @ probabilities.transpose(-1, -2)
 
 
+def transform_dephasing_to_population_transfer(
+    initial_dephasing_rates: torch.Tensor,
+    probabilities: torch.Tensor,
+) -> torch.Tensor:
+    """Transform pure dephasing rates from the initial basis to an effective population-transfer matrix
+    in the new basis.
+
+    For pure dephasing defined in the initial basis by rates gamma_a, the effective population-transfer
+    rates in the new basis are
+
+        K_new[i, j] = Σ_a gamma_a * |⟨i|a⟩|² * |⟨j|a⟩|²
+
+    or, in matrix form,
+        K_new = probabilities @ diag(initial_dephasing_rates) @ probabilities.transpose(-1, -2)
+    This implementation avoids creating diag(initial_dephasing_rates) explicitly by using broadcasting.
+
+    :param initial_dephasing_rates: Pure dephasing rates in the initial basis. Shape [..., K]
+    :param probabilities: Basis-transformation probabilities, defined as
+                          probabilities[i, a] = |⟨i_new | a_old⟩|².
+                          Shape [..., K_new, K]
+    :return: Effective population-transfer matrix in the new basis. Shape [..., K_new, K_new]
+
+    Mathematical Formulation:
+    -------------------------
+    K_new = C @ diag(gamma) @ C^T
+    K_new[i, j] = Σ_a C[i, a] * gamma[a] * C[j, a]
+    """
+    return torch.einsum("...ia,...a,...ja->...ij", probabilities, initial_dephasing_rates, probabilities)
+
+
 def transform_state_weights_to_new_basis(initial_rates: torch.Tensor, probabilities: torch.Tensor) -> torch.Tensor:
     """Transform a state_weights (populations, loss) from old basis to new basis using transformation
     coefficients.
@@ -570,8 +600,8 @@ def compute_clebsch_gordan_coeffs(
     Columns are orthonormal eigenvectors: target_basis[:, m] = |m⟩_target
     :param basis_list: List of old basis tensors.
                              Each has shape [..., k_i, k_i]
-    :return: Transformation coefficients C. Shape: [..., K, k₁, k₂, ..., kₙ]
-             where C[m, i₁, ..., iₙ] = ⟨target_m | product_{i₁,...,iₙ}⟩
+    :return: Transformation coefficients C. Shape: [..., K, k₁, k₂, ..., K]
+             where C[i₁, ..., iₙ, m] = ⟨target_m | product_{i₁,...,iₙ}⟩
 
     Mathematical Formulation:
     -------------------------
@@ -644,7 +674,7 @@ def get_product_to_target_unitary(
     uncoupled_dims = coeffs.shape[-n - 1:-1]
     total_dim = int(torch.prod(torch.tensor(uncoupled_dims)))
     K = coeffs.shape[-1]
-    return coeffs.reshape(*batch_shape, total_dim, K)
+    return coeffs.reshape(*batch_shape, K, total_dim)
 
 
 def transform_kronecker_populations(
@@ -730,32 +760,132 @@ def transform_kronecker_rate_vector(
 
 def transform_kronecker_rate_matrix(
         matrices: list[torch.Tensor],
+        coeffs: torch.Tensor,
+) -> torch.Tensor:
+    """Transform local intra-system rate matrices to the total eigenbasis.
+
+    For each subsystem s and each local transition j -> i with rate w^(s)_ij,
+    the Lindblad jump operator is L_s(i,j) = I_1 ⊗ ... ⊗ |i><j|_s ⊗ ... ⊗ I_N.
+    Under the secular approximation the eigenbasis population transfer rate is:
+
+        Γ[a, b] = Σ_s Σ_{i≠j} w^(s)_ij · |<a| L_s(i,j) |b>|²
+
+    The matrix element expands as a contraction over the R = K/d_s remaining
+    subsystem indices (see §B.2 for derivation):
+
+        T_s[a,b,i,j] = Σ_r  Ũ[a,i,r] · Ũ*[b,j,r]    (einsum '...air,...bjr->...abij')
+        Γ^(s)[a,b]   = Σ_{i,j} w^(s)_ij · |T_s[a,b,i,j]|²   (einsum '...abij,...ij->...ab')
+        Γ            = Σ_s Γ^(s)
+
+    where Ũ is U reshaped to [..., K, d_s, R] with the s-th product-basis
+    axis isolated.
+
+    :param matrices: Local rate matrices for each subsystem.
+                     matrices[s] has shape [..., d_s, d_s], where
+                     matrices[s][..., i, j] is the rate of transition j -> i
+                     within subsystem s. Diagonal entries are zeroed internally.
+    :param coeffs:   Unitary from transformation matrix, shape [..., K, K].
+                     U[..., m, j] = <m|j>, rows are eigenstates, columns are
+                     flattened product-basis states.
+    :return:         Eigenbasis transition rate matrix Γ, shape [..., K, K].
+                     Γ[a, b] is the population transfer rate from |b> to |a>.
+                     Diagonal is zero (outgoing rates must be set separately).
+    """
+    dims = [m.shape[-1] for m in matrices]
+    nb = len(coeffs.shape) - 2
+    K  = coeffs.shape[-2]
+
+    U_full = coeffs.view(*coeffs.shape[:-1], *dims)
+
+    result = torch.zeros(*coeffs.shape[:-2], K, K, dtype=coeffs.dtype, device=coeffs.device)
+
+    for s, W_s in enumerate(matrices):
+        perm = list(range(U_full.dim()))
+        perm.pop(nb + 1 + s)
+        perm.insert(nb + 1, nb + 1 + s)
+        U_perm = U_full.permute(*perm)
+
+        ds = dims[s]
+        R  = K // ds
+        U_flat = U_perm.reshape(*coeffs.shape[:-2], K, ds, R)
+
+        T = torch.einsum("...air,...bjr->...abij", U_flat, U_flat.conj())
+        w = W_s.clone()
+        w.diagonal(dim1=-2, dim2=-1).zero_()
+
+        result += torch.einsum("...abij,...ij->...ab", T.abs().square(), w)
+
+    return result.real
+
+
+def transform_kronecker_rate_matrix_v2(
+        matrices: list[torch.Tensor],
+        coeffs: torch.Tensor,
+) -> torch.Tensor:
+    """Transform intra‑subsystem rate matrices to total eigenbasis.
+
+    Computes the total population rate matrix in the eigenbasis using
+    the full complex Clebsch‑Gordan coefficients.
+
+    :param matrices: List of rate matrices for each subsystem in its own initial basis.
+                     Each has shape [..., k_i, k_i] where k_i is subsystem dimension.
+    :param coeffs: Complex transformation coefficients.
+                   Shape [..., k1, k2, ..., kn, K] where K = prod(k_i).
+                   coeffs[..., i1, i2, ..., in, a] = ⟨a | i1…in⟩
+    :return: Total rate matrix in eigenbasis. Shape [..., K, K].
+             W_eig[..., a, b] is rate from eigenstate b to eigenstate a.
+    """
+    return transform_rate_matrix_to_new_basis(
+        batched_sum_kron(matrices),
+        coeffs
+    )
+
+
+def transform_kronecker_dephasing_to_population_transfer(
+        dephasing_list: list[torch.Tensor],
         probabilities: torch.Tensor,
 ) -> torch.Tensor:
     """
-    Transform rate matrices using marginal probability mappings.
+    Transform pure dephasing rates from a list of tensors to an effective population-transfer matrix.
 
-    Computes: L_new = Σ_i (I ⊗ ... ⊗ (P_i @ K_i @ P_iᵀ) ⊗ ... ⊗ I)
+    Computes: K_new = P @ kron_sum(gamma_i) @ P^T
 
-    where P_i[i, m] = Σ_{j≠i} P_joint[..., j₁,..,i,..,jₙ, m]
-    are marginals extracted from the joint probability tensor.
+    where gamma_i are the dephasing rates from the input list and P is the probability matrix.
+    This implementation avoids creating diag(Σ gamma) explicitly by using broadcasting.
 
-    Works for ANY basis. Automatically satisfies Kronecker structure
-    when the basis factorizes (because P_joint factorizes → marginals exact).
+    For pure dephasing defined in the initial basis by rates gamma_a, the effective population-transfer
+    rates in the new basis are
 
-    :param matrices: List of rate matrices [..., k_i, k_i]
-    :param probabilities: Joint probabilities [..., k₁ * ... * kₙ, K]
-                          where K = dimension of new basis
+        K_new[i, j] = Σ_a gamma_a * |⟨i|a⟩|² * |⟨j|a⟩|²
 
-    Transformation probabilities from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
-    The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
-    Us has shape [..., K]
+    or, in matrix form,
+        K_new = probabilities @ diag(kron_sum(dephasing_rates)) @ probabilities.transpose(-1, -2)
 
-    :return: Transformed rate matrix [..., K, K]
+    Works for basis. Automatically satisfies population-transfer structure
+    when the basis transformation is defined by probabilities.
+
+    :param dephasing_list: List of pure dephasing rate tensors [..., K]
+                  Each tensor represents dephasing rates in the initial basis
+                  The list is combined using batched_sum_kron to handle Kronecker structure
+
+    :param probabilities: Basis-transformation probabilities, defined as
+                          probabilities[i, a] = |⟨i_new | a_old⟩|².
+                          Shape [..., K, K]
+
+                          Transformation probabilities from initial basis to system basis
+                          The initial basis has shape [..., K]
+                          The system basis has shape [..., K]
+
+    :return: Effective population-transfer matrix in the new basis. Shape [..., K, K]
+
+    Mathematical Formulation:
+    -------------------------
+    K_new = C @ diag(gamma) @ C^T
+    K_new[i, j] = Σ_a C[i, a] * gamma[a] * C[j, a]
     """
 
-    return transform_rate_matrix_to_new_basis(
-        batched_sum_kron(matrices),
+    return transform_dephasing_to_population_transfer(
+        batched_sum_kron_diagonal(dephasing_list),
         probabilities
     )
 
@@ -782,6 +912,7 @@ def transform_kronecker_operator(
 def transform_kronecker_superoperator(
         superoperator_list: list[torch.Tensor],
         coeffs: torch.Tensor,
+        apply_secular_approximation: bool,
 ) -> torch.Tensor:
     """Compute composite superoperator in coupled basis from subsystem superoperators.
 
@@ -794,12 +925,25 @@ def transform_kronecker_superoperator(
     :param coeffs: Transformation basis coeffs from kronecker basis U1 ⊗ U2 ⊗ ... ⊗ Uk to system basis Us
     The U1, ..., Uk have shape [..., ki], where K = ∏ᵢ k_i
     Us has shape [..., K]
+    :param apply_secular_approximation: If True, enforces the secular approximation by masking
+                                        non-secular terms after Kronecker construction but before
+                                        basis transformation. This ensures extracted kinetic rates
+                                        remain consistent with direct computation.
+                                        If False, all terms are preserved; however, kinetic rates
+                                        may differ due to non-secular couplings introduced by the
+                                        basis transformation.
+                                        Note: The mask retains population-population (ii,jj) and
+                                        coherence-coherence (ij,ij) blocks. For degenerate energy
+                                        levels, coherence-coherence transitions are also masked,
+                                        although in literature they are usually considered secular
+                                        since ΔE_ij = ΔE_kl.
+
     :return: Composite superoperator in coupled Liouville basis. Shape: [..., K², K²]
 
     Mathematical Formulation:
     -------------------------
         Step 1 — Compute Kronecker sum in local bases:
-            L_local = Σᵢ (I₁ ⊗ ... ⊗ Lᵢ ⊗ ... ⊗ Iₙ)
+            L_local = Σᵢ (I_1 ⊗ ... ⊗ L_i ⊗ ... ⊗ I_n)
 
         Step 2 — Perform Permutation for vectorization ordering:
             L_kron = P · L_local · P^†
@@ -816,7 +960,29 @@ def transform_kronecker_superoperator(
     dims = [int(round(superop.shape[-1] ** 0.5)) for superop in superoperator_list]
     R = reshape_superoperator_tensor_to_kronecker_basis(batched_sum_kron(superoperator_list), subsystem_dims=dims)
     T = batched_kron(coeffs, coeffs.conj())
-    return transform_superop_to_new_basis(R, T)
+    if apply_secular_approximation:
+        return transform_superop_to_new_basis(apply_secular_mask(R), T)
+    else:
+        return transform_superop_to_new_basis(R, T)
+
+
+def apply_secular_mask(superoperator: torch.Tensor) -> torch.Tensor:
+    """
+    Apply secular mask to superoperator. The mask retains population-population (ii,jj) and
+    coherence-coherence (ij,ij) blocks. For degenerate energy
+    levels, coherence-coherence transitions are also masked,
+     although in literature they are usually considered secular
+    since ΔE_ij = ΔE_kl.
+
+    :param superoperator: relaxation superoperator
+    :return: secularized superoperator with terms ii, jj and ij, ij
+    """
+    dim_liouville = superoperator.shape[-1]
+    N = int(dim_liouville**0.5)
+    mask = torch.eye(dim_liouville, dtype=torch.bool)
+    pop_indices = torch.arange(0, dim_liouville, N + 1)
+    mask[pop_indices[:, None], pop_indices[None, :]] = True
+    return superoperator * mask.type_as(superoperator)
 
 
 def reshape_vectorized_kronecker_to_tensor_product(
@@ -1258,11 +1424,54 @@ def extract_transition_matrix_from_superoperator(superoperator: torch.Tensor) ->
     pop_indices = torch.arange(0, dim_vec, N + 1, device=superoperator.device)
     temp = superoperator[..., pop_indices, :]
     population_transfer_matrix = temp[..., :, pop_indices]
-
-    diag_indices = torch.arange(N, device=superoperator.device)
-    population_transfer_matrix[..., diag_indices, diag_indices] = 0
-
     return population_transfer_matrix.real
+
+
+def extract_pure_loss_vector(population_transfer_matrix: torch.Tensor) -> torch.Tensor:
+    """
+    Extracts the pure loss vector from the population transfer matrix.
+
+    The loss is defined as the negative column sum.
+    If the system is closed (conservative), column sums are 0 -> Loss is 0.
+    If the system is open, column sums are negative -> Loss is positive.
+
+    :param population_transfer_matrix: Shape [..., N, N]
+    :return: Loss vector, Shape [..., N] (Positive values indicate loss)
+    """
+    col_sums = population_transfer_matrix.sum(dim=-2)
+    loss_vector = -col_sums
+    return torch.clamp(loss_vector, min=0.0)
+
+
+def set_diagonal_to_pure_loss(population_transfer_matrix: torch.Tensor) -> torch.Tensor:
+    """
+    Returns a new matrix where the diagonal contains only the pure loss terms.
+
+    This function removes the population exchange contribution from the diagonal,
+    leaving only the net loss/decay terms. For closed systems (no loss), the
+    diagonal becomes zero.
+
+    Mathematical Formulation:
+    ------------------------
+    In a rate matrix M where ṗ = M p:
+    - Off-diagonal elements M_ij (i≠j) represent population transfer j→i
+    - Diagonal elements M_jj contain both exchange and loss contributions
+    - Column sums represent net loss: Σ_i M_ij = -Γ_loss,j
+
+    By setting M_jj = Σ_i M_ij, the diagonal contains only pure loss terms.
+
+    :param population_transfer_matrix: torch.Tensor
+        Population transfer matrix.
+        Shape: [..., N, N]
+
+    :return: torch.Tensor
+        Kinetic matrix with diagonal elements set to pure loss terms.
+        Shape: [..., N, N]
+    """
+    result = population_transfer_matrix.clone()
+    col_sums = result.sum(dim=-2)
+    result.diagonal(offset=0, dim1=-2, dim2=-1)[:] = col_sums
+    return result
 
 
 def extract_dephasing_matrix_from_superoperator(superoperator: torch.Tensor) -> torch.Tensor:
@@ -1280,7 +1489,7 @@ def extract_dephasing_matrix_from_superoperator(superoperator: torch.Tensor) -> 
     :return: torch.Tensor
         Dephasing rate matrix. Shape: [..., N, N]
         Element [i, j] contains the dephasing rate for coherence ρ_ij (i ≠ j).
-        Diagonal elements are zero.
+        Diagonal elements are zero. The non diagonal elements are greater than zero
 
     Mathematical Formulation:
     -------------------------
@@ -1303,8 +1512,8 @@ def extract_dephasing_matrix_from_superoperator(superoperator: torch.Tensor) -> 
     superop_diag = torch.diagonal(superoperator, dim1=-2, dim2=-1)
     superop_diag = superop_diag.reshape(*superoperator.shape[:-2], N, N)
     dephasing_matrix = torch.real(superop_diag)
-    dephasing_matrix[..., torch.arange(N), torch.arange(N)] = 0.0
-    return dephasing_matrix
+    dephasing_matrix.diagonal(offset=0, dim1=-2, dim2=-1).fill_(0)
+    return -dephasing_matrix
 
 
 def transform_dephasing_to_new_basis(
@@ -1330,7 +1539,7 @@ def transform_dephasing_to_new_basis(
     :param init_pop_transfer: torch.Tensor
         Initial basis population transfer matrix. Shape: [..., N, N]
         Element [i, j] is rate for population transfer j → i.
-        Diagonal elements are suggested to be zero
+        Diagonal elements shouldn't be zero
 
     :param probabilities: torch.Tensor
         Transformation probabilities |⟨new|old⟩|². Shape: [..., N, N]
@@ -1350,7 +1559,7 @@ def transform_dephasing_to_new_basis(
         Γ_A[u, v] = Σ_{i,j} |U[u,i]|² · |U[v,j]|² · Γ_old[i, j]
 
     Term B (Population transfer contribution):
-        Γ_B[u, v] = Σ_{i,k} U[u,i]·U*[v,i] · K_old[i,k] · U*[u,k]·U[v,k]
+        Γ_B[u, v] = -Σ_{i,k} U[u,i]·U*[v,i] · K_old[i,k] · U*[u,k]·U[v,k]
 
     Total:
         Γ_new[u, v] = Γ_A[u, v] + Γ_B[u, v]
@@ -1361,25 +1570,58 @@ def transform_dephasing_to_new_basis(
     - Consistent with full Liouville transformation: L_new = (U⊗U*) L_old (U⊗U*)†
     """
     N = init_dephasing.shape[-1]
-
-
     gamma_new = probabilities @ init_dephasing @ probabilities.transpose(-1, -2)
 
-    indices = torch.arange(N, device=N)
-    init_pop_transfer = init_pop_transfer.clone
-
-    # Term B: Population transitions contributing to dephasing
     # sum_{i,k} U_ui U*_vi L_pop[i,k] U*_uk U_vk
-    term_B = torch.einsum("...ui,...vi,...uk,...vk,...ik->...uv",
+    term_B = -torch.einsum("...ui,...vi,...uk,...vk,...ik->...uv",
                           unitary, unitary.conj(),
                           unitary.conj(), unitary,
-                          init_pop_transfer.real)
+                          init_pop_transfer)
     gamma_new = gamma_new + term_B
     gamma_new = gamma_new.real
 
     gamma_new[..., torch.arange(N), torch.arange(N)] = 0.0
-
     return gamma_new
+
+
+def construct_dephasing_matrix(dephasing: torch.Tensor) -> torch.Tensor:
+    """Construct symmetric dephasing rate matrix from vector coefficients.
+
+    Computes the matrix G where each element is the arithmetic mean of
+    corresponding dephasing rates:
+        G_ij = 1/2 * (gamma_i + gamma_j) for i != j
+
+    This constructs a matrix often used in decoherence models where the
+    interaction rate between state i and j is the average of their individual
+    dephasing rates.
+
+    :param dephasing:
+        torch.Tensor: Tensor of shape [..., N] containing the coefficients gamma_i.
+            The last dimension represents the subsystem index.
+            Batch dimensions are preserved and broadcasted.
+            The diagonal elements are set to be zero
+
+    :return:
+        torch.Tensor: Tensor of shape [..., N, N] representing the matrix G.
+            - N = length of the dephasing vector
+            - Batch dimensions match the input dephasing tensor
+
+    Mathematical Formulation:
+    -------------------------
+    Given a vector gamma of length N:
+        G = 0.5 * (gamma.unsqueeze(-1) + gamma.unsqueeze(-2))
+
+    Notes:
+    ------
+    - Symmetry: The resulting matrix G is symmetric (G_ij = G_ji)
+    - Efficiency: Uses broadcasting to avoid explicit loops, O(N^2) memory
+    """
+    diag_indexes = torch.arange(dephasing.shape[-1])
+    gamma_col = dephasing.unsqueeze(-1)
+    gamma_row = dephasing.unsqueeze(-2)
+    out = 0.5 * (gamma_col + gamma_row)
+    out[..., diag_indexes, diag_indexes] = 0
+    return out
 
 
 class Liouvilleator:
@@ -1554,10 +1796,11 @@ class Liouvilleator:
 
         Models the dissipator term in the Lindblad equation:
             ``D(ρ) = Σ_{i≠j} w_{ij} [L_{ij} ρ L_{ij}^† - (1/2){L_{ij}^† L_{ij}, ρ}]``
-        where ``L_{ij} = √w_{ij} |j⟩⟨i|``
+        where ``L_{ji} = √w_{ji} |j⟩⟨i|``, and "L_{ji}" defines the jump from i to j,
+        w[i, j] represents transition rate from j → i (j is source, i is destination)
 
         This simplifies to:
-            ``D(ρ) = Σ_{i≠j} w_{ij} [|j⟩⟨i| ρ |i⟩⟨j| - (1/2){|i⟩⟨i|, ρ}]``
+            ``D(ρ) = Σ_{i≠j} w_{ji} [|j⟩⟨i| ρ |i⟩⟨j| - (1/2){|i⟩⟨i|, ρ}]``
 
         :param w : torch.Tensor
             Off-diagonal rate matrix. Shape: [..., n, n]
@@ -1569,8 +1812,8 @@ class Liouvilleator:
         Mathematical Formulation:
         -------------------------
         The dissipator consists of two parts:
-        1. Jump term: ``Σ_{i≠j} w_{ij} |j⟩⟨i| ρ |i⟩⟨j|``
-        2. Decay term: ``-(1/2) Σ_{i≠j} w_{ij} {|i⟩⟨i|, ρ}``
+        1. Jump term: ``Σ_{i≠j} w_{hi} |j⟩⟨i| ρ |i⟩⟨j|``
+        2. Decay term: ``-(1/2) Σ_{i≠j} w_{ji} {|i⟩⟨i|, ρ}``
 
         Notes:
         ------
@@ -1588,16 +1831,16 @@ class Liouvilleator:
         i_grid, j_grid = torch.meshgrid(i_indices, j_indices, indexing="ij")
 
         offdiag_mask = i_grid != j_grid
-        i_offdiag = i_grid[offdiag_mask]
-        j_offdiag = j_grid[offdiag_mask]
+        i_offdiag = i_grid[offdiag_mask]  # destination states
+        j_offdiag = j_grid[offdiag_mask]  # source states
 
         row_idx = j_offdiag * n + j_offdiag
         col_idx = i_offdiag * n + i_offdiag
 
-        superop_jump[..., row_idx, col_idx] = w[..., i_offdiag, j_offdiag]
+        superop_jump[..., row_idx, col_idx] = w[..., j_offdiag, i_offdiag]
 
         w_offdiag = w * (~torch.eye(n, dtype=torch.bool, device=w.device))
-        decay_rates = w_offdiag.sum(dim=-1)
+        decay_rates = w_offdiag.sum(dim=-2)
 
         superop_decay = -0.5 * Liouvilleator.anticommutator_superop_diagonal(decay_rates)
 

@@ -243,8 +243,7 @@ def concat_multioriented_samples(samples: tp.Sequence[MultiOrientedSample]) -> M
                 not torch.allclose(sample._ham_strain, ref_sample._ham_strain)):
             raise ValueError(f"Sample {i} has different ham_strain parameter than reference sample")
 
-        mesh_condition = (sample.mesh.initial_grid_frequency != ref_sample.mesh.initial_grid_frequency) or \
-                         (sample.mesh.initial_grid_frequency != ref_sample.mesh.initial_grid_frequency)
+        mesh_condition = (sample.mesh.initial_size != ref_sample.mesh.initial_size)
         if mesh_condition:
             raise ValueError(f"Sample {i} has different mesh than reference sample")
 
@@ -3002,7 +3001,7 @@ class MultiOrientedSample(BaseSample):
                 self.base_spin_system, torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
         )
 
-    def get_oriented_electron_electron_interaction(self, interaction: torch.Tensor, idx_1: int, idx_2: int) ->\
+    def get_oriented_electron_electron_interaction(self, interaction: torch.Tensor, el_idx_1: int, el_idx_2: int) ->\
             torch.Tensor:
         """
         Compute the electron-electron operator term for all orientations.
@@ -3023,8 +3022,8 @@ class MultiOrientedSample(BaseSample):
         """
         rotation_matrices = self._get_effective_rotation_matrices()
         interaction_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
-        S1 = self.base_spin_system.operator_cache[idx_1]
-        S2 = self.base_spin_system.operator_cache[idx_2]
+        S1 = self.base_spin_system.operator_cache[el_idx_1]
+        S2 = self.base_spin_system.operator_cache[el_idx_2]
         return scalar_tensor_multiplication(S1, S2, interaction_rotated)
 
     def get_oriented_electron_nuclei_interaction(self, interaction: torch.Tensor, el_idx: int, nuc_idx: int) ->\
@@ -3053,7 +3052,8 @@ class MultiOrientedSample(BaseSample):
         I = self.base_spin_system.operator_cache[len(self.modified_spin_system.electrons) + nuc_idx]
         return scalar_tensor_multiplication(S, I, interaction_rotated)
 
-    def get_oriented_nuclei_nuclei_interaction(self, interaction: torch.Tensor, nuc_idx_1: int, nuc_idx_2: int) -> torch.Tensor:
+    def get_oriented_nuclei_nuclei_interaction(
+            self, interaction: torch.Tensor, nuc_idx_1: int, nuc_idx_2: int) -> torch.Tensor:
         """
         Compute the nucleus-nucleus interaction operator for all orientations.
 
@@ -3110,10 +3110,10 @@ class MultiOrientedSample(BaseSample):
             spectral simulation.
         """
         rotation_matrices = self._get_effective_rotation_matrices()
-        g_tensor_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
+        interaction_rotated = utils.apply_expanded_rotations(rotation_matrices, interaction).to(self.complex_dtype)
 
         S = self.base_spin_system.operator_cache[el_idx]
-        zeeman_term = transform_tensor_components(S, g_tensor_rotated)
+        zeeman_term = transform_tensor_components(S, interaction_rotated)
         zeeman_term *= (constants.BOHR / constants.PLANCK)
         return zeeman_term
 
@@ -3172,43 +3172,30 @@ class MultiOrientedSample(BaseSample):
 
         O_static = torch.zeros((*config_shape, dim, dim), dtype=complex_dtype, device=device)
 
-        for e_idx_1, e_idx_2, interaction in self.base_spin_system.electron_electron:
+        for el_idx_1, el_idx_2, interaction in self.base_spin_system.electron_electron:
             Q = interaction.tensor
             dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
-            O_static += scalar_tensor_multiplication(
-                operator_cache[e_idx_1],
-                operator_cache[e_idx_2],
-                dQ_dtheta.to(complex_dtype)
+            O_static += self.get_oriented_electron_electron_interaction(
+                dQ_dtheta, el_idx_1=el_idx_1, el_idx_2=el_idx_2
             )
 
-        for e_idx, n_idx, interaction in self.base_spin_system.electron_nuclei:
+        for el_idx, nuc_idx, interaction in self.base_spin_system.electron_nuclei:
             Q = interaction.tensor
             dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
-            O_static += scalar_tensor_multiplication(
-                operator_cache[e_idx],
-                operator_cache[len(self.modified_spin_system.electrons) + n_idx],
-                dQ_dtheta.to(complex_dtype)
-            )
+            O_static += self.get_oriented_electron_nuclei_interaction(dQ_dtheta, el_idx=el_idx, nuc_idx=nuc_idx)
 
-        for n_idx_1, n_idx_2, interaction in self.base_spin_system.nuclei_nuclei:
+        for nuc_idx_1, nuc_idx_2, interaction in self.base_spin_system.nuclei_nuclei:
             Q = interaction.tensor
             dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
-            O_static += scalar_tensor_multiplication(
-                operator_cache[len(self.modified_spin_system.electrons) + n_idx_1],
-                operator_cache[len(self.modified_spin_system.electrons) + n_idx_2],
-                dQ_dtheta.to(complex_dtype))
+            O_static += self.get_oriented_nuclei_nuclei_interaction(
+                dQ_dtheta, nuc_idx_1=nuc_idx_1, nuc_idx_2=nuc_idx_2)
 
         O_dependent = torch.zeros((*config_shape, 3, dim, dim), dtype=complex_dtype, device=device)
-        for idx, g_interaction in enumerate(self.base_spin_system.g_tensors):
+        for el_idx, g_interaction in enumerate(self.base_spin_system.g_tensors):
             Q = g_interaction.tensor
             dQ_dtheta = torch.matmul(Omega, Q) - torch.matmul(Q, Omega)
-            dQ_dtheta = dQ_dtheta.to(complex_dtype)
-
-            S_comp = operator_cache[idx]
-            O_dependent += transform_tensor_components(S_comp, dQ_dtheta)
-
-        O_dependent *= (constants.BOHR / constants.PLANCK)
-        #O_dependent = O_dependent.transpose(-3, -1)
+            O_dependent += self.get_oriented_zeeman_interaction(
+                dQ_dtheta, el_idx)
 
         return O_static, O_dependent[..., -1, :, :]
 

@@ -128,7 +128,7 @@ def has_rapid_variation(res_low: torch.Tensor, res_high: torch.Tensor,
 class BaseResonanceIntervalSolver(nn.Module, ABC):
     """Base class for algorithm of resonance interval search."""
     def __init__(self, spin_dim: int,
-                 eigen_finder: tp.Optional[BaseEigenSolver] = EighEigenSolver(), r_tol: float = 1e-4,
+                 eigen_finder: tp.Optional[BaseEigenSolver] = EighEigenSolver(), r_tol: float = 1e-5,
                  max_iterations: float = 20,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 import math
 import itertools
@@ -27,7 +28,7 @@ def transform_to_complex(vector: torch.Tensor) -> torch.Tensor:
 
 
 def _normalize_to_components(
-        contexts: tp.List[tp.Union[Context, SummedContext]]
+        contexts: tp.Sequence[tp.Union[Context, SummedContext, KroneckerContext]]
 ) -> tp.Tuple[tp.List[tp.List[Context]], tp.List[int], tp.List[int], tp.List[int], torch.device, torch.dtype]:
     """
     Normalize input contexts into uniform component lists with metadata.
@@ -199,8 +200,6 @@ def _group_components_by_position(
     if not component_lists:
         return []
 
-    n_contexts = len(component_lists)
-
     populated_indices = [list(range(n_pop)) for n_pop in num_with_population]
     population_combinations = list(itertools.product(*populated_indices))
     max_unpopulated = max(
@@ -241,7 +240,7 @@ def _group_components_by_position(
     return result_groups
 
 
-def multiply_contexts(contexts: tp.List[tp.Union[Context, SummedContext, KroneckerContext]]) ->\
+def multiply_contexts(contexts: tp.Sequence[tp.Union[Context, SummedContext, KroneckerContext]]) ->\
         tp.Union[KroneckerContext, SummedContext]:
     """
     This function models a system consisting of multiple interacting or non-interacting
@@ -1012,58 +1011,6 @@ class TransformedContext(BaseContext):
             return superoperator * self._secular_mask().type_as(superoperator)
         return superoperator
 
-    def get_redfield_transition_probs(
-            self,
-            fields: tp.Optional[torch.Tensor],
-            energies: torch.Tensor,
-            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
-        """
-        Compute the population transfer rate matrix. The diagonal elements are zeros.
-
-        This method delegates the computation to the underlying RedfieldManager if it
-        exists. Otherwise, it returns None.
-        :param fields: External fields.
-        :param energies: System eigenenergies.
-        :param temperature: Temperature.
-        :return: Rate matrix W. Shape: (..., N, N). Returns None if no manager is set.
-        """
-        if self.redfield_manager is not None:
-            coeffs = self._compute_transformation_unitary()
-            return self.redfield_manager.compute_transition_probabilities(
-                coeffs, fields, energies, temperature
-            )
-        return None
-
-    def get_redfield_superoperator(
-            self,
-            fields: tp.Optional[torch.Tensor],
-            energies: torch.Tensor,
-            temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
-        """
-        Compute the 2D Liouvillian relaxation superoperator.
-
-        This method delegates the computation to the underlying RedfieldManager if it
-        exists. Otherwise, it returns None.
-
-        Mathematical formulation
-
-        The density matrix rho is vectorized in row-major order:
-        |rho>> = [rho_00, rho_01, ..., rho_0N, rho_10, ...]^T
-        The superoperator R acts as:
-        d/dt |rho>> = R |rho>>
-
-        :param fields: External fields.
-        :param energies: System eigenenergies.
-        :param temperature: Temperature.
-        :return: Superoperator matrix. Shape: (..., N^2, N^2). Returns None if no manager is set.
-        """
-        if self.redfield_manager is not None:
-            coeffs = self._compute_transformation_unitary()
-            return self.redfield_manager.compute_relaxation_superoperator(
-                coeffs, fields, energies, temperature
-            )
-        return None
-
     def _add_redfield_transition_probs(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
@@ -1160,6 +1107,8 @@ class TransformedContext(BaseContext):
             self.transformed_density = self._transformed_skip
             self.transformed_superop = self._transformed_skip
             self.transformed_populations = self._transformed_skip
+            self.transformed_dephasing = self._transformed_dephasing_skip
+            self.dephasing_to_population_transfer = self._dephasing_to_population_transfer_skip
         else:
             self.transformed_vector = self._transformed_vector_basis
             self.transformed_populations = self._transformed_population_basis
@@ -1167,7 +1116,8 @@ class TransformedContext(BaseContext):
 
             self.transformed_density = self._transformed_density_basis
             self.transformed_superop = self._transformed_superop_basis
-
+            self.transformed_dephasing = self._transformed_dephasing_basis
+            self.dephasing_to_population_transfer = self._dephasing_to_population_transfer_basis
 
     @abstractmethod
     def _transformed_skip(
@@ -1182,30 +1132,121 @@ class TransformedContext(BaseContext):
         """Transform a vector from one basis to another."""
         pass
 
+    @abstractmethod
+    def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
+        """Compute and cache basis transformation probabilities for the initial
+        population and all other real values tranformations."""
+        pass
+
+    @abstractmethod
+    def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
+            tp.Optional[torch.Tensor]:
+        """Compute and cache basis transformation coefficients for the density
+        matrix transformation."""
+        pass
+
     def _transformed_population_basis(
-            self, vector: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+            self, vector: tp.Optional[tp.Union[torch.Tensor, list[torch.Tensor]]],
+            full_system_vectors: tp.Optional[torch.Tensor]
     ) -> tp.Optional[torch.Tensor]:
         """Transform a vector from one basis to another."""
         pass
 
     @abstractmethod
     def _transformed_matrix_basis(
-            self, matrix: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+            self, matrix: tp.Optional[tp.Union[torch.Tensor, list[torch.Tensor]]],
+            full_system_vectors: tp.Optional[torch.Tensor]
     ) -> tp.Optional[torch.Tensor]:
         """Transform a matrix from one basis to another."""
         pass
 
     def _transformed_density_basis(
-            self, density: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+            self, density: tp.Optional[tp.Union[torch.Tensor, list[torch.Tensor]]],
+            full_system_vectors: tp.Optional[torch.Tensor]
     ) -> tp.Optional[torch.Tensor]:
         """Transform a density matrix from one basis to another."""
         raise NotImplementedError
 
     def _transformed_superop_basis(
-            self, superop: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+            self, superop: tp.Optional[tp.Union[torch.Tensor, list[torch.Tensor]]],
+            full_system_vectors: tp.Optional[torch.Tensor]
     ) -> tp.Optional[torch.Tensor]:
         """Transform a super operator from one basis to another. Apply secular Mask if it is needed"""
         raise NotImplementedError
+
+
+    @abstractmethod
+    def _dephasing_to_population_transfer_basis(
+            self, dephasing: tp.Optional[tp.Union[torch.Tensor, list[torch.Tensor]]],
+            full_system_vectors: tp.Optional[torch.Tensor]
+    ) -> tp.Optional[torch.Tensor]:
+        """Transform dephasing rates from one basis to population-transfer terms in another basis.
+        In basis mode, this method returns the dephasing transformed to population-transfer terms
+        """
+        raise NotImplementedError
+
+    def _transformed_dephasing_skip(
+            self,
+            dephasing: tp.Optional[torch.Tensor],
+            population_rates: tp.Optional[torch.Tensor],
+            full_system_vectors: tp.Optional[torch.Tensor],
+    ) -> tp.Optional[torch.Tensor]:
+        """
+        Combine dephasing and population rates without basis transformation.
+
+        Note: In 'skip' mode, if explicit dephasing is None, population rates
+        are ignored (returns None), preserving original logic behavior.
+        :param dephasing: Explicit dephasing rates tensor
+        :param population_rates: Population decay rates tensor
+        :param full_system_vectors: eigen vectors of the system in magnetic field
+        :return: Combined dephasing tensor, or None if no dephasing is present.
+        """
+        if dephasing is None:
+            return None
+        else:
+            diag_indices = torch.arange(dephasing.shape[-1], device=dephasing.device)
+            dephasing[..., diag_indices, diag_indices] = 0
+            return dephasing
+
+    def _transformed_dephasing_basis(
+            self,
+            dephasing: tp.Optional[torch.Tensor],
+            population_rates: tp.Optional[torch.Tensor],
+            full_system_vectors: tp.Optional[torch.Tensor],
+    ) -> tp.Optional[torch.Tensor]:
+        """
+        Transform dephasing and population rates from one basis to another.
+
+        Unlike 'skip' mode, population rates contribute to dephasing even if
+        explicit dephasing is None (treated as zeros).
+
+        :param dephasing: Explicit dephasing rates tensor
+        :param population_rates: Population decay rates tensor
+        :param full_system_vectors: eigen vectors of the system in magnetic field
+        :return: Transformed dephasing tensor, or None if both inputs are None
+        """
+        if dephasing is None and population_rates is None:
+            return None
+
+        unitary = self._compute_transformation_unitary(full_system_vectors)
+        probabilities = self._compute_transformation_probabilities(full_system_vectors)
+        reference_tensor = dephasing if dephasing is not None else population_rates
+        diag_indices = torch.arange(reference_tensor.shape[-1], device=reference_tensor.device)
+
+        if dephasing is None:
+            dephasing = torch.zeros_like(reference_tensor)
+
+        if population_rates is None:
+            population_rates = torch.zeros_like(reference_tensor)
+            dephasing[..., diag_indices, diag_indices] = 0
+
+        return transform.transform_dephasing_to_new_basis(
+            dephasing,
+            population_rates,
+            probabilities,
+            unitary,
+        )
 
     def get_transformed_free_probs(
             self,
@@ -1247,7 +1288,21 @@ class TransformedContext(BaseContext):
         where `E_i` are eigenenergies and T is the temperature.
         """
         _free_probs = self._get_free_probs_tensor(time_dep_values)
-        return self.transformed_matrix(_free_probs, full_system_vectors)
+        term_free = self.transformed_matrix(_free_probs, full_system_vectors)
+
+        _dephasing = self._get_dephasing_tensor(time_dep_values)
+        term_dephasing = self.dephasing_to_population_transfer(_dephasing, full_system_vectors)
+
+        if term_dephasing is None:
+            out = term_free
+        elif term_free is None:
+            out = term_dephasing
+        else:
+            out = term_free + term_dephasing
+
+        if out is not None:
+            out.diagonal(offset=0, dim1=-2, dim2=-1).fill_(0)
+        return out
 
     def get_transformed_driven_probs(
             self,
@@ -1257,8 +1312,7 @@ class TransformedContext(BaseContext):
             energies: tp.Optional[torch.Tensor] = None,
             temperature: tp.Optional[torch.Tensor] = None
     ) -> tp.Optional[torch.Tensor]:
-        """Return induced (non-thermal) transition probabilities in the
-        eigenbasis.
+        """Return induced (non-thermal) transition probabilities in the  eigenbasis.
 
         These transitions are NOT constrained by detailed balance and represent external
         driving forces or non-equilibrium processes.
@@ -1286,19 +1340,25 @@ class TransformedContext(BaseContext):
         Note: No thermal correction is applied to these rates as they represent non-equilibrium
         processes that actively drive the system away from thermal equilibrium.
         """
-        _relaxation_superop = self._get_driven_superop_tensor(time_dep_values)
-        if _relaxation_superop is not None:
-            _driven_probs = transform.extract_transition_matrix_from_superoperator(
-                self.transformed_superop(_relaxation_superop, full_system_vectors)
-            )
-            return self._add_redfield_transition_probs(full_system_vectors,
-                                                       _driven_probs,
-                                                       fields, energies, temperature)
-
         _driven_probs = self._get_driven_probs_tensor(time_dep_values)
-        return self._add_redfield_transition_probs(full_system_vectors,
-                                                   self.transformed_matrix(_driven_probs, full_system_vectors),
+        _driven_probs =\
+            self.transformed_matrix(_driven_probs, full_system_vectors)
+
+        if _driven_probs is not None:
+            _driven_probs.diagonal(offset=0, dim1=-2, dim2=-1).fill_(0)
+
+        out = self._add_redfield_transition_probs(full_system_vectors,
+                                                   _driven_probs,
                                                    fields, energies, temperature)
+
+        _relaxation_superop = self._get_default_superop_tensor(time_dep_values)
+        if _relaxation_superop is not None:
+            out = out + transform.set_diagonal_to_pure_loss(
+                transform.extract_transition_matrix_from_superoperator(
+                    self.transformed_superop(_relaxation_superop, full_system_vectors)
+                )
+            )
+        return out
 
     def get_transformed_out_probs(
             self,
@@ -1364,6 +1424,16 @@ class TransformedContext(BaseContext):
             return self._default_driven_superop
         else:
             return lambda x: self._default_driven_superop + self._create_driven_superop(x)
+
+    @property
+    def default_driven_superop(self) -> tp.Optional[torch.Tensor]:
+        """
+        :return: free superoperator created from yser-defined superoperator
+        """
+        if self._default_driven_superop is None:
+            return None
+        else:
+            return self._default_driven_superop
 
     def get_transformed_free_superop(
             self,
@@ -1531,6 +1601,7 @@ class TransformedContext(BaseContext):
             _relaxation_superop = self.liouvilleator.lindblad_dephasing_from_rates(_dephasing)
             return _relaxation_superop
 
+    @abstractmethod
     def get_transformed_dephasing_matrix(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
@@ -1720,7 +1791,7 @@ class Context(TransformedContext):
               -  A callable ``f(time) -> Tensor`` that returns time-dependent rates at the requested time points.
 
             If the relaxation_superop is given, then driven_probs and the relaxation superoperators population
-            transfer terms will be sum up
+            transfer terms will be sum up with it
             For superoperator the population transfer terms will be extracted after its basis transformation.
 
         :param out_probs: torch.Tensor or list[float] or callable or None, optional
@@ -1733,18 +1804,15 @@ class Context(TransformedContext):
             dephasing vector probabilities with shape [N].
             Each element set the Decreasing of the non-diagonal matrix elements of density matrix
             d <i|rho|j> / dt = -(dephasing[i] + dephasing[j]) / 2 * <i|rho|j>
-            If relaxation_superop is given, then this parameter is ignored
-        For implementation of dephasing, out_probs, driven_probs, free_probs we use Lindblad form of relaxation.
+            For implementation of dephasing, out_probs, driven_probs, free_probs we use Lindblad form of relaxation.
 
         :param relaxation_superop: torch.Tensor or callable or None, optional
             Full superoperator of relaxation rates for density matrix
             with shape [N*N, N*N]. Any elements can be given.
-
-            If the drivenprobs are given, then driven_probs trasnformed into the Liuville space
+            If the driven_probs are given, then driven_probs transformed into the Liuville space
              and the relaxation superoperators terms will be sum up
             After transformation the thermal correction is not used for this term,
-
-            While, free_probs, dephasing, out_probs are part of thermal part of the resulting superoperato
+            While, free_probs, dephasing, out_probs are part of thermal part of the resulting superoperator
 
         :param profile: callable or None, optional
             Callable `profile(time: torch.Tensor) -> torch.Tensor` that returns
@@ -1756,9 +1824,16 @@ class Context(TransformedContext):
             Default -3 to match the code broadcasting conventions.
 
         :param enforce_secularity: bool, optional
-            Whether to apply the secular approximation to the Redfield relaxation tensor.
-            If True, non-secular terms (oscillating terms) are removed, keeping only
-            energy-conserving transitions. Default is False.
+            Whether to apply the secular approximation to the Relaxation Superoperator.
+            This flag act on all elements of context: Redfield tensors,
+            and any final superoperator after basis transformation
+
+            If True, apply a secular approximation to the relaxation superoperator.
+            This keeps population-transfer terms (ii,jj) and pure-dephasing terms (ij,ij)
+            in the chosen eigenbasis. It is not a full secular projection: couplings inside
+            degenerate or near-degenerate Bohr-frequency blocks may be missed.
+
+            Default is True.
 
         :param redfield_channels: list of RedfieldRelaxationChannel or None, optional
             List of relaxation channel objects defining the system-bath coupling.
@@ -1802,7 +1877,7 @@ class Context(TransformedContext):
         self.free_probs = free_probs
         self.driven_probs = driven_probs
 
-        dephasing = self._get_init_dephasing(dephasing, relaxation_superop, device=device, dtype=dtype)
+        dephasing = self._get_init_dephasing(dephasing, device=device, dtype=dtype)
         self.register_buffer("dephasing", dephasing)
         self._default_free_superop = None
         self._default_driven_superop = relaxation_superop
@@ -1845,6 +1920,17 @@ class Context(TransformedContext):
         for param in [self.free_probs, self.driven_probs]:
             if isinstance(param, torch.Tensor):
                 self._spin_system_dim = param.shape[-1]
+                return self._spin_system_dim
+            elif isinstance(param, list):
+                self._spin_system_dim = len(param)
+                return self._spin_system_dim
+
+        if self.dephasing is not None:
+            if isinstance(self.dephasing, torch.Tensor):
+                self._spin_system_dim = self.dephasing.shape[-1]
+                return self._spin_system_dim
+            elif isinstance(self.dephasing, list):
+                self._spin_system_dim = len(self.dephasing)
                 return self._spin_system_dim
 
         if self._default_driven_superop is not None:
@@ -2020,18 +2106,14 @@ class Context(TransformedContext):
 
     def _get_init_dephasing(self,
                         dephasing: tp.Optional[
-                            tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]
-                        ],
-                        relaxation_superop: tp.Optional[torch.Tensor], dtype: torch.dtype, device: torch.device)\
+                        tp.Union[torch.Tensor, tp.List[float], tp.Callable[[torch.Tensor], torch.Tensor]]
+                        ], dtype: torch.dtype, device: torch.device)\
             -> tp.Optional[tp.Union[tp.Callable[[torch.Tensor], torch.Tensor], torch.Tensor]]:
-        if relaxation_superop is None:
-            if isinstance(dephasing, torch.Tensor) or dephasing is None:
-                pass
-            else:
-                dephasing = torch.tensor(dephasing, device=device, dtype=dtype)
+        if isinstance(dephasing, torch.Tensor) or dephasing is None:
             return dephasing
         else:
-            return None
+            dephasing = torch.tensor(dephasing, device=device, dtype=dtype)
+        return dephasing
 
     def _compute_transformation_probabilities(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
             tp.Optional[torch.Tensor]:
@@ -2126,6 +2208,26 @@ class Context(TransformedContext):
             coeffs = self._compute_transformation_liouville(full_system_vectors)
             return transform.transform_superop_to_new_basis(transform_to_complex(relaxation_superop), coeffs)
 
+    def _dephasing_to_population_transfer_skip(
+            self, dephasing: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+    ) -> tp.Optional[torch.Tensor]:
+        """Transform dephasing rates from one basis to population-transfer terms in another basis.
+        In skip mode, this method returns ``None``
+        """
+        return None
+
+    def _dephasing_to_population_transfer_basis(
+            self, dephasing: tp.Optional[torch.Tensor], full_system_vectors: tp.Optional[torch.Tensor]
+    ) -> tp.Optional[torch.Tensor]:
+        """Transform dephasing rates from one basis to population-transfer terms in another basis.
+        In basis mode, this method returns the dephasing transformed to population-transfer terms
+        """
+        if dephasing is None:
+            return None
+        else:
+            coeffs = self._compute_transformation_probabilities(full_system_vectors)
+        return transform.transform_dephasing_to_population_transfer(dephasing, coeffs)
+
     def _create_basis_from_string(self, basis_type: str, sample: tp.Optional[spin_model.MultiOrientedSample]):
         """Factory method to create basis from string identifier."""
         if basis_type == "eigen":
@@ -2182,6 +2284,9 @@ class Context(TransformedContext):
 
         current_driven_superop = self.driven_superop
         self._get_driven_superop_tensor = self._setup_single_getter(current_driven_superop)
+
+        current_default_superop = self.default_driven_superop
+        self._get_default_superop_tensor = self._setup_single_getter(current_default_superop)
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Evaluate time-dependent profile at specified time points.
@@ -2264,6 +2369,140 @@ class Context(TransformedContext):
         """
         return self.transformed_density(self.init_density, full_system_vectors)
 
+    def get_transformed_dephasing_matrix(
+            self,
+            full_system_vectors: tp.Optional[torch.Tensor],
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
+    ) -> tp.Optional[torch.Tensor]:
+        """Return the coherence dephasing rate matrix in the eigenbasis.
+
+        This method extracts the diagonal elements of the coherence blocks from the
+        Liouville superoperator, representing dephasing (T2) processes. The matrix
+        element [i, j] (where i ≠ j) corresponds to the dephasing rate for coherence
+        ρ_ij (off-diagonal density matrix element between eigenstates i and j).
+
+        Physical interpretation:
+        ------------------------
+        Dephasing describes the decay of coherences.
+        For a coherence ρ_uv between eigenstates u and v, the time evolution includes:
+            d(ρ_uv)/dt = -γ_uv · ρ_uv
+        where γ_uv is the dephasing rate returned by this method.
+
+        The dephasing matrix combines contributions from two distinct terms:
+
+        **Term A: Initial Pure Coherence Dephasing**
+        Extracted from the diagonal elements of coherence blocks in the Liouville
+        superoperator. In the initial basis, this corresponds to L^init_(ij),(ij) for
+        i ≠ j. Sources include:
+        - User-defined dephasing vector (converted to superoperator diagonals)
+        - User-defined relaxation superoperator (coherence block diagonals)
+        - Redfield relaxation (coherence decay matrix )
+
+        **Term B: Population-Transfer-Induced Dephasing**
+        Arises from population transitions in the initial basis that manifest as
+        coherence damping in the eigenbasis. This term is computed from the population
+        transfer matrix L^init_(ii),(jj) using the transformation:
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+
+        Transformation rules:
+        -----------------------------------------
+        For Term A (coherence dephasing):
+            γ_uv^(eig, A) = Σ_{i,j} |U_ui|² |U_vj|² γ_ij^(init)
+
+        For Term B (population-induced):
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+        where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies)
+            and thermal corrections (if applicable).
+
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation. Note:
+            Dephasing rates themselves are NOT thermally corrected (unlike population
+            transfer rates).
+
+        :return: Dephasing rate matrix with shape `[..., N, N]`, where:
+            - dephasing_matrix[i, j] (i ≠ j) is the dephasing rate γ_ij for coherence ρ_ij
+            - dephasing_matrix[i, i] = 0 (populations do not dephase)
+            Returns None if no dephasing sources are defined in the context.
+            Physical constraints:
+            - All elements must be non-negative (γ_ij ≥ 0)
+            - Matrix is symmetric (γ_ij = γ_ji) for reciprocal dephasing processe
+            Only real part of this matrix is returned.
+        """
+        dephasing_components = []
+        population_transfer_components = []
+        diag_indices = torch.arange(self.spin_system_dim, device=self.device)
+
+        _dephasing = self._get_dephasing_tensor(time_dep_values)
+        if _dephasing is not None:
+            dephasing_components.append(transform.construct_dephasing_matrix(_dephasing))
+
+        _free_probs = self._get_free_probs_tensor(time_dep_values)
+        if _free_probs is not None:
+            _free_probs[..., diag_indices, diag_indices] = -_free_probs.sum(dim=-2)
+            population_transfer_components.append(_free_probs)
+
+        _driven_probs = self._get_driven_probs_tensor(time_dep_values)
+        if _driven_probs is not None:
+            _driven_probs[..., diag_indices, diag_indices] = -_driven_probs.sum(dim=-2)
+            population_transfer_components.append(_driven_probs)
+
+        _out_probs = self._get_out_probs_tensor(time_dep_values)
+        if _out_probs is not None:
+            population_transfer_components.append(-_out_probs.diag_embed())
+
+        ### Add dephasing connected with population loss
+        if population_transfer_components is not None:
+            population_transfer_components = [sum(population_transfer_components).real]
+
+            rate_out = population_transfer_components[0].diagonal(dim1=-2, dim2=-1).unsqueeze(-2)
+            gamma_pop = -0.5 * (rate_out + rate_out.transpose(-1, -2))
+            gamma_pop[..., diag_indices, diag_indices] = 0.0
+            dephasing_components.append(gamma_pop)
+
+        _relaxation_superop = self._get_default_superop_tensor(time_dep_values)
+        if _relaxation_superop is not None:
+            _dephasing_superoperator = transform.extract_dephasing_matrix_from_superoperator(
+                _relaxation_superop
+            )
+            dephasing_components.append(_dephasing_superoperator)
+            superop_prbos = transform.extract_transition_matrix_from_superoperator(_relaxation_superop)
+            population_transfer_components.append(superop_prbos)
+
+        dephasing = sum(dephasing_components).real if dephasing_components else None
+        population_transfer = sum(population_transfer_components).real if population_transfer_components else None
+        _transformed_dephasing = self.transformed_dephasing(dephasing, population_transfer, full_system_vectors)
+
+        if self.redfield_manager is not None:
+            if not self.redfield_manager.eigen_basis_flag:
+                coeffs = self._compute_transformation_unitary(full_system_vectors)
+                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                    coeffs, fields, energies, temperature
+                )
+            else:
+                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                    None, fields, energies, temperature
+                )
+
+        return _transformed_dephasing
+
     def __add__(self, other: BaseContext) -> SummedContext:
         """"""
         if isinstance(other, SummedContext):
@@ -2293,27 +2532,69 @@ class KroneckerContext(TransformedContext):
     tensor product rules.
 
     Key physical principles:
-    1. State space: The Hilbert space of the composite system is the tensor product of
-       subsystem Hilbert spaces: H = H₁ ⊗ H₂ ⊗ ... ⊗ Hₙ
-    2. Initial state: The initial density matrix is the tensor product of subsystem states:
-       ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ
-    3. Dynamics: Each subsystem evolves according to its own Hamiltonian and relaxation
-       operators, which are embedded into the composite space using tensor products with
-       identity operators: K = K1 ⊗ I + I ⊗ K2
+    1. State space:
+       The Hilbert space of the composite system is the tensor product of the
+       subsystem Hilbert spaces:
+           H = H₁ ⊗ H₂ ⊗ ... ⊗ Hₙ
 
-    Transformation rules:
-    - Basis transformations use Clebsch-Gordan coefficients to map between product bases
-      and coupled bases
-    - Initial populations are transformed using tensor products of transformation matrices
-    - Relaxation superoperators are transformed using Kronecker products of basis
-      transformation matrices
+    2. Initial state:
+       If the subsystems are initially uncorrelated, the composite density matrix
+       is the tensor product of subsystem states:
+           ρ = ρ₁ ⊗ ρ₂ ⊗ ... ⊗ ρₙ
+
+    3. Operator embedding:
+       Local operators are lifted to the composite space by tensoring with
+       identities:
+           K_total = K₁ ⊗ I ⊗ ... ⊗ I
+                    + I ⊗ K₂ ⊗ ... ⊗ I
+                    + ...
+                    + I ⊗ ... ⊗ I ⊗ Kₙ
+
+       This is the standard Kronecker-sum construction used for total
+       Hamiltonians and relaxation generators.
+
+    4. Basis transformations:
+       Basis transformations use Clebsch-Gordan coefficients or other unitary
+       transformations to map between product bases and coupled bases.
+
+    5. Relaxation superoperators:
+       Relaxation superoperators are transformed consistently in Liouville space
+       using Kronecker products of the corresponding basis transformation matrices.
 
     Composite contexts can be created using the @ operator:
         composite_context = context1 @ context2 @ context3
 
-    Warning!
-    Composite context only determined for not-None basis (eigen).
-    If it is not Eigen, please considet other types of basis
+    Warning_1
+    -------
+    A composite context is only unambiguously determined when the basis is an
+    eigenbasis. If the basis is not an eigenbasis, consider performing an
+    explicit basis transformation first or using a different context type.
+
+    Warning_2
+    ---------
+    Care must be taken when interpreting relaxation superoperators in multiplied
+    contexts.
+
+    Even if each subsystem relaxation superoperator contains only secular terms
+    in its local eigenbasis, the composite superoperator may contain off-diagonal
+    (coherence–coherence) couplings after Kronecker construction and basis
+    reshaping.
+
+    The full correct definition of secularity is based on Bohr frequencies:
+    two Liouville-space elements |i⟩⟨j| and |k⟩⟨l| can couple if and only if
+
+        E_i - E_j = E_k - E_l,
+
+    where E_i are eigenenergies of the total Hamiltonian.
+
+    Therefore, secular dynamics does not imply a purely diagonal structure in
+    Liouville space. In particular, coherence–coherence terms within the same
+    Bohr-frequency sector are physically allowed and will generally appear in
+    the composite superoperator.
+
+    For more detailed discussion, see documentation sections:
+    - "Relaxation Context / Basis Transformations"
+    - "Relaxation Context / Composite Context Construction"
     """
     def __init__(self,
                  contexts: tp.Sequence[Context],
@@ -2330,9 +2611,11 @@ class KroneckerContext(TransformedContext):
         - Data types and computational devices
         - Dimensional compatibility for tensor products
         """
+        enforce_secularity = contexts[0].enforce_secularity
+
         super().__init__(
             time_dimension=time_dimension,
-            enforce_secularity=contexts[0].enforce_secularity,
+            enforce_secularity=enforce_secularity,
             redfield_manager=kronecker_multiplication_redfield_managers(contexts)
         )
 
@@ -2343,6 +2626,10 @@ class KroneckerContext(TransformedContext):
 
         self._setup_prob_getters()
         self._setup_transformers()
+
+        self.spin_system_dim_components = [ctx.spin_system_dim for ctx in self.component_contexts]
+
+
 
     @property
     def basis(self) -> tp.Optional[torch.Tensor]:
@@ -2426,8 +2713,8 @@ class KroneckerContext(TransformedContext):
     def spin_system_dim(self):
         """Context spin system dimension"""
         size = 1
-        for ctx in self.component_contexts:
-            size *= ctx.spin_system_dim
+        for dim in self.spin_system_dim_components:
+            size *= dim
         return size
 
     @property
@@ -2472,6 +2759,7 @@ class KroneckerContext(TransformedContext):
         self.transformation_probabilities = transform.get_product_to_target_unitary(
             transform.compute_clebsch_gordan_probabilities(full_system_vectors, bases), len(bases)
         )
+        #self.transformation_probabilities = transform.compute_clebsch_gordan_probabilities(full_system_vectors, bases)
         return self.transformation_probabilities
 
     def _compute_transformation_unitary(self, full_system_vectors: tp.Optional[torch.Tensor]) ->\
@@ -2485,6 +2773,7 @@ class KroneckerContext(TransformedContext):
         self.transformation_unitary = transform.get_product_to_target_unitary(
             transform.compute_clebsch_gordan_coeffs(full_system_vectors, bases), len(bases)
         )
+        #self.transformation_unitary = transform.compute_clebsch_gordan_coeffs(full_system_vectors, bases)
         return self.transformation_unitary
 
     def get_time_dependent_values(self, time: torch.Tensor) -> tp.Optional[torch.Tensor]:
@@ -2506,10 +2795,16 @@ class KroneckerContext(TransformedContext):
 
     def _setup_single_getter(
             self, getter_lst: list[tp.Union[torch.Tensor, tp.Callable[[torch.Tensor], torch.Tensor]]]):
-        if getter_lst:
-            if self._check_callable(getter_lst):
+        not_none_values = [v for v in getter_lst if v is not None]
+        if not_none_values:
+            if self._check_callable(not_none_values):
+                none_getter = lambda t: None
+                normalized_getters = [
+                    getter if getter is not None else none_getter
+                    for getter in getter_lst
+                ]
                 return lambda t: [
-                    getter(t) for getter in getter_lst
+                    getter(t) for getter in normalized_getters
                 ]
             else:
                 return lambda t: [
@@ -2526,38 +2821,90 @@ class KroneckerContext(TransformedContext):
         self.transformed_density = self._transformed_density_basis
         self.transformed_superop = self._transformed_superop_basis
 
+        self.transformed_dephasing = self._transformed_dephasing_basis
+        self.dephasing_to_population_transfer = self._dephasing_to_population_transfer_basis
+
+
     def _setup_prob_getters(self):
-        """Setup getter methods for probabilities based on callable status at
-        initialization."""
+        """
+        Setup getter methods for probabilities based on callable status at
+        initialization.
+        """
         current_free_probs_lst = [
-            context.free_probs for context in self.component_contexts if context.free_probs is not None
+            context.free_probs for context in self.component_contexts
         ]
         self._get_free_probs_tensor = self._setup_single_getter(current_free_probs_lst)
 
         current_driven_probs_lst = [
-            context.driven_probs for context in self.component_contexts if context.driven_probs is not None
+            context.driven_probs for context in self.component_contexts
         ]
         self._get_driven_probs_tensor = self._setup_single_getter(current_driven_probs_lst)
 
         current_out_probs_lst = [
-            context.out_probs for context in self.component_contexts if context.out_probs is not None
+            context.out_probs for context in self.component_contexts
         ]
         self._get_out_probs_tensor = self._setup_single_getter(current_out_probs_lst)
 
         current_dephasing_lst = [
-            context.dephasing for context in self.component_contexts if context.dephasing is not None
+            context.dephasing for context in self.component_contexts
         ]
         self._get_dephasing_tensor = self._setup_single_getter(current_dephasing_lst)
 
         current_free_superop_lst = [
-            context.free_superop for context in self.component_contexts if context.free_superop is not None
+            context.free_superop for context in self.component_contexts
         ]
         self._get_free_superop_tensor = self._setup_single_getter(current_free_superop_lst)
 
         current_driven_superop_lst = [
-            context.driven_superop for context in self.component_contexts if context.driven_superop is not None
+            context.driven_superop for context in self.component_contexts
         ]
         self._get_driven_superop_tensor = self._setup_single_getter(current_driven_superop_lst)
+
+        current_default_superop_lst = [
+            context.default_driven_superop for context in self.component_contexts
+            if context.default_driven_superop
+        ]
+        self._get_default_superop_tensor = self._setup_single_getter(current_default_superop_lst)
+
+    def _get_common_batch_shape(self, values: tp.List[tp.Optional[torch.Tensor]], is_matrix: bool = False) \
+            -> tp.Tuple[torch.Size, torch.dtype, torch.device]:
+        """Extract  batch shapes from non-None values."""
+        batch_shapes = []
+        for v in values:
+            if v is not None:
+                dtype = v.dtype
+                device = v.device
+                shape = v.shape[:-2] if is_matrix else v.shape[:-1]
+                batch_shapes.append(shape)
+        return torch.Size(torch.broadcast_shapes(*batch_shapes)) if batch_shapes else torch.Size([]), dtype, device
+
+    def _compose_matrices(self, matrices: tp.List[tp.Optional[torch.Tensor]], square=False) -> tp.List[torch.Tensor]:
+        """Compose matrix given values in the general batch form. Fill with zeros None elements"""
+        batch_shape, dtype, device = self._get_common_batch_shape(matrices, is_matrix=True)
+        values = []
+        for i, val in enumerate(matrices):
+            dim = self.spin_system_dim_components[i]
+            if square:
+                dim = dim ** 2
+            if val is not None:
+                val = val.expand(batch_shape + (dim, dim,))
+                values.append(val)
+            else:
+                values.append(torch.zeros(batch_shape + (dim, dim,), dtype=dtype, device=device))
+        return values
+
+    def _compose_vectors(self, vectors: tp.List[tp.Optional[torch.Tensor]]) -> tp.List[torch.Tensor]:
+        """Compose vectors given values in the general batch form. Fill with zeros None elements"""
+        batch_shape, dtype, device = self._get_common_batch_shape(vectors, is_matrix=False)
+        values = []
+        for i, val in enumerate(vectors):
+            dim = self.spin_system_dim_components[i]
+            if val is not None:
+                val = val.expand(batch_shape + (dim,))
+                values.append(val)
+            else:
+                values.append(torch.zeros(batch_shape + (dim,), dtype=dtype, device=device), )
+        return values
 
     def _transformed_skip(
             self, system_data: tp.Optional[torch.Tensor],
@@ -2572,6 +2919,7 @@ class KroneckerContext(TransformedContext):
             return None
         else:
             coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            vector_lst = self._compose_vectors(vector_lst)
             return transform.transform_kronecker_populations(vector_lst, coeffs)
 
     def _transformed_vector_basis(
@@ -2582,6 +2930,7 @@ class KroneckerContext(TransformedContext):
             return None
         else:
             coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            vector_lst = self._compose_vectors(vector_lst)
             return transform.transform_kronecker_rate_vector(vector_lst, coeffs)
 
     def _transformed_matrix_basis(
@@ -2591,7 +2940,9 @@ class KroneckerContext(TransformedContext):
         if matrix_lst is None:
             return None
         else:
-            coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            #coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            coeffs = self._compute_transformation_unitary(full_system_vectors)
+            matrix_lst = self._compose_matrices(matrix_lst)
             return transform.transform_kronecker_rate_matrix(matrix_lst, coeffs)
 
     def _transformed_density_basis(
@@ -2602,6 +2953,7 @@ class KroneckerContext(TransformedContext):
             return None
         else:
             coeffs = self._compute_transformation_unitary(full_system_vectors)
+            density_matrix_lst = self._compose_matrices(density_matrix_lst)
             return transform.transform_kronecker_operator(density_matrix_lst, coeffs)
 
     def _transformed_superop_basis(
@@ -2609,14 +2961,29 @@ class KroneckerContext(TransformedContext):
             full_system_vectors: tp.Optional[torch.Tensor]
     ):
         """Transform relaxation relaxation_superop_lst from one basis to another.
-           Apply secular mask if it is needed
+           Apply secular mask if it is neededFO
         """
         if relaxation_superop_lst is None:
             return None
         else:
             coeffs = self._compute_transformation_unitary(full_system_vectors)
+
+            relaxation_superop_lst = self._compose_matrices(relaxation_superop_lst, True)
             relaxation_superop_lst = [transform_to_complex(operator) for operator in relaxation_superop_lst]
-            return transform.transform_kronecker_superoperator(relaxation_superop_lst, coeffs)
+            return transform.transform_kronecker_superoperator(relaxation_superop_lst, coeffs, False)
+
+    def _dephasing_to_population_transfer_basis(
+            self, dephasing: tp.Optional[list[torch.Tensor]], full_system_vectors: tp.Optional[torch.Tensor]
+    ) -> tp.Optional[torch.Tensor]:
+        """Transform dephasing rates from one basis to population-transfer terms in another basis.
+        In basis mode, this method returns the dephasing transformed to population-transfer terms
+        """
+        if dephasing is None:
+            return None
+        else:
+            coeffs = self._compute_transformation_probabilities(full_system_vectors)
+            dephasing = self._compose_matrices(dephasing)
+        return transform.transform_kronecker_dephasing_to_population_transfer(dephasing, coeffs)
 
     def get_transformed_init_populations(self, full_system_vectors: tp.Optional[torch.Tensor], normalize: bool = False):
         """Return initial populations transformed into the field-dependent
@@ -2696,6 +3063,153 @@ class KroneckerContext(TransformedContext):
             return None
         coeff = self._compute_transformation_unitary(full_system_vectors)
         return transform.transform_kronecker_operator(component_densities, coeff)
+
+    def get_transformed_dephasing_matrix(
+            self,
+            full_system_vectors: tp.Optional[torch.Tensor],
+            time_dep_values: tp.Optional[torch.Tensor] = None,
+            fields: tp.Optional[torch.Tensor] = None,
+            energies: tp.Optional[torch.Tensor] = None,
+            temperature: tp.Optional[torch.Tensor] = None,
+    ) -> tp.Optional[torch.Tensor]:
+        """Return the coherence dephasing rate matrix in the eigenbasis.
+
+        This method extracts the diagonal elements of the coherence blocks from the
+        Liouville superoperator, representing dephasing (T2) processes. The matrix
+        element [i, j] (where i ≠ j) corresponds to the dephasing rate for coherence
+        ρ_ij (off-diagonal density matrix element between eigenstates i and j).
+
+        Physical interpretation:
+        ------------------------
+        Dephasing describes the decay of coherences.
+        For a coherence ρ_uv between eigenstates u and v, the time evolution includes:
+            d(ρ_uv)/dt = -γ_uv · ρ_uv
+        where γ_uv is the dephasing rate returned by this method.
+
+        The dephasing matrix combines contributions from two distinct terms:
+
+        **Term A: Initial Pure Coherence Dephasing**
+        Extracted from the diagonal elements of coherence blocks in the Liouville
+        superoperator. In the initial basis, this corresponds to L^init_(ij),(ij) for
+        i ≠ j. Sources include:
+        - User-defined dephasing vector (converted to superoperator diagonals)
+        - User-defined relaxation superoperator (coherence block diagonals)
+        - Redfield relaxation (coherence decay matrix )
+
+        **Term B: Population-Transfer-Induced Dephasing**
+        Arises from population transitions in the initial basis that manifest as
+        coherence damping in the eigenbasis. This term is computed from the population
+        transfer matrix L^init_(ii),(jj) using the transformation:
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+
+        Transformation rules:
+        -----------------------------------------
+        For Term A (coherence dephasing):
+            γ_uv^(eig, A) = Σ_{i,j} |U_ui|² |U_vj|² γ_ij^(init)
+
+        For Term B (population-induced):
+            γ_uv^(eig, B) = Σ_{i,k} U_ui U*_vi L^init_(ii),(kk) U*_uk U_vk
+        where U is the basis transformation matrix and ⊗ denotes Kronecker product
+
+        :param full_system_vectors: Eigenvectors of the full Hamiltonian. Shape
+            `[..., N, N]`, N is number of energy levels. Used to construct the basis transformation matrix U.
+            If None, assumes already in eigenbasis.
+
+        :param time_dep_values: Optional pre-computed time-dependent profile values
+            for evaluation if any relaxation parameters are time-dependent. Shape
+            depends on the profile function.
+
+        :param fields: Optional external magnetic fields in Tesla. Shape `[..., N, N]`.
+            Used for Redfield relaxation evaluation when coupling operators depend
+            on field strength.
+
+        :param energies: Optional system eigenenergies in Hz. Shape `[..., N]`. Used
+            for Redfield relaxation (energy gaps determine spectral density frequencies)
+            and thermal corrections (if applicable).
+
+        :param temperature: Optional system temperature in Kelvin. Shape `[]` (scalar)
+            or `[t]` (time-dependent). Used for Redfield relaxation evaluation. Note:
+            Dephasing rates themselves are NOT thermally corrected (unlike population
+            transfer rates).
+
+        :return: Dephasing rate matrix with shape `[..., N, N]`, where:
+            - dephasing_matrix[i, j] (i ≠ j) is the dephasing rate γ_ij for coherence ρ_ij
+            - dephasing_matrix[i, i] = 0 (populations do not dephase)
+            Returns None if no dephasing sources are defined in the context.
+            Physical constraints:
+            - All elements must be non-negative (γ_ij ≥ 0)
+            - Matrix is symmetric (γ_ij = γ_ji) for reciprocal dephasing processe
+            Only real part of this matrix is returned.
+        """
+        dephasing_components = []
+        population_transfer_components = []
+        diag_indices = torch.arange(self.spin_system_dim, device=self.device)
+
+        _dephasing_lst = self._get_dephasing_tensor(time_dep_values)
+        if _dephasing_lst is not None:
+            dephasing_components.append(
+                transform.construct_dephasing_matrix(
+                    transform.batched_sum_kron_diagonal(_dephasing_lst)
+                )
+            )
+        _free_probs_lst = self._get_free_probs_tensor(time_dep_values)
+
+        if _free_probs_lst is not None:
+            _free_probs = transform.batched_sum_kron(_free_probs_lst)
+            _free_probs[..., diag_indices, diag_indices] = -_free_probs.sum(-2)
+            population_transfer_components.append(_free_probs)
+
+        _driven_probs_lst = self._get_driven_probs_tensor(time_dep_values)
+        if _driven_probs_lst is not None:
+            _driven_probs = transform.batched_sum_kron(_driven_probs_lst)
+            _driven_probs[..., diag_indices, diag_indices] = -_driven_probs.sum(-2)
+            population_transfer_components.append(_driven_probs)
+
+        _out_probs_lst = self._get_out_probs_tensor(time_dep_values)
+        if _out_probs_lst is not None:
+            _out_probs = transform.batched_sum_kron_diagonal(_out_probs_lst)
+            population_transfer_components.append(-_out_probs.diag_embed())
+
+        ### Add dephasing connected with population loss
+
+        if population_transfer_components is not None:
+            population_transfer_components = [sum(population_transfer_components).real]
+
+            rate_out = population_transfer_components[0].diagonal(dim1=-2, dim2=-1).unsqueeze(-2)
+            gamma_pop = -0.5 * (rate_out + rate_out.transpose(-1, -2))
+            gamma_pop[..., diag_indices, diag_indices] = 0.0
+            dephasing_components.append(gamma_pop)
+
+
+        _relaxation_superop_lst = self._get_default_superop_tensor(time_dep_values)
+        if _relaxation_superop_lst is not None:
+            dims = [int(round(superop.shape[-1] ** 0.5)) for superop in _relaxation_superop_lst]
+            _relaxation_superop = transform.reshape_superoperator_tensor_to_kronecker_basis(
+                transform.batched_sum_kron(_relaxation_superop_lst), dims
+            )
+            _dephasing_superoperator = transform.extract_dephasing_matrix_from_superoperator(
+                _relaxation_superop)
+            superop_probs = transform.extract_transition_matrix_from_superoperator(_relaxation_superop)
+
+            dephasing_components.append(_dephasing_superoperator)
+            population_transfer_components.append(superop_probs)
+
+        dephasing = sum(dephasing_components).real if dephasing_components else None
+        population_transfer = sum(population_transfer_components).real if population_transfer_components else None
+        _transformed_dephasing = self.transformed_dephasing(dephasing, population_transfer, full_system_vectors)
+
+        if self.redfield_manager is not None:
+            if not self.redfield_manager.eigen_basis_flag:
+                coeffs = self._compute_transformation_unitary(full_system_vectors)
+                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                    coeffs, fields, energies, temperature
+                )
+            else:
+                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                    None, fields, energies, temperature
+                )
+
+        return _transformed_dephasing
 
     def __add__(self, other: BaseContext) -> SummedContext:
         """"""

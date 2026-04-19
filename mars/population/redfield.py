@@ -630,7 +630,7 @@ class RedfieldRelaxationChannel(torch.nn.Module):
             W += sq * J_trans
         N = operators[0].shape[-1] if operators else spec_density.shape[-1]
         diag_mask = torch.eye(N, device=W.device, dtype=torch.bool)
-        W = W.masked_fill(diag_mask, 0.0)
+        W = W.masked_fill_(diag_mask, 0.0)
         return W
 
     def transition_probabilities(
@@ -869,7 +869,6 @@ class RedfieldRelaxationChannel(torch.nn.Module):
         N = R4.shape[-1]
         return R4.reshape(R4.shape[:-4] + (N * N, N * N))
 
-
     def close(self):
         """
         close redfield channel
@@ -987,6 +986,27 @@ class RedfieldManager:
         """
         return sum(
             channel.transition_probabilities(
+                transformation_unitary, fields, energies, temperature
+            ) for channel in self.redfield_channels
+        )
+
+    def compute_dephasing(
+            self, transformation_unitary: tp.Optional[torch.Tensor],
+            fields: tp.Optional[torch.Tensor], energies: torch.Tensor,
+            temperature: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the population transfer rate matrix. The diagonal elements are zeros
+
+        :param transformation_unitary: Transformation matrix from one basis to another
+            Shape: (..., N, N): V_new = U * V * U^dagger, where U is transformation matrix, V is coupling operator.
+        :param fields: External magnetic fields in T. The shape [..., N, N]
+        :param energies: System eigenenergies In Hz. The shape [..., N]
+        :param temperature: The system temperature in K
+        The shape is [] or [t], where t is number of time-steps
+        :return: Rate matrix W.
+        """
+        return sum(
+            channel.dephasing_matrix(
                 transformation_unitary, fields, energies, temperature
             ) for channel in self.redfield_channels
         )

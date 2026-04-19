@@ -14,24 +14,38 @@ from mars import spin_model, mesher, constants, population
 basis_list = ["zfs", "zeeman", None, "product"]
 
 
-def set_relaxation_and_initial_channels(sample, num_contexts: int = 0):
+def get_populations(N: int, disable_randomness: bool, device, dtype):
+    if disable_randomness:
+        pops = torch.arange(1, N + 1, device=device, dtype=dtype)
+    else:
+        pops = torch.rand(N, device=device, dtype=dtype)
+    return pops / pops.sum()
+
+
+def get_rates(N, disable_randomness: bool, device, dtype):
+    if disable_randomness:
+        rates = torch.triu(
+            torch.arange(1, N * N + 1, device=device, dtype=dtype).view(N, N), diagonal=1
+        )
+    else:
+        rates = torch.triu(
+            torch.rand(N, N, device=device, dtype=dtype), diagonal=1
+        )
+    return rates + rates.T
+
+
+def set_relaxation_and_initial_channels(sample, num_contexts: int = 0, disable_randomness: bool = False):
     device = sample.device
     dtype = sample.dtype
     N = sample.spin_system_dim
 
     contexts = []
-
     max_rate = torch.tensor(1e5, dtype=dtype, device=device)
     for _ in range(num_contexts):
         basis = random.choice(basis_list)
 
-        pops = torch.rand(N, device=device, dtype=dtype)
-        pops = pops / pops.sum()
-
-        rates = max_rate * torch.triu(
-            torch.rand(N, N, device=device, dtype=dtype), diagonal=1
-        )
-        rates = rates + rates.T
+        pops = get_populations(N, disable_randomness, device, dtype)
+        rates = get_rates(N, disable_randomness, device, dtype) * max_rate
 
         context = population.Context(
             sample=sample,
@@ -46,7 +60,7 @@ def set_relaxation_and_initial_channels(sample, num_contexts: int = 0):
     return population.SummedContext(contexts)
 
 
-def set_relaxation_and_initial_channels_batches(sample, num_contexts: int = 0):
+def set_relaxation_and_initial_channels_batches(sample, num_contexts: int = 0, disable_randomness: bool = False):
     device = sample.device
     dtype = sample.dtype
     N = sample.spin_system_dim

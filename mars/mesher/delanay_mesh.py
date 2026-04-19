@@ -181,10 +181,10 @@ class RBFInterpolator(BaseInterpolator):
     def __init__(self,
                  init_vertices: tp.Union[list[tuple[float, float]], np.ndarray],
                  extended_vertices: tp.Union[list[tuple[float, float]], np.ndarray],
-                 kernel: str = "thin_plate",
+                 kernel: str = "cubic",
                  regularization="spherical",
-                 jitter: float = 1e-5,
-                 epsilon: float = 1.0,
+                 jitter: float = 1e-7,
+                 epsilon: float = 1e-8,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         """Initialize RBF interpolator with spherical geometry.
@@ -239,15 +239,20 @@ class RBFInterpolator(BaseInterpolator):
             regularizer = torch.eye(K_torch.shape[-1], dtype=dtype)
         else:
             raise NotImplementedError("Currently only spherical and tikhonov regularization is supported")
-        K_inv = torch.linalg.pinv(K_torch + jitter * regularizer)
+        max_lambda = self._estimate_lambda_max(K_torch)
+        K_torch.add_(jitter * regularizer * max_lambda)
+        W = torch.linalg.lstsq(K_torch, K_ext_torch.mT).solution
 
-        self.register_buffer("_transform_matrix", torch.matmul(K_inv, K_ext_torch.mT).to(device))
+        self.register_buffer("_transform_matrix", W.to(device))
+        #self.register_buffer("_transform_matrix", torch.matmul(K_inv, K_ext_torch.mT).to(device))
+
+    def _estimate_lambda_max(self, K_torch: torch.Tensor):
+        return torch.linalg.matrix_norm(K_torch, ord=2)
 
     def _spherical_harmonic_regularization(self, vertices: np.ndarray, max_l=5) -> np.ndarray:
         """Use spherical harmonics as a smoother prior."""
         phi = vertices[:, 0]
         theta = vertices[:, 1]
-
         n_points = len(vertices)
         R = np.zeros((n_points, n_points))
 
@@ -256,6 +261,7 @@ class RBFInterpolator(BaseInterpolator):
                 Y_lm = sph_harm(m, l, phi, theta)
                 Y_col = Y_lm.reshape(-1, 1)
                 R += np.real(Y_col @ Y_col.conj().T) / (l * (l + 1) + 1)
+        R = R * (np.trace(R) / (n_points * np.max(np.diag(R)) + self.epsilon))
         return R
 
     def _rbf(self, r: np.ndarray) -> np.ndarray:
@@ -272,7 +278,7 @@ class RBFInterpolator(BaseInterpolator):
         elif self.kernel == "cubic":
             return r ** 3
         elif self.kernel == "thin_plate":
-            return (r ** 2) * np.log(r + eps * 1e-8)
+            return np.where(r < eps, np.zeros_like(r), (r ** 2) * np.log(r))
         else:
             raise ValueError(f"Unknown kernel: {self.kernel}")
 

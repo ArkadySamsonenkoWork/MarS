@@ -553,6 +553,18 @@ For relaxation superoperators in Liouville space, two sequential operations are 
    
    applies a joint change of basis to the vectorized composite state.
 
+.. note::
+
+   The secular structure of a relaxation superoperator is defined by Bohr
+   frequencies of the composite system.
+
+   After permutation and basis transformation, the superoperator generally does
+   not become diagonal in Liouville space. Instead, it decomposes into blocks
+   corresponding to equal energy gaps.
+
+   As a result, coherence–coherence couplings within the same Bohr-frequency
+   sector are preserved by the secular approximation.
+
 Population Composition
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -611,51 +623,72 @@ Since :math:`|U|^2` is a doubly probability matrix (not unitary), we generally h
 This non-factorization means that transforming transition probabilities separately and then forming the Kronecker sum does not generally yield the same result
 as forming the Kronecker sum first and then transforming the composite operator.
 
-Nevertheless, MarS consistently interprets transition probabilities as probabilities for "state-to-state processes":
-a transition from initial state :math:`|j\rangle` to final state :math:`|i\rangle` occurs with probability weight determined by both the initial-state overlap :math:`|U_{\beta j}|^2` and the final-state overlap :math:`|U_{\alpha i}|^2`.
+Nevertheless, MarS consistently interprets transition probabilities as probabilities for "state-to-state processes" via the deriviation from Lindblad master equation. 
 
-Consequently, the MarS transformation for the composite system applies the joint probability rule to the full operator:
-
-.. math::
-
-   K'_{\text{total}} = |U_1 \otimes U_2|^2 \, \bigl(K_1 \otimes \mathbb{I}_2 + \mathbb{I}_1 \otimes K_2\bigr) \, |U_1 \otimes U_2|^2{}^\top
-
-This transformation rule implies that even for two physically independent relaxation processes, the relaxation operator of the multiplied system differs from the Kronecker sum of independently transformed subsystem operators.
-The bilinear dependence on both initial and final state overlaps couples the transformations, making the composite relaxation non-separable under basis change.
-
-
-Here we highlight that such complexity and ambiguity of interpretation arises only for "free_probs" and "driven_probs" attributes. For the remaining parameters (including superoperators), the transformation is determined unambiguously.
-
-For composite systems, MarS implements the dedicated :class:`mars.population.contexts.KroneckerContext`.
-This class computes exact transformation coefficients between the product basis of subsystems and the true composite eigenbasis.
-
-Let :math:`|\alpha\rangle` denote an eigenstate of the full composite Hamiltonian, expanded in the product basis of subsystems:
+Lindblad Formulation for Subsystem Relaxation
+"""""""""""""""""""""""""""""""""""""""""""""
+Consider a composite system of :math:`N` subsystems. The relaxation originating from subsystem :math:`s` is described by a generalized jump operator:
 
 .. math::
 
-   |\alpha\rangle = \sum_{i,j} c^{(\alpha)}_{ij} \; |i\rangle \otimes |j\rangle
+    \hat{L}_{ji}^{(s)} = \hat{E}_1 \otimes |j\rangle\langle i|_s \otimes \hat{E}_2,
 
-where the expansion coefficients are given by:
+where :math:`|j\rangle\langle i|_s` acts non-trivially only on subsystem :math:`s`, and :math:`\hat{E}_{1,2}` are identity operators on the remaining subsystems. The corresponding local transition rate :math:`k_{i \to j}^{(s)}` is an element of the intra-system rate matrix :math:`\mathbf{K}^{(s)}`, with :math:`\mathbf{K}^{(s)}_{ji} = k_{i \to j}^{(s)}`.
 
-.. math::
-
-   c^{(\alpha)}_{ij} = \langle\alpha|\bigl(|i\rangle \otimes |j\rangle\bigr) = U\bigl[\alpha,\; \text{index}(i,j)\bigr]
-
-with the full transformation matrix:
+Let :math:`\{|\alpha\rangle\}` denote the eigenbasis of the full composite Hamiltonian. Each eigenstate is expanded in the product basis :math:`\{|\mathbf{n}\rangle = |n_1\rangle \otimes \dots \otimes |n_N\rangle\}` as:
 
 .. math::
 
-   U = V_{\text{new}}^\dagger \bigl(V^{(1)}_{\text{old}} \otimes V^{(2)}_{\text{old}}\bigr)
+    |\alpha\rangle = \sum_{\mathbf{n}} c^{(\alpha)}_{\mathbf{n}} |\mathbf{n}\rangle, \quad c^{(\alpha)}_{\mathbf{n}} = \langle \alpha | \mathbf{n} \rangle.
 
-The squared magnitudes :math:`|c^{(\alpha)}_{ij}|^2` represent Clebsch-Gordan probability coefficients—the probability that composite eigenstate :math:`|\alpha\rangle` contains the product-state component :math:`|i\rangle \otimes |j\rangle`. Transition probabilities then transform according to the joint-probability rule:
+The coefficients :math:`c^{(\alpha)}_{\mathbf{n}}` generalize Clebsch-Gordan coefficients to arbitrary coupled spin systems and are computed directly from the composite transformation matrix.
+
+Under the secular approximation, the population dynamics are governed by the transition rates :math:`W_{\alpha\beta}^{(s)}` from eigenstate :math:`|\beta\rangle` to :math:`|\alpha\rangle` due to subsystem :math:`s`.
+Evaluating the Lindblad gain term :math:`\langle \alpha | \hat{L}_{ji}^{(s)} \hat{\rho} \hat{L}_{ji}^{(s)\dagger} | \alpha \rangle` for a diagonal density matrix yields:
 
 .. math::
 
-   W'_{\alpha\beta} = \sum_{i,j,k,l} |c^{(\alpha)}_{ij}|^2 \; W_{(ij),(kl)} \; |c^{(\beta)}_{kl}|^2
+    W_{\alpha\beta}^{(s)} = \sum_{i,j} k_{i \to j}^{(s)} \left| \langle \alpha | \hat{L}_{ji}^{(s)} | \beta \rangle \right|^2.
 
-preserving the interpretation of :math:`W_{ij}` as the probability for transitions from initial state :math:`j` to final state :math:`i`.
+Substituting the explicit form of the jump operator and expanding in the product basis:
 
-The :class:`mars.population.contexts.KroneckerContext` automatically computes these coefficients from the composite contexts.
+.. math::
+
+    \langle \alpha | \hat{L}_{ji}^{(s)} | \beta \rangle = \sum_{\mathbf{m}, \mathbf{n}} c^{(\alpha)}_{\mathbf{m}} \langle \mathbf{m} | \hat{E}_1 \otimes |j\rangle\langle i|_s \otimes \hat{E}_2 | \mathbf{n} \rangle \left(c^{(\beta)}_{\mathbf{n}}\right)^*.
+
+The matrix element :math:`\langle \mathbf{m} | \hat{L}_{ji}^{(s)} | \mathbf{n} \rangle` is non-zero only when the states match on all subsystems except :math:`s`, and when :math:`m_s = j`, :math:`n_s = i`.
+Grouping the multi-index as :math:`\mathbf{n} = (\mathbf{r}_{\setminus s}, n_s)`, where :math:`\mathbf{r}_{\setminus s}` spans all configurations of subsystems other than :math:`s`, we obtain:
+
+.. math::
+
+    \langle \alpha | \hat{L}_{ji}^{(s)} | \beta \rangle = \sum_{\mathbf{r}_{\setminus s}} c^{(\alpha)}_{(\mathbf{r}_{\setminus s}, j)} \left( c^{(\beta)}_{(\mathbf{r}_{\setminus s}, i)} \right)^*.
+
+This expression represents a coherent sum over all pathways through the untouched subsystems. Inserting this into the rate definition gives the exact transformation rule:
+
+.. math::
+
+    W_{\alpha\beta}^{(s)} = \sum_{i,j} \mathbf{K}^{(s)}_{ji} \left| \sum_{\mathbf{r}_{\setminus s}} c^{(\alpha)}_{(\mathbf{r}_{\setminus s}, j)} \left( c^{(\beta)}_{(\mathbf{r}_{\setminus s}, i)} \right)^* \right|^2.
+
+Defining the overlap tensor :math:`\mathcal{M}^{(s)}_{ij,\alpha\beta} = \sum_{\mathbf{r}_{\setminus s}} c^{(\alpha)}_{(\mathbf{r}_{\setminus s}, j)} \left( c^{(\beta)}_{(\mathbf{r}_{\setminus s}, i)} \right)^*`, the total transition rate matrix for the composite system is assembled as:
+
+.. math::
+
+    \mathbf{W}_{\text{total}} = \sum_{s=1}^N \sum_{i,j} \mathbf{K}^{(s)}_{ji} \left| \mathcal{M}^{(s)}_{ij} \right|^{\circ 2},
+
+where :math:`|\cdot|^{\circ 2}` denotes element-wise squared magnitude.
+Expanding the squared modulus separates the rate into two contributions:
+
+.. math::
+
+    \left| \sum_{\mathbf{r}_{\setminus s}} c^{(\alpha)}_{(\mathbf{r}_{\setminus s}, j)} \left( c^{(\beta)}_{(\mathbf{r}_{\setminus s}, i)} \right)^* \right|^2 = \underbrace{ \sum_{\mathbf{r}_{\setminus s}} \left| c^{(\alpha)}_{(\mathbf{r}_{\setminus s}, j)} \right|^2 \left| c^{(\beta)}_{(\mathbf{r}_{\setminus s}, i)} \right|^2 }_{\text{incoherent (classical) part}} + \underbrace{ \sum_{\mathbf{r} \neq \mathbf{r}'} c^{(\alpha)}_{(\mathbf{r}, j)} \left( c^{(\beta)}_{(\mathbf{r}, i)} \right)^* \left( c^{(\alpha)}_{(\mathbf{r}', j)} \right)^* c^{(\beta)}_{(\mathbf{r}', i)} }_{\text{coherent interference terms}}.
+
+The incoherent part recovers a double-weighted probability sum, where each local transition :math:`k_{i \to j}^{(s)}` is scaled by the probability of finding subsystem :math:`s` in state :math:`j` when the total system is in :math:`|\alpha\rangle`, and similarly for state :math:`i` and :math:`|\beta\rangle`.
+The interference terms account for phase relationships between different product-basis subspaces.
+
+This formulation does not rely on the factorization :math:`|U_1 \otimes U_2|^2 (K_1 \otimes \mathbb{I} + \mathbb{I} \otimes K_2) |U_1 \otimes U_2|^2{}^\top`.
+Instead, each subsystems rate matrix is independently mapped to the composite eigenbasis using the marginalized coefficient tensor, preserving the physical independence of local relaxation channels.
+
+For composite systems, MarS implements the dedicated :class:`mars.population.contexts.KroneckerContext`. This class automatically computes these coefficients from the composite contexts.
 
 Context Transformation Interface
 ----------------------------------

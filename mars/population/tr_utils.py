@@ -211,17 +211,16 @@ class EvolutionMatrix(EvolutionBase):
              [0, o]]
         """
         indices = torch.arange(self.energy_diff.shape[-1], device=self.energy_diff.device)
+        mask = 1.0 - torch.eye(self.energy_diff.shape[-1], dtype=self.energy_diff.dtype, device=self.energy_diff.device)
         if free_probs is not None:
             probs_matrix = self._free_transform(temp, free_probs)
-            n = probs_matrix.size(-1)
-            mask = 1.0 - torch.eye(n, dtype=probs_matrix.dtype, device=probs_matrix.device)
-            probs_matrix[..., indices, indices] = -(probs_matrix * mask).sum(dim=-2)
+            probs_matrix[..., indices, indices] -= (probs_matrix * mask).sum(dim=-2)
             transition_matrix = probs_matrix
         else:
             transition_matrix = 0
 
         if driven_probs is not None:
-            driven_probs[..., indices, indices] = -driven_probs.sum(dim=-2)
+            driven_probs[..., indices, indices] -= (driven_probs * mask).sum(dim=-2)
             transition_matrix += driven_probs
         if out_probs is not None:
             transition_matrix -= torch.diag_embed(out_probs)
@@ -387,7 +386,7 @@ class EvolutionPopulationSolver(EvolutionSolver):
         :param lvl_up: Indices of upper energy levels involved in the observed transitions.
         :return: Signal intensity over time, shape [T, ..., R], where R is the number of transitions.
         """
-        indexes = torch.arange(initial_populations.shape[-1], device=lvl_up.device)
+        indexes = torch.arange(initial_populations.shape[-2], device=lvl_up.device)
         TIME_SCALE = 1.0
         time_scaled = time * TIME_SCALE
         def _rate_equation(t, n_flat, evo: EvolutionMatrix, matrix_generator: matrix_generators.LevelBasedGenerator):
@@ -427,8 +426,7 @@ class EvolutionPopulationSolver(EvolutionSolver):
         :param lvl_up: Indices of upper levels.
         :return: Signal intensity over time, shape [T, ..., R].
         """
-        indexes = torch.arange(lvl_up.shape[0], device=lvl_up.device)
-
+        indexes = torch.arange(initial_populations.shape[-2], device=lvl_up.device)
         dt = (time[..., 1:] - time[..., :-1])
         M = evo(*matrix_generator(time))
         dt = dt[:, None, None, None, None]
@@ -542,17 +540,16 @@ class EvolutionRWASolver(EvolutionSolver):
         :param detection_vector: Detection operator in vectorized form, shape [..., N²].
         :return: Signal intensity over time, shape [T, ..., R].
         """
-        dt = (time[..., 1] - time[..., 0])
+        dt = (time[..., 1:] - time[..., :-1])
         M = evo(*matrix_generator(time))
-        exp_M = torch.matrix_exp(M * dt)
+        dt = dt[:, None, None, None, None]
+        exp_M = torch.matrix_exp(M[:-1] * dt)
 
         size = time.size()[0]
         n = torch.zeros((size,) + initial_density.shape, dtype=initial_density.dtype)
-
         n[0] = initial_density
-
         for i in range(len(time) - 1):
-            current_n = n[i]  # Shape [..., K]
+            current_n = n[i]  # Shape [..., K**2]
             next_n = torch.matmul(exp_M[i], current_n.unsqueeze(-1)).squeeze(-1)
             n[i + 1] = next_n
         return (detection_vector.unsqueeze(0) * n).real.sum(dim=-1)

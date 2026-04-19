@@ -42,8 +42,8 @@ class NegatedProfile(Profile):
 class ConstantProfile(Profile):
     """Constant profile for power / temperature."""
 
-    def __init__(self, value: float):
-        self.value = torch.tensor(value)
+    def __init__(self, value: float, dtype: torch.dtype=torch.float32, device: torch.device = torch.device("cpu")):
+        self.value = torch.tensor(value, dtype=dtype, device=device)
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         return self.value.expand_as(time).clone()
@@ -58,7 +58,10 @@ class LinearProfile(Profile):
     T(t) = slope + intercept for t > end_time
     delta t = end_time - start_time
     """
-    def __init__(self, slope: float, intercept: float, start_time: float, end_time: float):
+    def __init__(self, slope: float, intercept: float, start_time: float,
+                 end_time: float,
+                 dtype: torch.dtype = torch.float32,
+                 device: torch.device = torch.device("cpu")):
         """
         :param slope: The slope of the linear curve.
 
@@ -67,11 +70,11 @@ class LinearProfile(Profile):
         :param start_time: time in s
         :param end_time: time in s
         """
-        self.slope = torch.tensor(slope)
-        self.intercept = torch.tensor(intercept)
+        self.slope = torch.tensor(slope, dtype=dtype, device=device)
+        self.intercept = torch.tensor(intercept, dtype=dtype, device=device)
 
-        self.start_time = torch.tensor(start_time)
-        self.end_time = torch.tensor(end_time)
+        self.start_time = torch.tensor(start_time, dtype=dtype, device=device)
+        self.end_time = torch.tensor(end_time, dtype=dtype, device=device)
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         """
@@ -99,16 +102,18 @@ class LinearProfile(Profile):
 class ExponentialDecayProfile(Profile):
     """Exponential decay to steady state: A(t) = A0 + (A_init - A0)*exp(-t/tau)."""
 
-    def __init__(self, initial_value: float, steady_value: float, decay_tau: float):
+    def __init__(self, initial_value: float, steady_value: float, decay_tau: float,
+                 dtype: torch.dtype = torch.float32,
+                 device: torch.device = torch.device("cpu")):
         """
         :param initial_value: initial temperature of the system in K.
 
         :param steady_value: final temperature of the system in K
         :param decay_tau: the time of temperature change in s
         """
-        self.A_init = torch.tensor(initial_value)
-        self.A0 = torch.tensor(steady_value)
-        self.decay_tau = torch.tensor(decay_tau)
+        self.A_init = torch.tensor(initial_value, dtype=dtype, device=device)
+        self.A0 = torch.tensor(steady_value, dtype=dtype, device=device)
+        self.decay_tau = torch.tensor(decay_tau, dtype=dtype, device=device)
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         return self.A0 + (self.A_init - self.A0) * torch.exp(-time / self.decay_tau)
@@ -117,10 +122,12 @@ class ExponentialDecayProfile(Profile):
 class StepProfile(Profile):
     """Instantaneous step at specified time."""
 
-    def __init__(self, step_time: float, initial_value: float, final_temp: float):
-        self.step_time = torch.tensor(step_time)
-        self.initial_value = torch.tensor(initial_value)
-        self.final_value = torch.tensor(final_temp)
+    def __init__(self, step_time: float, initial_value: float, final_temp: float,
+                 dtype: torch.dtype = torch.float32,
+                 device: torch.device = torch.device("cpu")):
+        self.step_time = torch.tensor(step_time, dtype=dtype, device=device)
+        self.initial_value = torch.tensor(initial_value, dtype=dtype, device=device)
+        self.final_value = torch.tensor(final_temp, dtype=dtype, device=device)
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         return torch.where(time < self.step_time, self.initial_value, self.final_value)
@@ -140,12 +147,14 @@ class LinearExpDecayProfile(Profile):
         start_time: float,
         end_time: float,
         decay_tau: float,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu")
     ):
-        self.slope = torch.tensor(slope)
-        self.intercept = torch.tensor(intercept)
-        self.start_time = torch.tensor(start_time)
-        self.end_time = torch.tensor(end_time)
-        self.decay_tau = torch.tensor(decay_tau)
+        self.slope = torch.tensor(slope, dtype=dtype, device=device)
+        self.intercept = torch.tensor(intercept, dtype=dtype, device=device)
+        self.start_time = torch.tensor(start_time, dtype=dtype, device=device)
+        self.end_time = torch.tensor(end_time, dtype=dtype, device=device)
+        self.decay_tau = torch.tensor(decay_tau, dtype=dtype, device=device)
 
     def __call__(self, time: torch.Tensor) -> torch.Tensor:
         """

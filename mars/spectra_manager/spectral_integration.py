@@ -1333,6 +1333,39 @@ class MeanIntegrator(BaseSpectraIntegrator):
                              device: torch.device, dtype: torch.dtype):
         self.integrand = ZeroOrderIntegrand(harmonic, gaussian_method, gaussian_cutoff, device=device, dtype=dtype)
 
+    def _compute_effective_width(
+            self, width: torch.Tensor,
+            spectral_width: torch.Tensor
+    ):
+        """
+        Compute extended  width.
+
+        Combines natural width, spectral resolution, and field-dependent broadening from
+        triangle geometry into effective width, then returns it.
+        Modifies the input tensor in-place
+
+        :param width: Original transition widths (FWHM) with shape [..., M]
+        :type width: torch.Tensor
+        :param B1: First vertex resonance fields with shape [..., M]
+        :type B1: torch.Tensor
+        :param B2: Second vertex resonance fields with shape [..., M]
+        :type B2: torch.Tensor
+        :param spectral_width: Part of spectral resolution (ΔB / alpha)
+        :type spectral_width: torch.Tensor
+        :return: Extended inverse width c_extended = √2 / w_effective with shape [..., M]
+        :rtype: torch.Tensor
+        """
+        width.mul_(self._width_conversion)
+        threshold = self.natural_width
+        torch.where(width > threshold, width, width + threshold, out=width)
+
+        width.square_()
+        threshold = spectral_width.unsqueeze_(-1).square_()
+        torch.where(width > threshold, width, width + threshold, out=width)
+
+        width.sqrt_()
+        return width
+
     def forward(self, res_fields: torch.Tensor,
                   width: torch.Tensor, A_mean: torch.Tensor,
                   area: torch.Tensor, spectral_field: torch.Tensor):
@@ -1355,10 +1388,9 @@ class MeanIntegrator(BaseSpectraIntegrator):
         :rtype: torch.Tensor
         """
         res_fields = res_fields.squeeze(-1)
-        width.mul_(self._width_conversion)
+        spectral_width = (spectral_field[..., 1] - spectral_field[..., 0])
+        width = self._compute_effective_width(width, spectral_width)
         A_mean = A_mean * area
-
-        width = self.natural_width + width
         c_extended = self._width_to_gaussian_scale(width)
 
         c_extended.unsqueeze_(-2)

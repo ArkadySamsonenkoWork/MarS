@@ -418,6 +418,25 @@ Examples
    
    composite = ctx1 @ ctx2  # Dimension: 4
 
+
+.. note::
+
+   Relaxation superoperators in multiplied systems obey the secular condition
+   with respect to the *total* Hamiltonian, not the individual subsystems.
+
+   Even if each subsystem superoperator contains only secular terms in its local
+   eigenbasis, the composite superoperator may contain off-diagonal entries in
+   Liouville space after Kronecker construction and permutation.
+
+   These terms correspond to coherence–coherence couplings that share the same
+   Bohr frequency:
+
+   .. math::
+
+      E_i - E_j = E_k - E_l.
+
+   Such contributions are preserved in MarS.
+
 Combining Multiplication and Addition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For complex systems, both operations can be combined:
@@ -680,10 +699,6 @@ This ensures that coherences between states belonging to different subsystems, f
 In contrast, if relaxation superoperators are computed separately for each subsystem and then combined into a block-diagonal matrix, the off-diagonal blocks connecting the subsystems remain zero.
 This implies that inter-system coherences do not decay due to relaxation, meaning the time derivative of the density matrix element :math:`\rho_{12}` is zero for cross-subsystem elements.
 
-When the superoperator is computed via the Lindblad equation from concatenated rates,
-these terms appear naturally since the population changes in subsystem 1 and subsystem 2 contribute to the decay of the coherence between them.
-Therefore, to preserve the Lindblad structure where inter-system coherences decay due to local noise, users should concatenate Context objects before computing the superoperator.
-
 The following example demonstrates this difference.
 
 .. code-block:: python
@@ -731,8 +746,6 @@ The following example demonstrates this difference.
     assert not torch.allclose(sup_combined, sup_manual)
 
     print(f"Combined superoperator includes inter-system dephasing: {not torch.allclose(sup_combined, sup_manual)}")
-
-Using the manual superoperator combination will result in sustained coherences between subsystems even though local noise should destroy them. Concatenate Context objects to ensure physical accuracy in the relaxation model.
 
 
 

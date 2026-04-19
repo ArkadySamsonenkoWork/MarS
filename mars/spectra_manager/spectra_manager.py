@@ -1599,7 +1599,7 @@ class BaseSpectra(nn.Module, ABC):
         self.register_buffer("threshold", torch.tensor(
             computational_details.intensity_threshold, device=device, dtype=dtype)
         )
-        self.register_buffer("tolerance", torch.tensor(1e-10, device=device, dtype=dtype))
+        self.register_buffer("tolerance", torch.tensor(1e-7, device=device, dtype=dtype))
         self.register_buffer("intensity_std", torch.tensor(1e-7, device=device, dtype=dtype))
 
         self.spin_system_dim, self.batch_dims, self.mesh =\
@@ -1826,7 +1826,8 @@ class BaseSpectra(nn.Module, ABC):
         factor_2 = compute_matrix_element(vector_down, vector_down, Gz)
 
         diff = (factor_1 - factor_2).abs()
-        safe_diff = torch.where(diff < self.tolerance, self.tolerance, diff)
+        tolerancy = self.tolerance * constants.BOHR / constants.PLANCK
+        safe_diff = torch.where(diff < tolerancy, tolerancy, diff)
         return safe_diff.reciprocal()
 
     def _init_output_eigenvector(

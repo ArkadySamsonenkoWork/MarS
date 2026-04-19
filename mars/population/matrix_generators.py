@@ -267,6 +267,7 @@ class DensityRWAGenerator(BaseGenerator):
         :param stationary_hamiltonian: The Hamiltonian in the given frame. The definition depends on approximations.
             -For RWA it uses full Hamiltonian in rotating frame.
             -For Propagator it uses real stationary Hamiltonian
+            -The Hamiltonian is expressed in (Hz * 2π = rad/s).
 
         :param lvl_down:
             Energy levels of lower states from which transitions occur.
@@ -315,7 +316,7 @@ class DensityRWAGenerator(BaseGenerator):
         temperature = self._temperature(time_dep_values)
         free_superop = self._base_superop(time_dep_values, temperature)
         driven_superop = self._driven_superop(time_dep_values, temperature)
-        return temperature, self.stationary_hamiltonian, free_superop, driven_superop
+        return temperature.unsqueeze(-1).unsqueeze(-1), self.stationary_hamiltonian, free_superop, driven_superop
 
     def _temperature(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t."""
@@ -344,6 +345,24 @@ class DensityRWAGenerator(BaseGenerator):
         """
         return self.context.get_transformed_driven_superop(
             self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature)
+
+
+class TempDepDensityRWAGenerator(DensityRWAGenerator):
+    """Extension of DensityRWAGenerator where system temperature is time-
+    dependent.
+
+    This assumes the profile(t) returns absolute temperature in Kelvin
+    at time t. All thermal transition rates are recomputed at each time
+    step using the instantaneous temperature.
+    """
+    def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
+        """Return time-dependent temperature from the Context profile.
+
+        Assumes time_dep_values contains temperature values evaluated at 'time'.
+        :param time_dep_values: Tensor of shape compatible with [..., 1, 1] containing temperatures.
+        :return: Same as time_dep_values.
+        """
+        return time_dep_values
 
 
 class DensityPropagatorGenerator(DensityRWAGenerator):

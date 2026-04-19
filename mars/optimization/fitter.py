@@ -576,7 +576,8 @@ class BaseSpectrumFitter(ABC):
         norm_mode: str = "integral",
         objective=objectives.MSEObjective(),
         weights: tp.Optional[list[float]] = None,
-        device: tp.Optional[torch.device] = None,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float32,
     ):
         """
         :param param_space: The object of ParameterSpace class where all varying parameters are included.
@@ -586,7 +587,6 @@ class BaseSpectrumFitter(ABC):
         :param weights: The weights for multi-spectra fit. Default is None
         :param device: Device for computation
         """
-        self.device = torch.device("cpu") if device is None else device
         self.norm_mode = norm_mode
         self._simulate_callable = spectra_simulator
         self.param_space = param_space
@@ -857,7 +857,8 @@ class SpectrumFitter(BaseSpectrumFitter):
             norm_mode: str = "integral",
             objective=objectives.MSEObjective(),
             weights: tp.Optional[tp.List[float]] = None,
-            device: tp.Optional[torch.device] = None,
+            device: torch.device = torch.device("cpu"),
+            dtype: torch.dtype = torch.float32,
     ) -> None:
         """
         :param x_exp: Experimental x-axis data.
@@ -889,20 +890,21 @@ class SpectrumFitter(BaseSpectrumFitter):
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
         :param weights: The weights for multi-data fit. Default is None
         """
-        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device)
-        self.x_exp, self.y_exp, self.multisample = self._set_experimental(x_exp, y_exp)
+        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device, dtype)
+        self.x_exp, self.y_exp, self.multisample = self._set_experimental(x_exp, y_exp, device, dtype)
 
         if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x_exp), dtype=torch.float32, device=self.device)
+            self.weights = torch.ones(len(self.x_exp), dtype=dtype, device=device)
         elif weights is not None:
-            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
+            self.weights = torch.tensor(weights, dtype=dtype, device=device)
         else:
             self.weights = None
         self._loss_normalization = self._get_loss_norm()
 
     def _set_experimental(
             self, x_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
-                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
+                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+                  device: torch.device, dtype: torch.dtype) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, bool]:
         """Set expereimental given parameter.
 
@@ -916,14 +918,14 @@ class SpectrumFitter(BaseSpectrumFitter):
             if len(x_exp) != len(y_exp):
                 raise ValueError("The number of x array and experimental arrays must be the same")
             else:
-                x_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x_exp]
-                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
+                x_exp = [torch.tensor(b, dtype=dtype, device=device) for b in x_exp]
+                y_exp = [torch.tensor(y, dtype=dtype, device=device) for y in y_exp]
                 for idx, b in enumerate(x_exp):
                     y_exp[idx] = normalize_spectrum(b, y_exp[idx], mode=self.norm_mode)
                 multisample = True
         else:
-            x_exp = torch.tensor(x_exp, dtype=torch.float32, device=self.device)
-            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
+            x_exp = torch.tensor(x_exp, dtype=dtype, device=device)
+            y_exp = torch.tensor(y_exp, dtype=dtype, device=device)
             y_exp = normalize_spectrum(x_exp, y_exp, mode=self.norm_mode)
             multisample = False
 
@@ -959,7 +961,8 @@ class Spectrum2DFitter(BaseSpectrumFitter):
             norm_mode: str = "integral",
             objective=objectives.MSEObjective(),
             weights: list[float] = None,
-            device: tp.Optional[torch.device] = None,
+            device: torch.device = torch.device("cpu"),
+            dtype: torch.dtype = torch.float32,
     ):
         """
         :param x1_exp: Experimental x1-axis data.
@@ -995,12 +998,13 @@ class Spectrum2DFitter(BaseSpectrumFitter):
         :param weights: The weights for multi-data fit. Default is None
         """
         super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device)
-        self.x1_exp, self.x2_exp, self.y_exp, self.multisample = self._set_experimental(x1_exp, x2_exp, y_exp)
+        self.x1_exp, self.x2_exp, self.y_exp, self.multisample = self._set_experimental(
+            x1_exp, x2_exp, y_exp, device, dtype)
 
         if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x1_exp), dtype=torch.float32, device=self.device)
+            self.weights = torch.ones(len(self.x1_exp), dtype=dtype, device=device)
         elif weights is not None:
-            self.weights = torch.tensor(weights, dtype=torch.float32, device=self.device)
+            self.weights = torch.tensor(weights, dtype=dtype, device=device)
         else:
             self.weights = None
 
@@ -1009,7 +1013,8 @@ class Spectrum2DFitter(BaseSpectrumFitter):
     def _set_experimental(
             self, x1_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
                   x2_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
-                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]]) ->\
+                  y_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
+                  device: torch.device, dtype: torch.dtype) ->\
             tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor, bool]:
         """Set experimental given parameter.
 
@@ -1025,16 +1030,16 @@ class Spectrum2DFitter(BaseSpectrumFitter):
             if (len(x1_exp) != len(y_exp)) or (len(x2_exp) != len(y_exp)):
                 raise ValueError("The number of x1 and x2 array and experimental arrays must be the same")
             else:
-                x1_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x1_exp]
-                x2_exp = [torch.tensor(b, dtype=torch.float32, device=self.device) for b in x2_exp]
-                y_exp = [torch.tensor(y, dtype=torch.float32, device=self.device) for y in y_exp]
-                for idx, b1, b2 in enumerate(zip(x1_exp, x2_exp)):
+                x1_exp = [torch.tensor(b, dtype=dtype, device=device) for b in x1_exp]
+                x2_exp = [torch.tensor(b, dtype=dtype, device=device) for b in x2_exp]
+                y_exp = [torch.tensor(y, dtype=dtype, device=device) for y in y_exp]
+                for idx, (b1, b2) in enumerate(zip(x1_exp, x2_exp)):
                     y_exp[idx] = normalize_spectrum2d(b1, b2, y_exp[idx], mode=self.norm_mode)
                 multisample = True
         else:
-            x1_exp = torch.tensor(x1_exp, dtype=torch.float32, device=self.device)
-            x2_exp = torch.tensor(x2_exp, dtype=torch.float32, device=self.device)
-            y_exp = torch.tensor(y_exp, dtype=torch.float32, device=self.device)
+            x1_exp = torch.tensor(x1_exp, dtype=dtype, device=device)
+            x2_exp = torch.tensor(x2_exp, dtype=dtype, device=device)
+            y_exp = torch.tensor(y_exp, dtype=dtype, device=device)
             y_exp = normalize_spectrum2d(x1_exp, x2_exp, y_exp, mode=self.norm_mode)
             multisample = False
 
