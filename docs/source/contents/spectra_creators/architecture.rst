@@ -1,7 +1,7 @@
 Internal Architecture of Spectra Creators
 =========================================
 
-All spectra creators derive from :class:`BaseSpectra`, which orchestrates five modular stages:
+All spectra creators derive from :class:`BaseResSpectra`, which orchestrates five modular stages:
 
 1. **Resonance Solver**: Computes eigenvalues/eigenvectors of :math:`\hat{H}(B)` or :math:`\hat{H}(\omega)`.
 2. **Intensity Calculator**: Evaluates transition matrix elements and weights by populations or density matrix.
@@ -21,6 +21,6 @@ Extensibility
 -------------
 
 To implement a new creator:
-- Subclass :class:`mars.spectra_manager.spectra_manager.BaseSpectra`
+- Subclass :class:`mars.spectra_manager.spectra_manager.BaseResSpectra`
 - Override `_init_spectra_processor` to select integration strategy
 - Optionally override `_postcompute_batch_data` for custom dynamics

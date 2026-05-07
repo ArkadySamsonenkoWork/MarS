@@ -11,6 +11,8 @@ from . import matrix_generators
 from . import transform
 from . import rk4
 
+from .thermal_corrections import ThermalBalanceMode, ThermalBalanceCorrector
+
 
 class EvolutionBase(ABC):
     """Base class for time evolution implementations.
@@ -19,75 +21,43 @@ class EvolutionBase(ABC):
     Subclasses must implement the ``evolve`` method to describe how a state
     or operator evolves over time under a given Hamiltonian or generator.
     """
-
-    def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
+    def __init__(self, res_energies: torch.Tensor,
+                 thermal_balance_mode: tp.Optional[
+                     tp.Union[str, ThermalBalanceMode]] = ThermalBalanceMode.SYMMETRIC):
         """
         :param res_energies: Energy eigenvalues of the spin Hamiltonian.
                          Expected shape: [..., N] where N is the dimension of the spin system.
 
-        :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
+        :param thermal_balance_mode: Strategy for enforcing thermal detailed balance.
+            Accepts either a string or a `ThermalBalanceMode` enum value:
+
+            - "skip" (or `ThermalBalanceMode.SKIP`): No modification. Use for
+              high-temperature limits or when the spectral function is already balanced*
+            - "symmetric" (or `ThermalBalanceMode.SYMMETRIC`): Symmetrizes the
+              population rates and enforces detailed balance on all transitions.
+              Both upward and downward rates are adjusted to preserve the average
+              coupling strength while satisfying
+            - "complement" (or `ThermalBalanceMode.COMPLEMENT`): Fills only
+              missing zero entries in the upward transition matrix
+            Default is "skip"
         """
-        self.energy_diff = res_energies.unsqueeze(-2) - res_energies.unsqueeze(-1)
-        # energy_diff[i, j] = E_j - E_i (energy difference from state j to state i)
-        self.energy_diff = constants.unit_converter(self.energy_diff, "Hz_to_K")
-        self.config_dim = self.energy_diff.shape[:-2]
-        self._free_transform = self._prob_transform_factory(symmetry_probs)
-        self.spin_system_dim = res_energies.shape[-1]
+        self.thermal_corrector = ThermalBalanceCorrector(res_energies, thermal_balance_mode)
+        self.config_dim = self.thermal_corrector.config_dim
+        self.spin_system_dim = self.thermal_corrector.spin_system_dim
 
-    def _prob_transform_factory(self, symmetry_probs: bool) -> tp.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Selects the Boltzmann transformation function based on input
-        convention.
-
-        :param symmetry_probs: Boolean flag.
-        :return: Callable implementing either symmetric or asymmetric
-            thermal scaling.
+    @property
+    def device(self):
         """
-        if symmetry_probs:
-            return self._compute_boltzmann_symmetry
-        else:
-            return self._compute_boltzmann_complement
-
-    def _compute_energy_factor(self, temp: torch.Tensor) -> torch.Tensor:
+        return computation device of the thermal factors
         """
-        Compute Boltzmann factor for transition FROM j TO i:
+        return self.thermal_corrector.omega_K.device
 
-            factor[i, j] = 1 / (1 + exp(-(E_j - E_i) / k_B T))
-
-        This ensures detailed balance:
-            w_{i→j} / w_{j→i} = exp(-(E_j - E_i) / k_B T)
-
-        ote: energy_diff[i, j] = E_j - E_i, so factor[i, j] applies to the rate w_{i→j} (i → j).
-
-        :param temp: Temperature tensor [...]
-        :return: Factor tensor [..., N, N] where factor[i, j] corresponds to w_{j→i}
+    @property
+    def dtype(self):
         """
-        denom = 1 + torch.exp(-self.energy_diff / temp)
-        return torch.reciprocal(denom)
-
-    @abstractmethod
-    def _compute_boltzmann_symmetry(self, temp: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
-        """Modifies the matrix so that it complies with the principle of
-        detailed balance.
-
-        :param temp: Temperature in K
-        :param matrix: Matrix which should be modified
-        :return: The modified matrix
+        return dtype of the thermal factors
         """
-        pass
-
-    @abstractmethod
-    def _compute_boltzmann_complement(self, temp: torch.Tensor, matrix: torch.Tensor) -> torch.Tensor:
-        """Enforce detailed balance by filling missing rates from their reciprocal counterparts.
-
-        In this approach, zero entries are replaced using the transpose element scaled
-        by the Boltzmann factor, while non‑zero entries are left untouched.
-        Subclasses must implement the concrete transformation.
-
-        :param temp:   Temperature in K.
-        :param matrix: Input tensor (interpretation depends on subclass).
-        :return:       Tensor satisfying detailed balance.
-        """
-        pass
+        return self.thermal_corrector.omega_K.dtype
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> torch.Tensor:
@@ -125,63 +95,40 @@ class EvolutionMatrix(EvolutionBase):
     no outgoing losses are present.
     """
 
-    def _compute_boltzmann_symmetry(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
+    def apply_thermal_correction(self, temperature: torch.Tensor, matrix: torch.Tensor):
         """
-        Convert symmetric mean strengths k'_ij into physical rates w_{j→i}.
+        Apply thermal detailed balance correction to a population transition rate matrix.
 
-        Given k'_ij = (free_probs[i, j] + free_probs[j, i]) / 2:
+        Transforms raw or symmetric rate estimates into physical transition rates
+        that satisfy the detailed balance condition at the specified temperature.
+        The transformation behavior is determined by the ``thermal_balance_mode``
+        configured during initialization.
 
-            w_{j→i} = 2 * k'_ij * factor[i, j]
-            w_{i→j} = 2 * k'_ij * factor[j, i]
-
-        where factor[i, j] is computed by _compute_energy_factor and energy_diff[i, j] = E_j - E_i.
-
-        Returns tensor free_probs_update where free_probs_update[i, j] = w_{j→i}.
-
-        :param temp: Temperature in K [...]
-        :param free_probs: Symmetric tensor [..., N, N] with free_probs[i, j] = k'_ij
-        :return: Tensor [..., N, N] where output[i, j] = w_{j→i}
+        :param temperature: Temperature(s) in Kelvin. Shape: ``[...]`` (broadcasts
+            against the leading dimensions of the matrix).
+        :param matrix: Input transition matrix of shape ``[..., N, N]``. Its physical
+            interpretation depends on the active thermal balance mode:
+            - ``"symmetric"``: ``matrix[i, j]`` is treated as the symmetric mean
+              coupling strength ``k'_{ij} = (w_{i→j}^{raw} + w_{j→i}^{raw}) / 2``.
+            - ``"complement"``: ``matrix[i, j]`` is the initial estimate for the rate
+              ``w_{j→i}``. Zero-valued upward transitions are inferred from their
+              downward counterparts using the Boltzmann factor.
+            - ``"skip"``: Matrix is returned unmodified.
+        :return: Corrected transition rate matrix of shape ``[..., N, N]``, where
+            ``output[i, j]`` represents the physical rate ``w_{j→i}`` (transition
+            from level ``j`` to level ``i``). When thermal correction is enabled,
+            the output satisfies the detailed balance relation:
+            ``w_{j→i} / w_{i→j} = exp(-(E_i - E_j) / (k_B T))``.
         """
-        energy_factor = self._compute_energy_factor(temp)
-        return (free_probs + free_probs.transpose(-2, -1)) * energy_factor
+        return self.thermal_corrector.apply_matrix_transform(temperature, matrix)
 
-    def _compute_boltzmann_complement(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
-        """
-        Enforce detailed balance on raw rate estimates.
-
-        Input interpretation: free_probs[i, j] is initial estimate of w_{j→i}
-
-        To enforce detailed balance:
-            w_{j→i} = w_{i→j} * exp( -(E_i - E_j) / k_B T )
-                    = w_{i→j} * exp( +(E_j - E_i) / k_B T )
-
-        Since energy_diff[i, j] = E_j - E_i:
-
-            w_{i→j} = w_{j→i} * exp(-energy_diff[i, j] / k_B T)
-
-          If free_probs[i, j] > 0 and free_probs[j, i] == 0:
-              set w_{j→i} = w_{i→j} * exp(+(E_j - E_i) / k_B T)
-
-          If both are non-zero, they are left unchanged (user-provided balance).
-
-        The returned tensor R satisfies: R[i, j] = w_{i→j} (final physical rate).
-
-        :param temp: Temperature in K [...]
-        :param free_probs: Asymmetric input [..., N, N] where
-            free_probs[i, j] is interpreted as the initial guess for w_{i→j}
-        :return: Tensor [..., N, N] where output[i, j] = w_{i→j} satisfying
-            w_{i→j} / w_{j→i} = exp( -(E_j - E_i) / k_B T )  (detailed balance)
-        """
-        numerator = torch.exp(self.energy_diff / temp)
-        return torch.where(free_probs == 0, free_probs.transpose(-1, -2) * numerator, free_probs)
-
-    def __call__(self, temp: torch.tensor,
+    def __call__(self, temperature: torch.tensor,
                  free_probs: tp.Optional[torch.Tensor] = None,
                  driven_probs: tp.Optional[torch.Tensor] = None,
                  out_probs: tp.Optional[torch.Tensor] = None) -> torch.Tensor:
         """Build full transition matrix.
 
-        :param temp: Temperature(s).
+        :param temperature: Temperature(s).
         :param free_probs: Optional Free relaxation probabilities [..., N, N].
         :param driven_probs: Optional induced transitions [..., N, N].
         :param out_probs: Optional outgoing transition rates [..., N].
@@ -210,10 +157,10 @@ class EvolutionMatrix(EvolutionBase):
           - [[o, 0],
              [0, o]]
         """
-        indices = torch.arange(self.energy_diff.shape[-1], device=self.energy_diff.device)
-        mask = 1.0 - torch.eye(self.energy_diff.shape[-1], dtype=self.energy_diff.dtype, device=self.energy_diff.device)
+        indices = torch.arange(self.spin_system_dim, device=self.device)
+        mask = 1.0 - torch.eye(self.spin_system_dim, dtype=self.dtype, device=self.device)
         if free_probs is not None:
-            probs_matrix = self._free_transform(temp, free_probs)
+            probs_matrix = self.apply_thermal_correction(temperature, free_probs)
             probs_matrix[..., indices, indices] -= (probs_matrix * mask).sum(dim=-2)
             transition_matrix = probs_matrix
         else:
@@ -245,68 +192,32 @@ class EvolutionSuper(EvolutionBase):
     Diagonal decay rates (total depopulation from each level) are preserved during thermal correction
     to maintain physical consistency of the relaxation model.
     """
-    def __init__(self, res_energies: torch.Tensor, symmetry_probs: bool = True):
+
+    def apply_thermal_correction(self, temperature: torch.Tensor, superoperator: torch.Tensor):
         """
-        :param res_energies: The resonance energies.
+        Apply thermal detailed balance correction to the population transfer block
+        of a relaxation superoperator.
 
-        The shape is [..., N, N], where N is spin system dimension
-        :param symmetry_probs: Is the probabilities of transitions are given in symmetric form. Default is True
+        Modifies only the population-to-population elements (indices corresponding
+        to diagonal density matrix elements) to satisfy detailed balance at the
+        specified temperature. All other elements (coherence transfer, etc.) are
+        left unchanged. The total depopulation rate (column sums) for each energy
+        level is preserved to maintain physical consistency of irreversible losses.
+
+        :param temperature: Temperature(s) in Kelvin. Shape: ``[...]`` (broadcasts
+            against the leading dimensions of the superoperator).
+        :param superoperator: Relaxation superoperator of shape ``[..., N^2, N^2]``,
+            where ``N`` is the spin system dimension. Element ``[p_i, p_j]``
+            corresponds to the initial rate from population ``ρ_jj`` to ``ρ_ii``
+            (i.e., ``j → i`` transition). The superoperator must be expressed in
+            the energy eigenbasis.
+        :return: Thermally corrected superoperator of shape ``[..., N^2, N^2]``.
+            The population block is updated to satisfy detailed balance:
+            ``w_{j→i} / w_{i→j} = exp(-(E_i - E_j) / (k_B T))``. Diagonal elements
+            are automatically adjusted to preserve the original column sums (net
+            loss rates) of each energy level.
         """
-        super().__init__(res_energies, symmetry_probs)
-        self.pop_indices = torch.arange(
-            self.spin_system_dim, device=res_energies.device) * (self.spin_system_dim + 1)
-
-    def _compute_boltzmann_symmetry(self, temp: torch.Tensor, free_superop: torch.Tensor) -> torch.Tensor:
-        """Apply Boltzmann scaling to population transfer rates in superoperator.
-
-        The population-population block is defined by indices:
-            pop_block[i, j] = free_superop[pop_i, pop_j] = initial rate from j → i (i.e., R_{iijj})
-
-        Under the symmetric input convention:
-            (pop_block[i, j] + pop_block[j, i]) / 2 = k'_ij   (mean strength)
-
-        This method computes physical rates:
-            w_{j→i} = 2 * k'_ij * factor[i, j]
-            w_{i→j} = 2 * k'_ij * factor[j, i]
-
-        where factor[i, j] = 1 / (1 + exp(-(E_j - E_i) / k_B T))
-
-        After scaling off-diagonal elements (i ≠ j), diagonal elements are adjusted
-        to preserve the original column sums of the population block. The column sum
-        for level j equals -loss_j (net depopulation rate including irreversible losses),
-        which is a physical observable that must remain unchanged by thermal correction.
-
-        :param temp: Temperature tensor [...]
-        :param free_superop: Relaxation superoperator [..., N², N²]
-            Must be in the energy eigenbasis. Element [p_i, p_j] represents the rate
-            from population ρ_jj to population ρ_ii (j → i transition)
-        :return: Scaled superoperator [..., N², N²] with thermally corrected
-            population transfer rates satisfying detailed balance while preserving
-            original net loss rates from each energy level.
-        """
-        device = free_superop.device
-
-        pop_indices = torch.arange(self.spin_system_dim, device=device) * (self.spin_system_dim + 1)
-        pop_block = free_superop[..., pop_indices[:, None], pop_indices[None, :]]
-        decay = pop_block.sum(dim=-2)  # It is decay rate from the level. It should be preserved after all correction
-
-        pop_block = (pop_block + pop_block.transpose(-2, -1))
-        energy_factor = self._compute_energy_factor(temp)
-
-        new_superop = torch.zeros(
-                (*energy_factor.shape[:-2], self.spin_system_dim**2, self.spin_system_dim**2),
-            device=free_superop.device, dtype=free_superop.dtype) + free_superop
-
-        pop_block = pop_block * energy_factor
-
-        diag_indices = torch.arange(self.spin_system_dim, device=device)
-        mask = ~torch.eye(pop_block.shape[-1], device=pop_block.device, dtype=torch.bool)
-        pop_block[..., diag_indices, diag_indices] = -(mask * pop_block).sum(dim=-2) + decay
-        new_superop[..., pop_indices[:, None], pop_indices[None, :]] = pop_block
-        return new_superop
-
-    def _compute_boltzmann_complement(self, temp: torch.tensor, free_probs: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError
+        return self.thermal_corrector.apply_superoperator_transform(temperature, superoperator)
 
     def __call__(self,
                  temp: torch.tensor,
@@ -336,7 +247,7 @@ class EvolutionSuper(EvolutionBase):
         super_op = transform.Liouvilleator.hamiltonian_superop(H)
 
         if free_superop is not None:
-            super_op = self._free_transform(temp, free_superop) + super_op
+            super_op = self.apply_thermal_correction(temp, free_superop) + super_op
         if driven_superop is not None:
             super_op = driven_superop + super_op
         return super_op
@@ -435,7 +346,6 @@ class EvolutionPopulationSolver(EvolutionSolver):
         n = torch.zeros((size,) + initial_populations.shape, dtype=initial_populations.dtype)
 
         n[0] = initial_populations
-
         for i in range(len(time) - 1):
             current_n = n[i]  # Shape [..., K]
             next_n = torch.matmul(exp_M[i], current_n.unsqueeze(-1)).squeeze(-1)

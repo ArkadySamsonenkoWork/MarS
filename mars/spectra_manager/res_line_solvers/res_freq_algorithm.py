@@ -3,7 +3,7 @@ import typing as tp
 import torch
 import torch.nn as nn
 
-from . import spin_model
+from ... import spin_model
 
 ### The energy computation is not effective due to the usage of common interface for population computation
 ### It should be rebuild without expand operation

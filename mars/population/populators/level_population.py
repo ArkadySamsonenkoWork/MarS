@@ -68,12 +68,13 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             return tr_utils.EvolutionPopulationSolver.stationary_rate_solver
 
     def _init_tr_matrix_generator(self,
-                                  time: torch.Tensor,
+                                  time: tp.Optional[torch.Tensor],
                                   res_fields: torch.Tensor,
-                                  lvl_down: torch.Tensor,
-                                  lvl_up: torch.Tensor, energies: torch.Tensor,
-                                  vector_down: torch.Tensor,
-                                  vector_up: torch.Tensor,
+                                  lvl_down: tp.Optional[torch.Tensor],
+                                  lvl_up: tp.Optional[torch.Tensor],
+                                  energies: torch.Tensor,
+                                  vector_down: tp.Optional[torch.Tensor],
+                                  vector_up: tp.Optional[torch.Tensor],
                                   full_system_vectors: tp.Optional[torch.Tensor],
                                   *args, **kwargs) -> matrix_generators.BaseGenerator:
         """

@@ -10,7 +10,7 @@ import scipy
 
 from . import particles
 from .spin_model import BaseSample, SpinSystem, Interaction, MultiOrientedSample
-from .spectra_manager import BaseSpectra, StationarySpectra
+from .spectra_manager import BaseResSpectra, StationarySpectra
 
 
 class SampleDict:
@@ -378,7 +378,7 @@ class CreatorDict:
             raise ValueError(f"Unsupported format: {format_type}")
         return format_handlers[format_type](creator)
 
-    def _get_easyspin(self, creator: BaseSpectra):
+    def _get_easyspin(self, creator: BaseResSpectra):
         temperature = creator.intensity_calculator.temperature
         temperature = temperature if temperature is None else np.array(temperature).astype(np.float64)
         frequency = creator.resonance_parameter.detach().cpu().numpy().astype(np.float64)
@@ -386,13 +386,13 @@ class CreatorDict:
         out_dict = {"Temperature": temperature, "mwFreq": frequency * self.hz_to_ghz}
         return out_dict
 
-    def _get_pytorch(self, creator: BaseSpectra):
+    def _get_pytorch(self, creator: BaseResSpectra):
         temperature = creator.intensity_calculator.temperature
         frequency = creator.resonance_parameter
         out_dict = {"temperature": temperature, "res_freq": frequency}
         return out_dict
 
-    def _get_npy(self, creator: BaseSpectra):
+    def _get_npy(self, creator: BaseResSpectra):
         temperature = creator.intensity_calculator.temperature
         temperature = temperature if temperature is None else np.array(temperature).astype(np.float64)
         frequency = creator.resonance_parameter.detach().cpu().numpy().astype(np.float64)
@@ -404,7 +404,7 @@ class CreatorDict:
 def save(
         filepath: str,
         sample: tp.Optional[BaseSample] = None,
-        spectra_creator: tp.Optional[BaseSpectra] = None,
+        spectra_creator: tp.Optional[BaseResSpectra] = None,
         field: tp.Optional[tp.Union[torch.Tensor, np.ndarray]] = None,
         format_type="torch"
 ):
@@ -750,12 +750,12 @@ class SampleLoader:
 
 
 class CreatorLoader:
-    """Reconstructs BaseSpectraCreator objects from dictionary
+    """Reconstructs BaseResSpectraCreator objects from dictionary
     representations."""
 
     def load_creator_from_dict(self, sample: MultiOrientedSample, creator_dict: dict, format_type: str = 'pytorch') ->\
-            BaseSpectra:
-        """Load a BaseSpectraCreator from a dictionary based on format type."""
+            BaseResSpectra:
+        """Load a BaseResSpectraCreator from a dictionary based on format type."""
         format_handlers = {
             'pytorch': self._load_pytorch_creator,
             'npy': self._load_npy_creator,
@@ -768,7 +768,7 @@ class CreatorLoader:
 
         return format_handlers[format_type](sample, creator_dict)
 
-    def _load_pytorch_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseSpectra:
+    def _load_pytorch_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseResSpectra:
         """Load creator from pytorch format."""
         return StationarySpectra(
             sample=sample,
@@ -776,14 +776,14 @@ class CreatorLoader:
             temperature=creator_dict['temperature'],
         )
 
-    def _load_npy_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseSpectra:
+    def _load_npy_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseResSpectra:
         """Load creator from numpy format."""
         temperature = creator_dict['temperature']
         res_freq = torch.tensor(creator_dict['res_freq'], dtype=torch.float32)
 
         return StationarySpectra(sample=sample, temperature=temperature, freq=res_freq)
 
-    def _load_easyspin_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseSpectra:
+    def _load_easyspin_creator(self, sample: MultiOrientedSample, creator_dict: dict) -> BaseResSpectra:
         """Load creator from EasySpin format."""
         ghz_to_hz = 1e9
 

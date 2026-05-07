@@ -24,6 +24,7 @@ class StationaryPopulator(core.BasePopulator):
        automatically transformed into the field-dependent eigenbasis using `full_system_vectors`.
     """
     def forward(self,
+                res_fields: torch.Tensor,
                 energies: torch.Tensor,
                 lvl_down: torch.Tensor,
                 lvl_up: torch.Tensor,
@@ -31,16 +32,20 @@ class StationaryPopulator(core.BasePopulator):
                 *args, **kwargs) -> torch.Tensor:
         """Computes the population difference for each resonant EPR transition.
 
+        :param res_fields:
+            Resonance magnetic field for each transition, shape [..., M],
+            where M is the number of resonance conditions, (e.g. the number of resonance for each orientation)
+
         :param energies:
-            Eigenenergies of all spin states in Hz, shape [..., R, N],
-            where R is the number of resonance conditions (e.g., orientations),
+            Eigenenergies of all spin states in Hz, shape [..., M, N],
+            where M is the number of resonance conditions, (e.g. the number of resonance for each orientation)
             and N is the number of energy levels.
 
         :param lvl_down:
-            Indices of lower energy levels involved in transitions, shape [R].
+            Indices of lower energy levels involved in transitions, shape [M].
 
         :param lvl_up:
-            Indices of upper energy levels involved in transitions, shape [R].
+            Indices of upper energy levels involved in transitions, shape [M].
 
         :param full_system_vectors:
             Eigenvectors of the full spin Hamiltonian, shape [..., N, N].

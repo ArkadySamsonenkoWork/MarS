@@ -144,11 +144,11 @@ class LevelBasedGenerator(BaseGenerator):
         free_probs = self._base_transition_probs(time_dep_values, temperature)
         driven_probs = self._driven_transition_probs(time_dep_values, temperature)
         out_probs = self._outgoing_transition_probs(time_dep_values, temperature)
-        return temperature.unsqueeze(-1).unsqueeze(-1), free_probs, driven_probs, out_probs
+        return temperature, free_probs, driven_probs, out_probs
 
     def _temperature(self, time_dep_values: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t."""
-        return self.init_temperature
+        return self.init_temperature.unsqueeze(-1).unsqueeze(-1)
 
     def _base_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor], temperature: torch.Tensor) ->\
             tp.Optional[torch.Tensor]:
@@ -162,7 +162,8 @@ class LevelBasedGenerator(BaseGenerator):
         :return: Tensor of shape [..., N, N] representing equilibrium transition rates.
         """
         return self.context.get_transformed_free_probs(
-            self.full_system_vectors, time_dep_values, self.res_fields, self.energies, temperature
+            self.full_system_vectors, time_dep_values, self.res_fields,
+            self.energies, temperature
         )
 
     def _driven_transition_probs(self, time_dep_values: tp.Optional[torch.Tensor], temperature: torch.Tensor) ->\
@@ -211,7 +212,7 @@ class TempDepGenerator(LevelBasedGenerator):
         :param time_dep_values: Tensor of shape compatible with [..., 1, 1] containing temperatures.
         :return: Same as time_dep_values.
         """
-        return time_dep_values
+        return time_dep_values.unsqueeze(-1).unsqueeze(-1)
 
 
 class DensityRWAGenerator(BaseGenerator):
@@ -316,11 +317,11 @@ class DensityRWAGenerator(BaseGenerator):
         temperature = self._temperature(time_dep_values)
         free_superop = self._base_superop(time_dep_values, temperature)
         driven_superop = self._driven_superop(time_dep_values, temperature)
-        return temperature.unsqueeze(-1).unsqueeze(-1), self.stationary_hamiltonian, free_superop, driven_superop
+        return temperature, self.stationary_hamiltonian, free_superop, driven_superop
 
     def _temperature(self, time_dep_values: tp.Optional[torch.Tensor]) -> tp.Optional[torch.Tensor]:
         """Return temperature(s) at times t."""
-        return self.init_temperature
+        return self.init_temperature.unsqueeze(-1).unsqueeze(-1)
 
     def _base_superop(self, time_dep_values: tp.Optional[torch.Tensor], temperature) -> torch.Tensor:
         """Retrieve spontaneous relaxation superoperator in Liouville space.
@@ -362,7 +363,7 @@ class TempDepDensityRWAGenerator(DensityRWAGenerator):
         :param time_dep_values: Tensor of shape compatible with [..., 1, 1] containing temperatures.
         :return: Same as time_dep_values.
         """
-        return time_dep_values
+        return time_dep_values.unsqueeze(-1).unsqueeze(-1)
 
 
 class DensityPropagatorGenerator(DensityRWAGenerator):

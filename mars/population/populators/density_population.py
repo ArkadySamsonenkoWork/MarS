@@ -544,6 +544,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :return:
             Time-dependent signal intensity, shape [T, ..., Tr].
         """
+
         if self.disordered:
             return self._compute_powder(
                 time, res_fields,
@@ -627,6 +628,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         initial_density = self._initial_density(energies, lvl_down, lvl_up, full_system_vectors)
         Gx, Gy, Sz_eigen = self._compute_hamiltonian_operators(
             Gx, Gy, Sz.unsqueeze(-3), full_system_vectors)
+
         return self._compute_out(
             time, res_fields,
             lvl_down, lvl_up, energies, vector_down,

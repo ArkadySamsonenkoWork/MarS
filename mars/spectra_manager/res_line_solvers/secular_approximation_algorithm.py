@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from .res_field_algorithm import BaseEigenSolver, EighEigenSolver
-from . import spin_model
+from ... import spin_model
 
 
 class SecSolver(nn.Module):

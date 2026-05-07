@@ -993,7 +993,7 @@ class Interaction(BaseInteraction):
         interaction.set_strain(new_strain, correlation_matrix)
         return interaction
 
-    def get_rotation_derivative_along_axis(self, axis: torch.Tensor) -> torch.Tensor:
+    def get_rotation_derivative_along_axis(self, axis: tp.Union[torch.Tensor, list[float]]) -> torch.Tensor:
         """
         Compute the derivative of the interaction tensor with respect to rotation around a given axis.
 
@@ -1171,7 +1171,7 @@ class MultiOrientedInteraction(BaseInteraction):
     def __init__(self, oriented_tensor: torch.Tensor, strain: tp.Optional[torch.Tensor],
                  strained_derivatives: tp.Optional[torch.Tensor],
                  config_shape: torch.Size, strain_correlation: torch.Tensor,
-                 device: torch.device=torch.device("cpu")):
+                 device: torch.device = torch.device("cpu")):
         """
         :param oriented_tensor: torch.Tensor
             Rotated interaction tensors for each orientation.
@@ -3117,7 +3117,7 @@ class MultiOrientedSample(BaseSample):
         zeeman_term *= (constants.BOHR / constants.PLANCK)
         return zeeman_term
 
-    def get_librations_along_axis(self, axis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def get_librations_along_axis(self, axis: tp.Union[torch.Tensor, list[float]]) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Compute the Hamiltonian derivative with respect to small rotational librations
         around a given axis.
@@ -3152,6 +3152,9 @@ class MultiOrientedSample(BaseSample):
 
             So, for many computations they should be transformed to s^-1 by muttiplication on 2π
         """
+        if isinstance(axis, list):
+            axis = torch.tensor(axis, device=self.device, dtype=self.dtype)
+
         axis_norm = torch.norm(axis, dim=-1, keepdim=True)
         axis_norm = torch.where(axis_norm > 0, axis_norm, torch.ones_like(axis_norm))
         n = axis / axis_norm

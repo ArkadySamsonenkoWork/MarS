@@ -1,4 +1,8 @@
 import copy
+import os
+import json
+
+import pathlib
 from dataclasses import dataclass
 import typing as tp
 import math
@@ -132,6 +136,88 @@ class FitResult:
     best_loss: float
     best_spectrum: tp.Optional[torch.Tensor]
     optimizer_info: tp.Dict
+
+    def to_json_dict(self) -> dict:
+        """Return a JSON‑compatible dict (spectrum is omitted, optimizer_info is sanitized)."""
+        info = self.optimizer_info
+        backend = info.get("backend")
+        serialized_info = {"backend": backend}
+
+        if backend == "optuna":
+            study = info.get("study")
+            if study is not None:
+                serialized_info["trials"] = [
+                    {
+                        "trial_id": t.number,
+                        "params": t.params,
+                        "value": t.value,
+                        "state": t.state.name if hasattr(t.state, "name") else str(t.state),
+                    }
+                    for t in study.trials
+                ]
+                serialized_info["best_trial_id"] = study.best_trial.number
+
+        elif backend == "nevergrad":
+            trials = info.get("trials", [])
+            serialized_info["optimizer"] = info.get("optimizer")
+            serialized_info["trials"] = [
+                {
+                    "trial_id": t._trial_id,
+                    "params": t.params,
+                    "value": t.value,
+                }
+                for t in trials
+            ]
+
+        else:
+            for k, v in info.items():
+                if k != "backend":
+                    try:
+                        json.dumps(v)
+                        serialized_info[k] = v
+                    except TypeError:
+                        serialized_info[k] = repr(v)
+
+        return {
+            "best_params": self.best_params,
+            "best_loss": self.best_loss,
+            "optimizer_info": serialized_info,
+        }
+
+    def save(self, path: tp.Union[str, pathlib.Path], save_spectrum: bool = True) -> None:
+        """Save FitResult to disk.
+
+        :param path: Base filename (without extension). Creates ``path.json``
+                     and optionally ``path_spectrum.pt``.
+        :param save_spectrum: If True, save the best_spectrum tensor(s) as well.
+        """
+        json_path = path + ".json"
+        with open(json_path, "w") as f:
+            json.dump(self.to_json_dict(), f, indent=2)
+        if save_spectrum and self.best_spectrum is not None:
+            torch.save(self.best_spectrum, path + "_spectrum.pt")
+
+    @classmethod
+    def load(cls, path: str, load_spectrum: bool = True) -> "FitResult":
+        """Load FitResult from disk."""
+        json_path = path + ".json"
+        with open(json_path, "r") as f:
+            data = json.load(f)
+
+        spectrum = None
+        if load_spectrum:
+            spec_path = path + "_spectrum.pt"
+            try:
+                spectrum = torch.load(spec_path)
+            except FileNotFoundError:
+                pass
+
+        return cls(
+            best_params=data["best_params"],
+            best_loss=data["best_loss"],
+            best_spectrum=spectrum,
+            optimizer_info=data["optimizer_info"],
+        )
 
 
 @dataclass
@@ -308,14 +394,31 @@ class ParameterSpace:
     def __dict__(self) -> dict[str, float]:
         return {**self.varying_params, **self.fixed_params}
 
+    @classmethod
+    def from_json_dict(cls, data: dict) -> "ParameterSpace":
+        """Reconstruct a ParameterSpace from a dictionary."""
+        specs = []
+        transform_registry = {"LogTransform": LogTransform()}
+        for s_dict in data["specs"]:
+            transform = None
+            if "transform" in s_dict:
+                transform = transform_registry.get(s_dict["transform"])
+            spec = ParamSpec(
+                name=s_dict["name"],
+                bounds=tuple(s_dict["bounds"]),
+                default=s_dict.get("default"),
+                transform=transform,
+                vary=s_dict.get("vary", True),
+            )
+            specs.append(spec)
+        return cls(specs, fixed_params=data.get("fixed_params"))
+
     def __iter__(self):
         return iter(self.__dict__().items())
 
     def __repr__(self) -> str:
         """Print parameters space."""
-
         text = ""
-
         text += f"____Fixed parameters_____ \n"
         text += "-" * 40 + "\n"
         param_names = list(self.fixed_params.keys())
@@ -499,7 +602,10 @@ class ParameterSpace:
                     default = spec.default
                     low, up = spec.bounds
                     delta = (up - low) * alpha
-                    spec.bounds = (default - delta, default + delta)
+
+                    new_low = max(low, default-delta)
+                    new_up = min(up, default+delta)
+                    spec.bounds = (new_low, new_up)
                     break
 
     def set_bounds(self, bounds_dict: tp.Dict[str, tp.Tuple[float, float]]):
@@ -525,6 +631,37 @@ class ParameterSpace:
             lo, hi = s.bounds
             params.append(ng.p.Scalar(lower=lo, upper=hi))
         return ng.p.Instrumentation(*params)
+
+    def to_json_dict(self) -> dict:
+        """Convert ParameterSpace to a JSON-serializable dictionary."""
+        specs_data = []
+        for s in self.specs:
+            spec_dict = {
+                "name": s.name,
+                "bounds": list(s.bounds),
+                "default": s.default,
+                "vary": getattr(s, "vary", True),
+            }
+            if s.transform is not None:
+                spec_dict["transform"] = s.transform.__class__.__name__
+            specs_data.append(spec_dict)
+
+        return {
+            "specs": specs_data,
+            "fixed_params": self.fixed_params,
+        }
+
+    def save(self, path: tp.Union[str, pathlib.Path]) -> None:
+        """Save the parameter space to a JSON file."""
+        with open(path, "w") as f:
+            json.dump(self.to_json_dict(), f, indent=2)
+
+    @classmethod
+    def load(cls, path: str) -> "ParameterSpace":
+        """Load a parameter space from a JSON file."""
+        with open(path, "r") as f:
+            data = json.load(f)
+        return cls.from_json_dict(data)
 
 
 class CWSpectraSimulator:
@@ -656,7 +793,7 @@ class BaseSpectrumFitter(ABC):
         """
         return self.simulate_spectroscopic_data({**self.param_space.fixed_params, **trial_params}, **kwargs)
 
-    def _loss_from_params(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
+    def _loss_from_params(self, params: tp.Dict[str, tp.Union[float, torch.Tensor]], **kwargs) -> torch.Tensor:
         """Compute model - experiment residuals as a torch.Tensor."""
         with torch.no_grad():
             if self.multisample:
@@ -820,6 +957,41 @@ class BaseSpectrumFitter(ABC):
                                       )
         raise ValueError(f"Unknown fit method: {method}")
 
+    def save_state(self, path: tp.Union[str, pathlib.Path]) -> None:
+        """Save the parameter space and experimental data.
+
+        Subclasses should call `super().save_state(path)` and then save their
+        specific experimental tensors.
+        """
+        state = {
+            "param_space": self.param_space.to_json_dict(),
+            "norm_mode": self.norm_mode,
+            "objective": self._objective.__class__.__name__,
+            "multisample": self.multisample,
+            "weights": self.weights.tolist() if self.weights is not None else None,
+        }
+        with open(path + "_state.json", "w") as f:
+            json.dump(state, f, indent=2)
+
+    @classmethod
+    def _load_state_common(cls, path: tp.Union[str, pathlib.Path], device: torch.device, dtype: torch.dtype):
+        """Load common state from JSON file and return components."""
+        with open(path + "_state.json", "r") as f:
+            state = json.load(f)
+
+        param_space = ParameterSpace.from_json_dict(state["param_space"])
+        objective_name = state["objective"]
+        objective_cls = objectives.OBJECTIVE_REGISTRY.get(objective_name)
+        if objective_cls is None:
+            raise ValueError(f"Unknown objective class: {objective_name}")
+        objective = objective_cls()
+
+        weights = state.get("weights")
+        if weights is not None:
+            weights = torch.tensor(weights, dtype=dtype, device=device)
+
+        return param_space, objective, state["norm_mode"], state["multisample"], weights
+
 
 class SpectrumFitter(BaseSpectrumFitter):
     """General fitter for spectra.
@@ -940,6 +1112,61 @@ class SpectrumFitter(BaseSpectrumFitter):
             models[idx] = normalize_spectrum(self.x_exp[idx], models[idx], mode=self.norm_mode)
         return models
 
+    def save_state(self, path: str) -> None:
+        """Save the fitter state, including experimental 1D data."""
+        super().save_state(path)
+        torch.save(
+            {
+                "x_exp": self.x_exp,
+                "y_exp": self.y_exp,
+            },
+            path + "_exp.pt",
+        )
+
+    @classmethod
+    def load_state(
+        cls,
+        path: tp.Union[str, pathlib.Path],
+        spectra_simulator: tp.Callable,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float32,
+    ) -> "SpectrumFitter":
+        """
+        Reconstruct a SpectrumFitter from saved state.
+
+        :param path: Base path (without extension) used in `save_state`.
+        :param spectra_simulator: The same (or equivalent) simulator callable.
+        :param device: torch device (if None, use CPU).
+        :param dtype: torch dtype.
+        :return: A new SpectrumFitter instance.
+        """
+        param_space, objective, norm_mode, multisample, weights = cls._load_state_common(
+            path, device, dtype
+        )
+
+        exp_data = torch.load(path + "_exp.pt", map_location=device)
+        x_exp = exp_data["x_exp"]
+        y_exp = exp_data["y_exp"]
+
+        if isinstance(x_exp, list):
+            x_exp = [t.to(device=device, dtype=dtype) for t in x_exp]
+            y_exp = [t.to(device=device, dtype=dtype) for t in y_exp]
+        else:
+            x_exp = x_exp.to(device=device, dtype=dtype)
+            y_exp = y_exp.to(device=device, dtype=dtype)
+
+        return cls(
+            x_exp=x_exp,
+            y_exp=y_exp,
+            param_space=param_space,
+            spectra_simulator=spectra_simulator,
+            norm_mode=norm_mode,
+            objective=objective,
+            weights=weights.tolist() if weights is not None else None,
+            device=device,
+            dtype=dtype,
+        )
+
 
 class Spectrum2DFitter(BaseSpectrumFitter):
     """Spectrum Fitter for 2D data.
@@ -1055,6 +1282,436 @@ class Spectrum2DFitter(BaseSpectrumFitter):
             models[idx] = normalize_spectrum2d(self.x1_exp[idx], self.x2_exp[idx], models[idx], mode=self.norm_mode)
         return models
 
+    def save_state(self, path: tp.Union[str, pathlib.Path]) -> None:
+        """Save the fitter state, including experimental 2D data."""
+        super().save_state(path)
+        torch.save(
+            {
+                "x1_exp": self.x1_exp,
+                "x2_exp": self.x2_exp,
+                "y_exp": self.y_exp,
+            },
+            path + "_exp.pt",
+        )
+
+    @classmethod
+    def load_state(
+        cls,
+        path: tp.Union[str, pathlib.Path],
+        spectra_simulator: tp.Callable,
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float32,
+    ) -> "Spectrum2DFitter":
+        """
+        Reconstruct a Spectrum2DFitter from saved state.
+
+        :param path: Base path (without extension) used in `save_state`.
+        :param spectra_simulator: The same (or equivalent) simulator callable.
+        :param device: torch device (if None, use CPU).
+        :param dtype: torch dtype.
+        :return: A new Spectrum2DFitter instance.
+        """
+        param_space, objective, norm_mode, multisample, weights = cls._load_state_common(
+            path, device, dtype
+        )
+
+        exp_data = torch.load(path + "_exp.pt", map_location=device)
+        x1_exp = exp_data["x1_exp"]
+        x2_exp = exp_data["x2_exp"]
+        y_exp = exp_data["y_exp"]
+
+        if isinstance(x1_exp, list):
+            x1_exp = [t.to(device=device, dtype=dtype) for t in x1_exp]
+            x2_exp = [t.to(device=device, dtype=dtype) for t in x2_exp]
+            y_exp = [t.to(device=device, dtype=dtype) for t in y_exp]
+        else:
+            x1_exp = x1_exp.to(device=device, dtype=dtype)
+            x2_exp = x2_exp.to(device=device, dtype=dtype)
+            y_exp = y_exp.to(device=device, dtype=dtype)
+
+        return cls(
+            x1_exp=x1_exp,
+            x2_exp=x2_exp,
+            y_exp=y_exp,
+            param_space=param_space,
+            spectra_simulator=spectra_simulator,
+            norm_mode=norm_mode,
+            objective=objective,
+            weights=weights.tolist() if weights is not None else None,
+            device=device,
+            dtype=dtype,
+        )
+
+
+class SpectrumCompositeFitter:
+    """
+    Composite fitter for simultaneously fitting multiple spectroscopic datasets
+    with a shared parameter space.
+
+    This class aggregates several :class:`BaseSpectrumFitter` instances, computes
+    their individual losses, and combines them into a weighted sum. It provides a
+    unified :meth:`fit` interface that delegates to the same backends (Optuna,
+    Nevergrad) as the base fitter.
+
+    All sub‑fitters must share the identical :class:`ParameterSpace` (the same
+    varying parameter names, bounds, and fixed values). The combined loss is
+    simply the weighted sum of the losses reported by each sub‑fitter.
+
+    Attributes
+    ----------
+    param_space : ParameterSpace
+        The common parameter space (extracted from the first fitter).
+    fitters : List[BaseSpectrumFitter]
+        The list of sub‑fitters.
+    weights : List[float]
+        The weights applied to each sub‑fitter's loss.
+    """
+    def __init__(
+        self,
+        fitters: tp.Sequence[BaseSpectrumFitter],
+        weights: tp.Optional[tp.Sequence[float]] = None,
+    ) -> None:
+        """
+        Initialise the composite fitter.
+
+        :param fitters: Sequence of :class:`BaseSpectrumFitter` instances that
+            will contribute to the combined loss.
+        :param weights: Optional weights for each fitter. If ``None``, equal
+            weights are used.
+        :raises ValueError: If no fitters are provided, if their parameter
+            spaces differ, or if the number of weights mismatches the number of
+            fitters.
+        """
+        if not fitters:
+            raise ValueError("At least one fitter must be provided.")
+
+        first_ps = fitters[0].param_space
+        for i, f in enumerate(fitters[1:], start=2):
+            if f.param_space != first_ps:
+                raise ValueError(
+                    f"Fitter {i} has a different parameter space than the first fitter."
+                )
+        self.param_space = first_ps
+        self.fitters = list(fitters)
+
+        n = len(self.fitters)
+        if weights is None:
+            self.weights = [1.0 / n] * n
+        else:
+            if len(weights) != n:
+                raise ValueError(
+                    f"Number of weights ({len(weights)}) must match number of fitters ({n})."
+                )
+            self.weights = list(weights)
+
+    def _loss_from_params(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
+        """
+        Compute the combined loss from all sub‑fitters.
+
+        The loss is a weighted sum of the individual losses returned by each
+        fitter's :meth:`_loss_from_params` method.
+
+        :param params: Full parameter dictionary (including fixed parameters).
+        :param kwargs: Additional keyword arguments forwarded to each sub‑fitter.
+        :return: Scalar loss tensor.
+        """
+        device = torch.device("cpu")
+        dtype = torch.float32
+        if hasattr(self.fitters[0], "x_exp"):
+            x = self.fitters[0].x_exp
+            if isinstance(x, list):
+                device = x[0].device if x else device
+                dtype = x[0].dtype if x else dtype
+            elif isinstance(x, torch.Tensor):
+                device = x.device
+                dtype = x.dtype
+
+        total_loss = torch.tensor(0.0, device=device, dtype=dtype)
+        for fitter, w in zip(self.fitters, self.weights):
+            total_loss = total_loss + w * fitter._loss_from_params(params, **kwargs)
+        return total_loss
+
+    def _tracker_to_trials(self, trials_tracker: TrialsTracker) -> tp.List[NevergradTrial]:
+        """
+        Convert Nevergrad trial records to a list of :class:`NevergradTrial` objects.
+
+        :param trials_tracker: The :class:`TrialsTracker` instance that collected
+            trial data.
+        :return: List of :class:`NevergradTrial` objects.
+        """
+        trials_all_results = trials_tracker.get_all_trials()
+        ng_trials = [
+            NevergradTrial(
+                params=self.param_space.varying_vector_to_dict(trial["params"]),
+                _trial_id=trial["_trial_id"],
+                value=trial["value"],
+            )
+            for trial in trials_all_results
+        ]
+        return ng_trials
+
+    def fit(
+        self,
+        backend: str = "optuna",
+        seed: tp.Optional[int] = None,
+        show_progress: bool = True,
+        return_best_spectrum: bool = True,
+        **backend_kwargs,
+    ) -> FitResult:
+        """
+        Run the optimisation using the selected backend.
+
+        The behaviour mirrors that of :meth:`BaseSpectrumFitter.fit`. The
+        combined loss is minimised, and the best parameters are returned
+        together with optional simulated spectra from each sub‑fitter.
+
+        :param backend: Optimisation library to use. Allowed values are
+            ``"optuna"`` or ``"nevergrad"`` (``"ng"`` is also accepted).
+        :param seed: Random seed for reproducibility.
+        :param show_progress: If ``True``, display a progress bar during
+            optimisation.
+        :param return_best_spectrum: If ``True``, the returned :class:`FitResult`
+            will contain the simulated spectra for the best parameters. For a
+            composite fitter this is a list of spectra, one per sub‑fitter.
+        :param backend_kwargs: Additional arguments passed to the backend‑specific
+            fit method. For Optuna these include ``n_trials``, ``timeout``,
+            ``n_jobs``, ``sampler``, etc. For Nevergrad they include ``budget``,
+            ``optimizer_name``, ``track_trials``.
+        :return: A :class:`FitResult` object containing the best parameters, loss
+            value, best spectra (if requested), and backend‑specific metadata.
+        :raises ValueError: If an unknown backend is requested.
+        :raises RuntimeError: If Nevergrad is selected but the library is not
+            installed.
+        """
+        method = backend.lower()
+        if method == "optuna":
+            return self._fit_optuna(
+                seed=seed,
+                show_progress=show_progress,
+                return_best_spectrum=return_best_spectrum,
+                **backend_kwargs,
+            )
+        elif method in ("nevergrad", "ng"):
+            return self._fit_nevergrad(
+                seed=seed,
+                show_progress=show_progress,
+                return_best_spectrum=return_best_spectrum,
+                **backend_kwargs,
+            )
+        else:
+            raise ValueError(f"Unknown fit method: {method}")
+
+    def _fit_optuna(
+        self,
+        show_progress: bool,
+        seed: tp.Optional[int],
+        return_best_spectrum: bool,
+        n_trials: int = 300,
+        timeout: tp.Optional[float] = None,
+        n_jobs: int = 1,
+        sampler: tp.Optional["optuna.samplers.BaseSampler"] = None,
+        study_name: tp.Optional[str] = None,
+        run_dashboard: bool = True,
+        **kwargs,
+    ) -> FitResult:
+        """
+        Internal method: fit using Optuna.
+
+        :param show_progress: Show Optuna progress bar.
+        :param seed: Random seed for sampler.
+        :param return_best_spectrum: Whether to return best spectra.
+        :param n_trials: Number of Optuna trials.
+        :param timeout: Stop study after the given number of seconds.
+        :param n_jobs: Number of parallel jobs.
+        :param sampler: Optuna sampler instance.
+        :param study_name: Name of the Optuna study.
+        :param run_dashboard: If ``True``, launch an Optuna dashboard after
+            optimisation.
+        :param kwargs: Additional arguments passed to the loss function.
+        :return: :class:`FitResult`
+        """
+        import optuna
+
+        def loss_function(trial):
+            p = self.param_space.suggest_optuna(trial)
+            return self._loss_from_params(p, **kwargs).item()
+
+        if sampler is None:
+            sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+        if run_dashboard:
+            storage = optuna.storages.InMemoryStorage()
+            study = optuna.create_study(
+                direction="minimize",
+                sampler=sampler,
+                study_name=study_name,
+                load_if_exists=True,
+                storage=storage,
+            )
+            study.optimize(
+                loss_function,
+                n_trials=n_trials,
+                timeout=timeout,
+                n_jobs=n_jobs,
+                show_progress_bar=show_progress,
+            )
+            from optuna_dashboard import run_server
+            run_server(storage)
+        else:
+            study = optuna.create_study(
+                direction="minimize",
+                sampler=sampler,
+                study_name=study_name,
+                load_if_exists=True,
+            )
+            study.optimize(
+                loss_function,
+                n_trials=n_trials,
+                timeout=timeout,
+                n_jobs=n_jobs,
+                show_progress_bar=show_progress,
+            )
+
+        best_params = {k: float(v) for k, v in study.best_params.items()}
+        best_spec = None
+        if return_best_spectrum:
+            full_params = {**self.param_space.fixed_params, **best_params}
+            best_spec = [f.simulate_spectroscopic_data(full_params, **kwargs) for f in self.fitters]
+
+        return FitResult(
+            best_params,
+            float(study.best_value),
+            best_spec,
+            {"backend": "optuna", "study": study},
+        )
+
+    def _fit_nevergrad(
+        self,
+        show_progress: bool,
+        seed: tp.Optional[int],
+        return_best_spectrum: bool,
+        budget: int = 200,
+        optimizer_name: str = "TwoPointsDE",
+        track_trials: bool = True,
+        **kwargs,
+    ) -> FitResult:
+        """
+        Internal method: fit using Nevergrad.
+
+        :param show_progress: Show Nevergrad progress bar.
+        :param seed: Random seed.
+        :param return_best_spectrum: Whether to return best spectra.
+        :param budget: Number of function evaluations.
+        :param optimizer_name: Name of the Nevergrad optimizer.
+        :param track_trials: Whether to record trial history.
+        :param kwargs: Additional arguments passed to the loss function.
+        :return: :class:`FitResult`
+        :raises RuntimeError: If Nevergrad is not installed.
+        """
+        try:
+            import nevergrad as ng
+        except ImportError:
+            raise RuntimeError("Nevergrad is required for fit_nevergrad but not installed.")
+
+        instr = self.param_space.instrument_nevergrad()
+        if seed is not None:
+            ng.optimizers.registry.seed(seed)
+        opt = ng.optimizers.registry[optimizer_name](parametrization=instr, budget=budget)
+
+        def _loss_from_tuple(*args):
+            params = self.param_space.vector_to_dict(args)
+            return self._loss_from_params(params, **kwargs).item()
+
+        if show_progress:
+            progress_bar = ng.callbacks.ProgressBar()
+            progress_bar.update_frequency = 25
+            opt.register_callback("tell", progress_bar)
+
+        trials_tracker = None
+        if track_trials:
+            trials_tracker = TrialsTracker()
+            opt.register_callback("tell", trials_tracker)
+
+        recommendation = opt.minimize(_loss_from_tuple)
+        x = recommendation.value
+        best_params = self.param_space.varying_vector_to_dict(x[0])
+
+        best_spec = None
+        if return_best_spectrum:
+            full_params = {**self.param_space.fixed_params, **best_params}
+            best_spec = [f.simulate_spectroscopic_data(full_params, **kwargs) for f in self.fitters]
+
+        trials = None
+        if track_trials:
+            trials = self._tracker_to_trials(trials_tracker)
+
+        return FitResult(
+            best_params,
+            self._loss_from_params({**self.param_space.fixed_params, **best_params}, **kwargs).item(),
+            best_spec,
+            {"backend": "nevergrad", "optimizer": optimizer_name, "trials": trials},
+        )
+
+    def save_state(self, path: str) -> None:
+        """
+        Save the composite fitter state.
+
+        Each sub‑fitter is saved in a subdirectory named `fitter_<i>`.
+        """
+        os.makedirs(path, exist_ok=True)
+
+        meta = {
+            "num_fitters": len(self.fitters),
+            "weights": self.weights,
+        }
+        with open(os.path.join(path, "meta.json"), "w") as f:
+            json.dump(meta, f, indent=2)
+
+        for i, fitter in enumerate(self.fitters):
+            sub_path = os.path.join(path, f"fitter_{i}")
+            fitter.save_state(sub_path)
+
+    @classmethod
+    def load_state(
+        cls,
+        path: str,
+        spectra_simulators: tp.List[tp.Callable],
+        device: torch.device = torch.device("cpu"),
+        dtype: torch.dtype = torch.float32,
+    ) -> "SpectrumCompositeFitter":
+        """
+        Reconstruct a SpectrumCompositeFitter from saved state.
+
+        :param path: Directory path used in `save_state`.
+        :param spectra_simulators: List of simulator callables, one per sub‑fitter.
+        :param device: torch device (if None, use CPU).
+        :param dtype: torch dtype.
+        :return: A new SpectrumCompositeFitter instance.
+        """
+        with open(os.path.join(path, "meta.json"), "r") as f:
+            meta = json.load(f)
+
+        fitters = []
+        for i in range(meta["num_fitters"]):
+            sub_path = os.path.join(path, f"fitter_{i}")
+            exp_path = sub_path + "_exp.pt"
+            exp_data = torch.load(exp_path, map_location="cpu")
+            if "x1_exp" in exp_data:
+                fitter_cls = Spectrum2DFitter
+            else:
+                fitter_cls = SpectrumFitter
+            fitter = fitter_cls.load_state(
+                sub_path,
+                spectra_simulator=spectra_simulators[i],
+                device=device,
+                dtype=dtype,
+            )
+            fitters.append(fitter)
+
+        return cls(fitters, weights=meta["weights"])
+
 
 class SpaceSearcher:
     """For some cases not only the best fitting parameters are useful but all
@@ -1117,19 +1774,28 @@ class SpaceSearcher:
         trial_indices: list of optuna trial numbers corresponding to rows
         """
         backend = fit_result.optimizer_info["backend"]
+        opt_info = fit_result.optimizer_info
 
         if backend == "nevergrad":
-            trials = fit_result.optimizer_info["trials"]
+            trials = opt_info.get("trials", [])
         elif backend == "optuna":
-            trials = [t for t in fit_result.optimizer_info["study"].trials if t.state.is_finished()]
+            if "study" in opt_info:
+                trials = [t for t in opt_info["study"].trials if t.state.is_finished()]
+            elif "trials" in opt_info:
+                trials = [t for t in opt_info["trials"] if t.get("state") == "COMPLETE"]
+            else:
+                trials = []
         else:
-            raise KeyError("Unknown fit result")
+            raise KeyError(f"Unknown backend: {backend}")
 
         if len(trials) == 0:
             return np.zeros((0, 0)), np.array([]), []
 
         if param_names is None:
-            param_names = list(fit_result.best_params.keys())
+            first = trials[0]
+            p_dict = first.params if hasattr(first, "params") else first.get("params", {})
+            param_names = list(p_dict.keys())
+
         return trials, param_names
 
     def __call__(self, fit_result: FitResult, param_names: tp.Optional[tp.List[str]] = None) ->\

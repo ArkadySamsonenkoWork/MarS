@@ -71,3 +71,11 @@ class CosineSimilarity(BaseObjectiveFunction):
         cos_sim = torch.nn.functional.cosine_similarity(pred, target, dim=-1)
         loss = 1 - cos_sim.mean()
         return loss
+
+
+OBJECTIVE_REGISTRY = {
+    "MSEObjective": MSEObjective,
+    "CrossCorrelation": CrossCorrelation,
+    "MAEObjective": MAEObjective,
+    "CosineSimilarity": CosineSimilarity,
+}

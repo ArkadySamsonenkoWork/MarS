@@ -117,6 +117,10 @@ class ParametricRateMatrix:
             for row in relaxation_speeds
         ]
 
+    @property
+    def spin_system_dim(self):
+        return len(self.relaxation_speeds)
+
     def _convert_to_rate(self, entry):
         if isinstance(entry, ParametricRate):
             return entry

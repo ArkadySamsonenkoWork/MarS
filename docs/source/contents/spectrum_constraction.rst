@@ -21,7 +21,7 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
 3. **Assemble the spin system and sample**  
    Particles and interactions are combined into a :class:`mars.spin_model.SpinSystem`.
    Disordered (powder) samples are represented by :class:`mars.spin_model.MultiOrientedSample`.
-   The next workflow is managed by the abstract class :class:`mars.spectra_manager.spectra_manager.BaseSpectra`.
+   The next workflow is managed by the abstract class :class:`mars.spectra_manager.spectra_manager.BaseResSpectra`.
 
 4. **Construct Hamiltonian matrices**  
    MarS computes four matrices that define the spin Hamiltonian under an external magnetic field **B** = (Bx, By, Bz):
@@ -50,7 +50,7 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
         This method solves :math:`\hbar \omega = E_i(B_{ij}) - E_j(B_{ij})` for resonance fields :math:`B_{ij}` at fixed frequency.  
         This is a batched, GPU-accelerated implementation of the method used in EasySpin [doi:10.1016/j.jmr.2005.08.013]. In MarS this method is default for solid-state simulations.
 
-   5.2. **Secular approximation** (:class:`mars.secular_approximation.ResSecular`)  
+   5.2. **Secular approximation** (:class:`mars.secular_approximation_algorithm.ResSecular`)
         This method applies a two-step approximation to the spin Hamiltonian:
         
         1. Zeeman term projection: Modifies :math:`G_x, G_y, G_z` to zero matrix elements where the corresponding total spin projection (:math:`S_x, S_y, S_z`) has magnitude below threshold. Enforces :math:`[G_\alpha, S_\alpha] \approx 0`.
@@ -63,7 +63,7 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
         This method finds resonant frequencies in a given interval at fixed magnetic field. It requires only one matrix eigenvalues and eigenvectors computation
 
 6. **Compute transition intensities**  
-   Intensities are computed by :class:`mars.spectra_manager.spectra_manager.BaseIntensityCalculator`.
+   Intensities are computed by :class:`mars.spectra_manager.spectra_manager.BaseResIntensityCalculator`.
 
    Assuming the quantization axis aligns with the magnetic field direction (e.g., :math:`\mathbf{B} \parallel z`), the intensity of a transition in stationart EPR spectroscopy between eigenstates :math:`|i\rangle` and :math:`|j\rangle` is:
 

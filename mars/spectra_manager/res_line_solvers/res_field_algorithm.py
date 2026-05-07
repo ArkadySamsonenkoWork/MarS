@@ -7,7 +7,7 @@ import typing as tp
 import torch
 from torch import nn
 
-from . import spin_model
+from ... import spin_model
 
 
 class ViewIndexator(nn.Module):

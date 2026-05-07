@@ -171,6 +171,18 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
     return y_corrected, baseline
 
 
+def safe_copy(x: tp.Union[torch.Tensor, np.ndarray]) -> tp.Union[torch.Tensor, np.ndarray]:
+    """Return an independent copy of a numpy array or torch tensor."""
+    if isinstance(x, torch.Tensor):
+        return x.clone()
+    return x.copy()
+
+
+def save_abs(y: tp.Union[torch.Tensor, np.ndarray])-> tp.Union[torch.Tensor, np.ndarray]:
+    """Unified absolute value that works for both libraries."""
+    return y.abs() if isinstance(y, torch.Tensor) else np.abs(y)
+
+
 def normalize_spectrum(x: tp.Union[torch.Tensor, np.ndarray],
                        y: tp.Union[torch.Tensor, np.ndarray],
                        mode: str = "integral") -> tp.Union[torch.Tensor, np.ndarray]:
@@ -195,17 +207,17 @@ def normalize_spectrum(x: tp.Union[torch.Tensor, np.ndarray],
     Returns copy of y unchanged if normalization factor is zero.
     """
     if mode is None or mode == "none":
-        return y.clone()
-    step = float(x[1] - x[0]) if x.numel() > 1 else 1.0
+        return safe_copy(y)
+    step = float(x[1] - x[0]) if len(x) > 1 else 1.0
     if mode == "max":
-        denom = float(y.abs().max())
+        denom = float(save_abs(y).max())
         if denom == 0:
-            return y.clone()
+            return safe_copy(y)
         return y / denom
     if mode == "integral":
-        denom = float((y.abs().sum() * step).item())
+        denom = float(save_abs(y).sum() * step)
         if denom == 0:
-            return y.clone()
+            return safe_copy(y)
         return y / denom
     raise ValueError(f"Unknown norm mode: {mode}")
 
@@ -214,7 +226,7 @@ def normalize_spectrum2d(
         x1: tp.Union[torch.Tensor, np.ndarray],
         x2: tp.Union[torch.Tensor, np.ndarray],
         y: tp.Union[torch.Tensor, np.ndarray],
-        mode: str = "integral") -> torch.Tensor:
+        mode: str = "integral") -> tp.Union[torch.Tensor, np.ndarray]:
     """Normalize a 2D spectrum.
 
     :param x1:  tp.Union[torch.Tensor, np.ndarray]
@@ -237,17 +249,17 @@ def normalize_spectrum2d(
     Returns copy of y unchanged if normalization factor is zero.
     """
     if mode is None or mode == "none":
-        return y.clone()
-    step_1 = float(x1[1] - x1[0]) if x1.numel() > 1 else 1.0
-    step_2 = float(x2[1] - x2[0]) if x2.numel() > 1 else 1.0
+        return safe_copy(y)
+    step_1 = float(x1[1] - x1[0]) if len(x1) > 1 else 1.0
+    step_2 = float(x2[1] - x2[0]) if len(x2) > 1 else 1.0
     if mode == "max":
-        denom = float(y.abs().max())
+        denom = float(save_abs(y).max())
         if denom == 0:
-            return y.clone()
+            return safe_copy(y)
         return y / denom
     if mode == "integral":
-        denom = float((y.abs().sum() * step_1 * step_2).item())
+        denom = float(save_abs(y).sum() * step_1 * step_2)
         if denom == 0:
-            return y.clone()
+            return safe_copy(y)
         return y / denom
     raise ValueError(f"Unknown norm mode: {mode}")

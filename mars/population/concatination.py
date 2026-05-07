@@ -7,12 +7,14 @@ import numpy as np
 
 from .contexts import Context, SummedContext
 from . import transform
-from .redfield import RedfieldRelaxationChannel, RedfieldManager, combine_redfield_managers
+from .relaxation_channels.redfield import RedfieldRelaxationChannel
+from .relaxation_channels.base_couling_channels import CouplingChannelManager, combine_coupling_managers
 
 
-def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
+def concat_coupling_managers(contexts: tp.Sequence[Context]) -> CouplingChannelManager:
     """
-    Constructs a composite Redfield manager by expanding individual managers via Kronecker products.
+    Constructs a composite Coupling (Redfield, Lindblad)
+    manager by expanding individual managers via Kronecker products.
 
     This function iterates through a sequence of contexts, expands each associated redfield manager
     into the full Hilbert space of the composite system using the dimensions of the other spin
@@ -20,11 +22,11 @@ def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
 
     :param contexts: A sequence of Context objects, each containing a spin system dimension and
         an associated redfield manager.
-    :return: A combined RedfieldManager object representing the relaxation dynamics of the
+    :return: A combined CouplingChannelManager object representing the relaxation dynamics of the
         entire composite system.
     """
     dims = [context.spin_system_dim for context in contexts]
-    managers = [copy.deepcopy(context.redfield_manager) for context in contexts]
+    managers = [copy.deepcopy(context.coupling_manager) for context in contexts]
     for idx, manager in enumerate(managers):
         if manager is None:
             continue
@@ -34,7 +36,7 @@ def concat_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
 
         manager.expand_zeros(left_dim, right_dim)
 
-    return combine_redfield_managers(managers)
+    return combine_coupling_managers(managers)
 
 
 def _normalize_to_components(
@@ -598,11 +600,11 @@ def _concat_homogeneous_contexts(
 
     use_identity_for_basis = any(ctx.basis is not None for ctx in contexts)
 
-    redfield_manager = concat_redfield_managers(contexts)
-    if redfield_manager is not None:
-        redfield_channels = [channel for channel in redfield_manager.redfield_channels]
+    coupling_manager = concat_coupling_managers(contexts)
+    if coupling_manager is not None:
+        relaxation_coupling_channels = [channel for channel in coupling_manager.relaxation_channels]
     else:
-        redfield_channels = None
+        relaxation_coupling_channels = None
     return Context(
         basis=_process_matrices("basis", use_identity_for_none=use_identity_for_basis),
         init_populations=_process_vectors("init_populations"),
@@ -612,7 +614,7 @@ def _concat_homogeneous_contexts(
         out_probs=_process_vectors("out_probs"),
         dephasing=_process_vectors("dephasing"),
         relaxation_superop=_process_superoperators("_default_driven_superop"),
-        redfield_channels=redfield_channels,
+        relaxation_coupling_channels=relaxation_coupling_channels,
         profile=None,
         time_dimension=time_dimension,
         dtype=dtype,

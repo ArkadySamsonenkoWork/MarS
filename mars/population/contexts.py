@@ -15,7 +15,9 @@ import typing as tp
 
 from .. import spin_model
 from . import transform
-from .redfield import RedfieldRelaxationChannel, RedfieldManager, combine_redfield_managers
+from .relaxation_channels.redfield import RedfieldRelaxationChannel
+from .relaxation_channels.base_couling_channels import CouplingChannelManager,\
+    combine_coupling_managers, BaseRelaxationChannel
 
 
 def transform_to_complex(vector: torch.Tensor) -> torch.Tensor:
@@ -284,9 +286,9 @@ def multiply_contexts(contexts: tp.Sequence[tp.Union[Context, SummedContext, Kro
     return results[0] if len(results) == 1 else SummedContext(results)
 
 
-def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -> RedfieldManager:
+def kronecker_multiplication_coupling_managers(contexts: tp.Sequence[Context]) -> CouplingChannelManager:
     """
-    Constructs a composite Redfield manager by expanding individual managers via Kronecker products.
+    Constructs a composite Coupling manager by expanding individual managers via Kronecker products.
 
     This function iterates through a sequence of contexts, expands each associated redfield manager
     into the full Hilbert space of the composite system using the dimensions of the other spin
@@ -294,11 +296,11 @@ def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -
 
     :param contexts: A sequence of Context objects, each containing a spin system dimension and
         an associated redfield manager.
-    :return: A combined RedfieldManager object representing the relaxation dynamics of the
+    :return: A combined CouplingChannelManager object representing the relaxation dynamics of the
         entire composite system.
     """
     dims = [context.spin_system_dim for context in contexts]
-    managers = [copy.deepcopy(context.redfield_manager) for context in contexts]
+    managers = [copy.deepcopy(context.coupling_manager) for context in contexts]
     for idx, manager in enumerate(managers):
         if manager is None:
             continue
@@ -307,7 +309,7 @@ def kronecker_multiplication_redfield_managers(contexts: tp.Sequence[Context]) -
         right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 0
         manager.expand_kronecker(left_dim, right_dim)
 
-    return combine_redfield_managers(managers)
+    return combine_coupling_managers(managers)
 
 
 def _multiply_homogeneous_contexts_to_context(contexts: tp.Sequence[Context]) -> Context:
@@ -974,7 +976,7 @@ class TransformedContext(BaseContext):
 
     def __init__(self, time_dimension: int = -3,
                  enforce_secularity: bool = False,
-                 redfield_manager: tp.Optional[RedfieldManager] = None,
+                 coupling_manager: tp.Optional[CouplingChannelManager] = None,
                  dtype: torch.dtype = torch.float32,
                  device: torch.device = torch.device("cpu")):
         """
@@ -983,7 +985,7 @@ class TransformedContext(BaseContext):
         """
         super().__init__(time_dimension, dtype, device)
         self.enforce_secularity = enforce_secularity
-        self.redfield_manager = redfield_manager
+        self.coupling_manager = coupling_manager
 
     def _secular_mask(self) -> torch.Tensor:
         """
@@ -1032,14 +1034,14 @@ class TransformedContext(BaseContext):
         :param temperature: Temperature.
         :return: Combined rate matrix. Returns None if both inputs are None.
         """
-        if self.redfield_manager is not None:
-            if not self.redfield_manager.eigen_basis_flag:
+        if self.coupling_manager is not None:
+            if not self.coupling_manager.eigen_basis_flag:
                 coeffs = self._compute_transformation_unitary(full_system_vectors)
-                redfield_matrix = self.redfield_manager.compute_transition_probabilities(
+                redfield_matrix = self.coupling_manager.compute_transition_probabilities(
                     coeffs, fields, energies, temperature
                 )
             else:
-                redfield_matrix = self.redfield_manager.compute_transition_probabilities(
+                redfield_matrix = self.coupling_manager.compute_transition_probabilities(
                     None, fields, energies, temperature
                 )
             if probs_matrix is not None:
@@ -1048,7 +1050,7 @@ class TransformedContext(BaseContext):
                 return redfield_matrix
         return probs_matrix
 
-    def _add_redfield_superoperator(
+    def _add_coupling_superoperator(
             self,
             full_system_vectors: tp.Optional[torch.Tensor],
             superoperator: tp.Optional[torch.Tensor],
@@ -1056,7 +1058,7 @@ class TransformedContext(BaseContext):
             energies: torch.Tensor,
             temperature: torch.Tensor) -> tp.Optional[torch.Tensor]:
         """
-        Add Redfield relaxation superoperator to an existing superoperator.
+        Add Coupling (Redfield/Lindblad) relaxation superoperator to an existing superoperator.
 
         This method is used to combine Redfield relaxation with other relaxation
         mechanisms (e.g., Lindblad terms, phenomenological decay) by summing their
@@ -1074,14 +1076,14 @@ class TransformedContext(BaseContext):
         :param temperature: Temperature.
         :return: Combined superoperator. Returns None if both inputs are None.
         """
-        if self.redfield_manager is not None:
-            if not self.redfield_manager.eigen_basis_flag:
+        if self.coupling_manager is not None:
+            if not self.coupling_manager.eigen_basis_flag:
                 coeffs = self._compute_transformation_unitary(full_system_vectors)
-                redfield_superop = self.redfield_manager.compute_relaxation_superoperator(
+                redfield_superop = self.coupling_manager.compute_relaxation_superoperator(
                     coeffs, fields, energies, temperature
                 )
             else:
-                redfield_superop = self.redfield_manager.compute_relaxation_superoperator(
+                redfield_superop = self.coupling_manager.compute_relaxation_superoperator(
                     None, fields, energies, temperature
                 )
             if superoperator is not None:
@@ -1326,7 +1328,7 @@ class TransformedContext(BaseContext):
         :param energies: Optional System eigenenergies In Hz. The shape [..., N].
         It can be used for redfield relaxation evaluation
         :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
-        The shape is [] or [t], where t is number of time-steps
+        The shape is [...., 1, 1] or [t, ..., 1, 1], where t is number of time-steps
 
         :return: Transition rate matrix D with shape `[..., N, N]`, where `D_{ij} (i≠j)` is the
             non-thermal rate from state j to state i.
@@ -1353,11 +1355,15 @@ class TransformedContext(BaseContext):
 
         _relaxation_superop = self._get_default_superop_tensor(time_dep_values)
         if _relaxation_superop is not None:
-            out = out + transform.set_diagonal_to_pure_loss(
-                transform.extract_transition_matrix_from_superoperator(
-                    self.transformed_superop(_relaxation_superop, full_system_vectors)
+            _driven_from_superop = transform.set_diagonal_to_pure_loss(
+                    transform.extract_transition_matrix_from_superoperator(
+                        self.transformed_superop(_relaxation_superop, full_system_vectors)
+                    )
                 )
-            )
+            if out is not None:
+                out = out + _driven_from_superop
+            else:
+                return _driven_from_superop
         return out
 
     def get_transformed_out_probs(
@@ -1383,7 +1389,7 @@ class TransformedContext(BaseContext):
         :param energies: Optional System eigenenergies In Hz. The shape [..., N].
         It can be used for redfield relaxation evaluation
         :param temperature: Optional The system temperature in K. It can be used for redfield relaxation evaluation
-        The shape is [] or [t], where t is number of time-steps
+        The shape is [...., 1, 1] or [t, ..., 1, 1], where t is number of time-steps
 
         :return: Loss rate vector O with shape [..., N], where O_i is the rate at which
             population is lost from state i.
@@ -1539,7 +1545,7 @@ class TransformedContext(BaseContext):
         out = self.transformed_superop(_relaxation_superop, full_system_vectors)
         if out is not None:
             out = self.apply_secular_mask(out)
-        return self._add_redfield_superoperator(full_system_vectors, out, fields, energies, temperature)
+        return self._add_coupling_superoperator(full_system_vectors, out, fields, energies, temperature)
 
     def _extract_free_populations_superop(self, time_dep_values):
         if (self.out_probs is not None) and (self.free_probs is not None):
@@ -1729,7 +1735,7 @@ class Context(TransformedContext):
             profile: tp.Optional[tp.Callable[[torch.Tensor], torch.Tensor]] = None,
             time_dimension: int = -3,
             enforce_secularity: bool = False,
-            redfield_channels: tp.Optional[tp.List[RedfieldRelaxationChannel]] = None,
+            relaxation_coupling_channels: tp.Optional[tp.List[BaseRelaxationChannel]] = None,
             dtype: torch.dtype = torch.float32,
             device: torch.device = torch.device("cpu")
     ):
@@ -1835,9 +1841,11 @@ class Context(TransformedContext):
 
             Default is True.
 
-        :param redfield_channels: list of RedfieldRelaxationChannel or None, optional
+        :param relaxation_coupling_channels: list of BaseRelaxationChannel or None, optional
             List of relaxation channel objects defining the system-bath coupling.
-            Each channel must implement the spectral density and coupling operators.
+            It can be both Bloch-Redfield or Lindblad channels.
+            Each Bloch-Redfield channel must implement the spectral density and coupling operators.
+            Each Lindblad coupling channel should implement coupling operators
             If None, no Redfield relaxation is computed.
         """
         self.transformation_probabilities = None
@@ -1856,12 +1864,12 @@ class Context(TransformedContext):
             self.basis = basis
         else:
             raise ValueError("Basis must be either None, string or tensor")
-        redfield_manager = self._init_redfield(enforce_secularity, redfield_channels)
+        coupling_manager = self._init_coupling_manager(enforce_secularity, relaxation_coupling_channels)
+
         super().__init__(time_dimension=time_dimension,
                          enforce_secularity=enforce_secularity,
-                         redfield_manager=redfield_manager,
+                         coupling_manager=coupling_manager,
                          dtype=dtype, device=device)
-
         self.init_populations = self._set_init_populations(init_populations, init_density, dtype, device)
 
         init_density_real, init_density_imag = self._set_init_density(init_density)
@@ -1924,6 +1932,9 @@ class Context(TransformedContext):
             elif isinstance(param, list):
                 self._spin_system_dim = len(param)
                 return self._spin_system_dim
+            elif hasattr(param, "spin_system_dim"):
+                self._spin_system_dim = param.spin_system_dim
+                return self._spin_system_dim
 
         if self.dephasing is not None:
             if isinstance(self.dephasing, torch.Tensor):
@@ -1932,6 +1943,13 @@ class Context(TransformedContext):
             elif isinstance(self.dephasing, list):
                 self._spin_system_dim = len(self.dephasing)
                 return self._spin_system_dim
+            elif hasattr(self.dephasing, "spin_system_dim"):
+                self._spin_system_dim = self.dephasing.spin_system_dim
+                return self._spin_system_dim
+
+        if self.coupling_manager is not None:
+            self._spin_system_dim = len(self.coupling_manager.spin_system_dim)
+            return self._spin_system_dim
 
         if self._default_driven_superop is not None:
             self._spin_system_dim = int(math.sqrt(self._default_driven_superop.shape[-1]))
@@ -2061,10 +2079,10 @@ class Context(TransformedContext):
             self._init_density_imag = torch.zeros_like(self._init_density_real)
         return torch.complex(self._init_density_real, self._init_density_imag)
 
-    def _init_redfield(self,
+    def _init_coupling_manager(self,
                        enforce_secularity: bool,
-                       redfield_channels: tp.Optional[tp.List[RedfieldRelaxationChannel]]) ->\
-            tp.Optional[RedfieldManager]:
+                       relaxation_coupling_channels: tp.Optional[tp.List[BaseRelaxationChannel]]) ->\
+            tp.Optional[CouplingChannelManager]:
         """
         Initialize the Redfield manager and configure relaxation channels.
 
@@ -2074,16 +2092,16 @@ class Context(TransformedContext):
 
         :param enforce_secularity: Whether to apply the secular approximation.
             If True, non-secular terms are removed from the relaxation tensor.
-        :param redfield_channels: List of relaxation channels to initialize.
+        :param relaxation_coupling_channels: List of relaxation channels to initialize.
             If None, no manager is created.
-        :return: Initialized RedfieldManager instance. Returns None if channels are None.
+        :return: Initialized CouplingChannelManager instance. Returns None if channels are None.
         """
-        if redfield_channels is None:
+        if relaxation_coupling_channels is None:
             return None
         else:
-            for channel in redfield_channels:
+            for channel in relaxation_coupling_channels:
                 channel.post_init(self.eigen_basis_flag, secular=enforce_secularity)
-            return RedfieldManager(redfield_channels)
+            return CouplingChannelManager(relaxation_coupling_channels)
 
     def _set_init_density(self, init_density: tp.Optional[torch.Tensor]) ->\
             tuple[tp.Optional[torch.Tensor], tp.Optional[torch.Tensor]]:
@@ -2490,14 +2508,14 @@ class Context(TransformedContext):
         population_transfer = sum(population_transfer_components).real if population_transfer_components else None
         _transformed_dephasing = self.transformed_dephasing(dephasing, population_transfer, full_system_vectors)
 
-        if self.redfield_manager is not None:
-            if not self.redfield_manager.eigen_basis_flag:
+        if self.coupling_manager is not None:
+            if not self.coupling_manager.eigen_basis_flag:
                 coeffs = self._compute_transformation_unitary(full_system_vectors)
-                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                _transformed_dephasing = _transformed_dephasing + self.coupling_manager.compute_dephasing(
                     coeffs, fields, energies, temperature
                 )
             else:
-                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                _transformed_dephasing = _transformed_dephasing + self.coupling_manager.compute_dephasing(
                     None, fields, energies, temperature
                 )
 
@@ -2616,7 +2634,7 @@ class KroneckerContext(TransformedContext):
         super().__init__(
             time_dimension=time_dimension,
             enforce_secularity=enforce_secularity,
-            redfield_manager=kronecker_multiplication_redfield_managers(contexts)
+            coupling_manager=kronecker_multiplication_coupling_managers(contexts)
         )
 
         self.component_contexts = nn.ModuleList(contexts)
@@ -3198,14 +3216,14 @@ class KroneckerContext(TransformedContext):
         population_transfer = sum(population_transfer_components).real if population_transfer_components else None
         _transformed_dephasing = self.transformed_dephasing(dephasing, population_transfer, full_system_vectors)
 
-        if self.redfield_manager is not None:
-            if not self.redfield_manager.eigen_basis_flag:
+        if self.coupling_manager is not None:
+            if not self.coupling_manager.eigen_basis_flag:
                 coeffs = self._compute_transformation_unitary(full_system_vectors)
-                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                _transformed_dephasing = _transformed_dephasing + self.coupling_manager.compute_dephasing(
                     coeffs, fields, energies, temperature
                 )
             else:
-                _transformed_dephasing = _transformed_dephasing + self.redfield_manager.compute_dephasing(
+                _transformed_dephasing = _transformed_dephasing + self.coupling_manager.compute_dephasing(
                     None, fields, energies, temperature
                 )
 

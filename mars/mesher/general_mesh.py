@@ -197,6 +197,7 @@ class BaseMeshPowder(BaseMesh):
         R = torch.empty(*phi.shape, 3, 3, dtype=phi.dtype, device=phi.device)
 
         R[..., 0, 0] = cos_phi * cos_theta
+        R[..., 0, 0] = cos_phi * cos_theta
         R[..., 0, 1] = -sin_phi * cos_theta
         R[..., 0, 2] = sin_theta
 
@@ -218,6 +219,7 @@ class BaseMeshPowder(BaseMesh):
         """
         vertices, triangles = self.post_mesh
         return self.spherical_triangle_areas(vertices, triangles)
+
 
     @staticmethod
     def spherical_triangle_areas(vertices: torch.Tensor, triangles: torch.Tensor) -> torch.Tensor:

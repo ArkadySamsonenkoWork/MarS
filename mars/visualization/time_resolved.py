@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 import torch
 import typing as tp
+from ..spectra_processing import normalize_spectrum
 
 
 def to_numpy(arr: tp.Union[np.ndarray, torch.Tensor]) -> np.ndarray:
@@ -144,6 +145,7 @@ def plot_field_dependence(
         result: tp.Union[np.ndarray, torch.Tensor],
         field_unit: tp.Literal["T", "mT", "G"] = "T",
         label: tp.Optional[str] = None,
+        normalization_mode: str = "none",
         **kwargs
 ) -> None:
     """
@@ -155,6 +157,11 @@ def plot_field_dependence(
     :param result: 2D array of spectral intensities with shape (n_fields, n_time)
     :param field_unit: Unit for magnetic field display ('T', 'mT', or 'G')
     :param label: Label for the plot line
+    :param normalization_mode: str, default="none". Normalize the spectrum at given time point I(B, t0)
+        Normalization method:
+        - "integral": Scale so area under |y| curve = 1
+        - "max"     : Scale so maximum |y| value = 1
+        - "none"    : Return unmodified copy
     :param kwargs: Additional arguments passed to plot
     """
     ax = plt.gca()
@@ -167,8 +174,9 @@ def plot_field_dependence(
     fields_conv = fields * field_scale
 
     time_idx = np.argmin(np.abs(time - time_value))
-
-    ax.plot(fields_conv, result[time_idx, :], label=label, **kwargs)
+    out = result[time_idx, :]
+    out = normalize_spectrum(fields, out, mode=normalization_mode)
+    ax.plot(fields_conv, out, label=label, **kwargs)
 
     ax.set_xlabel(f"Magnetic Field ({field_unit})")
     ax.set_ylabel("Intensity (arb. units)")
