@@ -41,21 +41,58 @@ MarS provides four predefined bases:
    - :math:`m_k` is the projection of the :math:`k`-th electron spin
    - States sorted by **decreasing** spin projections
 
-
 4. **"xyz"**
-
-   A molecular-frame basis commonly used for triplet (:math:`S = 1`) systems,
-   constructed from symmetric combinations of the two-electron product states
-   :math:`|\alpha\alpha\rangle`, :math:`|\alpha\beta\rangle`,
-   :math:`|\beta\alpha\rangle`, and :math:`|\beta\beta\rangle`.
-   After projection onto the total-spin :math:`S = 1` subspace, the orthonormal
-   triplet states are:
-
+ 
+   A molecular-frame basis defined by the Cartesian transition moment vectors :math:`T_X`, :math:`T_Y`, :math:`T_Z`,
+   and — for two-electron systems — the singlet state :math:`S_0`. The precise construction depends on
+   the spin multiplicity of the system.
+ 
+   **Single electron, spin** :math:`S = 1` **(triplet)**
+ 
+   The basis vectors are constructed from symmetric and antisymmetric combinations of the two-electron
+   product states :math:`|\alpha\alpha\rangle`, :math:`|\alpha\beta\rangle`, :math:`|\beta\alpha\rangle`,
+   and :math:`|\beta\beta\rangle`, projected onto the total-spin :math:`S = 1` subspace. The three
+   orthonormal triplet states are:
+ 
    .. math::
-
-      |T_X\rangle &= \frac{1}{\sqrt{2}}\bigl(-|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\
-      |T_Y\rangle &= \frac{i}{\sqrt{2}}\bigl(|\beta\beta\rangle + |\alpha\alpha\rangle\bigr) \\
+ 
+      |T_X\rangle &= \frac{1}{\sqrt{2}}\bigl(-|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\[6pt]
+      |T_Y\rangle &= \frac{i}{\sqrt{2}}\bigl(|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\[6pt]
       |T_Z\rangle &= \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle + |\beta\alpha\rangle\bigr)
+ 
+   These states correspond to the zero-field eigenstates whose transition dipole moments are aligned
+   with the molecular :math:`X`, :math:`Y`, and :math:`Z` axes, respectively.
+ 
+   **Two electrons, spin** :math:`S = 1/2` **(radical pair)**
+ 
+   For a system of two spin-:math:`\frac{1}{2}` electrons, the basis is expressed in the uncoupled
+   product basis ordered as
+   :math:`|\alpha\alpha\rangle`, :math:`|\alpha\beta\rangle`, :math:`|\beta\alpha\rangle`, :math:`|\beta\beta\rangle`.
+   The Clebsch–Gordan decomposition into the coupled :math:`|S, M\rangle` basis yields three triplet
+   states and one singlet:
+ 
+   .. math::
+ 
+      |T_+\rangle &= |\alpha\alpha\rangle \\[6pt]
+      |T_0\rangle &= \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle + |\beta\alpha\rangle\bigr) \\[6pt]
+      |T_-\rangle &= |\beta\beta\rangle \\[6pt]
+      |S_0\rangle &= \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle - |\beta\alpha\rangle\bigr)
+ 
+   The triplet states :math:`|T_+\rangle`, :math:`|T_0\rangle`, :math:`|T_-\rangle` are then mapped
+   to Cartesian transition vectors using the same convention as the spin-1 case:
+ 
+   .. math::
+ 
+      |T_X\rangle &= \frac{1}{\sqrt{2}}\bigl(-|T_+\rangle + |T_-\rangle\bigr)
+                   = \frac{1}{\sqrt{2}}\bigl(-|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\[6pt]
+      |T_Y\rangle &= \frac{i}{\sqrt{2}}\bigl(|T_+\rangle + |T_-\rangle\bigr)
+                   = \frac{i}{\sqrt{2}}\bigl(|\alpha\alpha\rangle + |\beta\beta\rangle\bigr) \\[6pt]
+      |T_Z\rangle &= |T_0\rangle
+                   = \frac{1}{\sqrt{2}}\bigl(|\alpha\beta\rangle + |\beta\alpha\rangle\bigr)
+ 
+   The singlet state :math:`|S_0\rangle` is rotationally invariant (total spin :math:`S = 0`) and is
+   appended as a fourth basis vector. The full basis matrix has shape :math:`(4, 4)` with columns
+   :math:`[T_X,\, T_Y,\, T_Z,\, S_0]`.
 
 5. **"zeeman"**
 

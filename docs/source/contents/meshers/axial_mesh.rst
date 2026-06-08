@@ -1,7 +1,7 @@
-Axial Mesh: AxialMeshNeighbour
+Axial Mesh: AxialMesh
 ==============================
 
-The :class:`mars.mesher.axial_mesh.AxialMeshNeighbour` class is optimized for systems with axial (cylindrical)
+The :class:`mars.mesher.axial_mesh.AxialMesh` class is optimized for systems with axial (cylindrical)
 symmetry, where physical observables depend only on the polar angle θ and are invariant under
 azimuthal rotation (φ).
 
@@ -18,7 +18,7 @@ Usage
 
 .. code-block:: python
 
-   mesh = mesher.AxialMeshNeighbour(
+   mesh = mesher.AxialMesh(
        initial_grid_frequency=50,
        device=device,
        dtype=torch.float64

@@ -46,7 +46,7 @@ The construction of an EPR spectrum in MarS follows a sequence of computational 
 5. **Determine resonance conditions**  
    MarS offers three algorithms:
 
-   5.1. **Resonance-field search** (:class:`mars.res_field_algorithm.ResField`)  
+   5.1. **Resonance-field search** (:class:`mars.res_spectra_manager.res_line_solvers.field_algorithm.ResField`)  
         This method solves :math:`\hbar \omega = E_i(B_{ij}) - E_j(B_{ij})` for resonance fields :math:`B_{ij}` at fixed frequency.  
         This is a batched, GPU-accelerated implementation of the method used in EasySpin [doi:10.1016/j.jmr.2005.08.013]. In MarS this method is default for solid-state simulations.
 

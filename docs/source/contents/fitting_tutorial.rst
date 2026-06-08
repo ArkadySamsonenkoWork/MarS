@@ -184,7 +184,7 @@ Example: using the COBYLA optimizer (a constrained optimization algorithm based 
     result_cobyla = fitter.fit(
         backend="ng",
         budget=300,          # maximum number of function evaluations
-        optimizer_name="Cobyla"
+        optimizer="Cobyla"
     )
 
 The full list of optimizers available through Nevergrad in MarS can be inspected at runtime:
@@ -255,10 +255,69 @@ Example setup:
 
 Like its 1D counterpart, :class:`Spectrum2DFitter` supports multi-dataset fitting (list inputs), custom objectives, and weighted losses.
 
+Composite Multi-Fitter
+----------------------
+
+When fitting several datasets that share the same parameter space but use different simulators or objective functions,
+use :class:`mars.optimization.fitter.SpectrumCompositeFitter`.
+It aggregates individual :class:`BaseSpectrumFitter` instances and minimizes a weighted sum of their losses.
+
+.. code-block:: python
+
+    from mars.optimization import SpectrumCompositeFitter
+
+    fitter_cw = SpectrumFitter(
+        x_exp=fields_cw,
+        y_exp=spectrum_cw,
+        param_space=param_space,
+        spectra_simulator=CWSpectraSimulator(),
+        norm_mode="max"
+    )
+
+    fitter_tr = Spectrum2DFitter(
+        x1_exp=fields_tr,
+        x2_exp=times,
+        y_exp=spectrum_2d,
+        param_space=param_space,
+        spectra_simulator=TRSpectraSimulator(),
+        norm_mode="integral"
+    )
+
+    composite = SpectrumCompositeFitter(
+        fitters=[fitter_cw, fitter_tr],
+        weights=[1.0, 0.5]   # second fitter contributes half as much
+    )
+
+    result = composite.fit(backend="optuna", n_trials=300)
+
+All sub-fitters must share an identical :class:`ParameterSpace`. The ``fit()`` interface is the same as for :class:`SpectrumFitter`, supporting both Optuna and Nevergrad backends.
+
+Penalty-Based Optimization
+--------------------------
+
+For landscapes with multiple local minima, the penalty variant of the optimizer discourages repeated convergence to already-found solutions.
+The penalty term is updated periodically and the optimizer is warm-restarted with recomputed penalized losses.
+Final results always report raw (unpenalized) losses.
+
+.. code-block:: python
+
+    result = fitter.fit(
+        backend="optuna",
+        n_trials=300,
+        use_penalty=True,
+        penalty_names=["g", "D"],   # dimensions along which to penalize; defaults to all
+        update_penalty_every=20,    # recompute penalty state every N trials
+        restart_every=60,           # warm-restart the study every N trials
+        penalty_force=1.0           # penalty strength multiplier
+    )
+
+``use_penalty=True`` is supported by both Optuna and Nevergrad backends on :class:`SpectrumFitter` and :class:`Spectrum2DFitter`.
+
 Exploring Alternative Minima with SpaceSearcher
 -----------------------------------------------
 
-In complex landscapes, multiple parameter sets may yield similarly good fits. The :class:`mars.optimization.fitter.SpaceSearcher` class identifies such alternatives that are distant from the best solution in parameter space.
+In complex landscapes, multiple parameter sets may yield similarly good fits.
+The :class:`mars.optimization.fitter.SpaceSearcher` class identifies such alternatives that are distant from the best solution in parameter space.
 
 .. code-block:: python
 
@@ -281,3 +340,40 @@ For convenience, use :func:`mars.optimization.fitter.print_trial_results` to dis
 
     from mars.optimization import print_trial_results
     print_trial_results(alternatives, max_params=6, precision=5)
+
+Uncertainty Analysis
+--------------------
+
+After fitting, :class:`mars.optimization.fitter.UncertaintyAnalyzer` computes confidence intervals for the fitted parameters. Five methods are available:
+
+- ``"hessian"`` — fast symmetric intervals via quadratic approximation of the loss surface.
+- ``"profile"`` — asymmetric intervals via re-optimisation of nuisance parameters.
+- ``"mcmc"`` — Bayesian credible intervals via ensemble sampling (requires ``emcee``).
+- ``"trials"`` — bounding-box from existing optimiser trial history; no additional evaluations.
+- ``"bootstrap"`` — distribution-free intervals via residual resampling; valid for any smooth loss.
+
+The first three methods have correct statistical meaning only when the loss is proportional to SSE or MSE (the default in MarS).
+For custom or composite losses, use ``"bootstrap"``.
+
+.. code-block:: python
+
+    from mars.optimization import UncertaintyAnalyzer
+
+    analyzer = UncertaintyAnalyzer(
+        fitter=fitter,
+        fit_result=result,
+        method="profile",        # or "hessian", "mcmc", "trials", "bootstrap"
+        confidence_level=0.95
+    )
+
+    uncertainty = analyzer(param_names=["g", "D", "J"])
+
+    for name, ci in uncertainty.intervals.items():
+        print(f"{name}: {ci.best:.4g}  [{ci.lower:.4g}, {ci.upper:.4g}]")
+
+For quick diagnostics, ``"hessian"`` is recommended. For publication-quality asymmetric intervals, use ``"profile"`` with a finer grid (``n_points=20`` or more). The goodness-of-fit can be assessed independently via:
+
+.. code-block:: python
+
+    chi2 = analyzer.get_chi_square(return_reduced=True)
+    print(f"Reduced chi-squared: {chi2:.3f}")   # ~1.0 indicates a good fit
