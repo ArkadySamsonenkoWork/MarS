@@ -46,7 +46,7 @@ def mesh_processor_factory(init_grid_frequency,
         )
 
 
-class AxialMeshNeighbour(BaseMeshAxial):
+class AxialMesh(BaseMeshAxial):
     def __init__(self,
                  eps: float = 1e-7,
                  initial_grid_frequency: int = 20,

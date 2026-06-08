@@ -6,3 +6,4 @@ from . import visualization
 from .concatination import concat
 from .multiplication import multiply
 from .save_procedures import save, load
+from . import optimization

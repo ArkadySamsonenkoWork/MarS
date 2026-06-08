@@ -9,11 +9,11 @@ def filter_noise_2d(
     fields: np.ndarray,
     time: np.ndarray,
     result: np.ndarray,
-    method: Literal['svd', 'gaussian', 'wavelet', 'median', 'combined'] = "svd",
+    method: Literal["svd", "gaussian", "wavelet", "median", "combined"] = "svd",
     svd_rank: int = 10,
     sigma_t: float = 4.0,
     sigma_b: float = 2.0,
-    wavelet: str = 'db4',
+    wavelet: str = "db4",
     wavelet_level: int = 4,
     wavelet_threshold: float | None = None,
     median_kernel: int = 3,
@@ -26,29 +26,29 @@ def filter_noise_2d(
     :param result: 2D array of spectral intensities, shape (n_fields, n_time).
         The magnetic field axis is first, the time axis is second.
     :param method: Denoising algorithm to apply. One of:
-        - ``'svd'``      low-rank SVD reconstruction (best for correlated noise);
-        - ``'gaussian'`` 2-D Gaussian smoothing (simplest baseline);
-        - ``'wavelet'``  per-B-trace wavelet soft-thresholding (preserves sharp edges in t);
-        - ``'median'``   2-D median filter (kills spikes / impulse noise);
-        - ``'combined'`` SVD followed by mild Gaussian (recommended starting point).
+        - ``"svd"``      low-rank SVD reconstruction (best for correlated noise);
+        - ``"gaussian"`` 2-D Gaussian smoothing (simplest baseline);
+        - ``"wavelet"``  per-B-trace wavelet soft-thresholding (preserves sharp edges in t);
+        - ``"median"``   2-D median filter (kills spikes / impulse noise);
+        - ``"combined"`` SVD followed by mild Gaussian (recommended starting point).
     :param svd_rank: Number of dominant singular vectors to retain.
-        Ignored by ``'gaussian'``, ``'wavelet'``, and ``'median'``.
+        Ignored by ``"gaussian"``, ``"wavelet"``, and ``"median"``.
         Plot singular values and keep components above the "elbow".
     :param sigma_t: Gaussian smoothing width along the time axis in samples.
-        Ignored by every method except ``'gaussian'`` and ``'combined'``.
+        Ignored by every method except ``"gaussian"`` and ``"combined"``.
     :param sigma_b: Gaussian smoothing width along the field axis in samples.
-        Ignored by every method except ``'gaussian'`` and ``'combined'``.
-    :param wavelet: PyWavelets wavelet name, e.g. ``'db4'``, ``'sym6'``, ``'coif3'``.
-        Used only by ``'wavelet'``.
+        Ignored by every method except ``"gaussian"`` and ``"combined"``.
+    :param wavelet: PyWavelets wavelet name, e.g. ``"db4"``, ``"sym6"``, ``"coif3"``.
+        Used only by ``"wavelet"``.
     :param wavelet_level: Wavelet decomposition depth.
-        Used only by ``'wavelet'``.
+        Used only by ``"wavelet"``.
     :param wavelet_threshold: Hard override for the soft-threshold value.
         When ``None`` the universal threshold σ√(2 ln N) is estimated
         from the finest detail coefficients via the MAD estimator.
-        Used only by ``'wavelet'``.
+        Used only by ``"wavelet"``.
     :param median_kernel: Side length of the 2-D median-filter kernel in samples.
         Must be a positive odd integer; even values are silently incremented by 1.
-        Used only by ``'median'``.
+        Used only by ``"median"``.
 
     :returns: Denoised spectral data with the same shape (n_fields, n_time)
         and dtype ``float64`` as *result*.
@@ -67,18 +67,18 @@ def filter_noise_2d(
         )
 
     match method.lower():
-        case 'svd':
+        case "svd":
             return _svd_denoise_2d(I, svd_rank)
-        case 'gaussian':
+        case "gaussian":
             return gaussian_filter(I, sigma=(sigma_b, sigma_t))
-        case 'wavelet':
+        case "wavelet":
             return _wavelet_denoise_2d(I, wavelet, wavelet_level, wavelet_threshold)
-        case 'median':
+        case "median":
             k = int(median_kernel)
             if k % 2 == 0:
                 k += 1
             return medfilt2d(I, kernel_size=k)
-        case 'combined':
+        case "combined":
             return gaussian_filter(
                 _svd_denoise_2d(I, svd_rank),
                 sigma=(sigma_b * 0.5, sigma_t * 0.5),
@@ -93,9 +93,9 @@ def filter_noise_2d(
 def filter_noise_1d(
     axis: np.ndarray,
     signal: np.ndarray,
-    method: Literal['gaussian', 'wavelet', 'median', 'savgol'] = 'wavelet',
+    method: Literal["gaussian", "wavelet", "median", "savgol"] = "wavelet",
     sigma: float = 2.0,
-    wavelet: str = 'db4',
+    wavelet: str = "db4",
     wavelet_level: int = 4,
     wavelet_threshold: float | None = None,
     median_kernel: int = 5,
@@ -112,30 +112,30 @@ def filter_noise_1d(
         shape (n,).
     :param signal: 1D array of spectral intensities to denoise, shape (n,).
     :param method: Denoising algorithm to apply. One of:
-        - ``'gaussian'`` Gaussian smoothing — fast, isotropic blurring;
-        - ``'wavelet'``  soft-thresholding in wavelet domain — preserves peaks;
-        - ``'median'``   median filter — robust against spikes / outliers;
-        - ``'savgol'``   Savitzky–Golay polynomial smoothing — preserves peak
+        - ``"gaussian"`` Gaussian smoothing — fast, isotropic blurring;
+        - ``"wavelet"``  soft-thresholding in wavelet domain — preserves peaks;
+        - ``"median"``   median filter — robust against spikes / outliers;
+        - ``"savgol"``   Savitzky–Golay polynomial smoothing — preserves peak
           height and position better than Gaussian.
     :param sigma: Gaussian smoothing width in samples.
-        Used only by ``'gaussian'``.
-    :param wavelet: PyWavelets wavelet name, e.g. ``'db4'``, ``'sym6'``.
-        Used only by ``'wavelet'``.
+        Used only by ``"gaussian"``.
+    :param wavelet: PyWavelets wavelet name, e.g. ``"db4"``, ``"sym6"``.
+        Used only by ``"wavelet"``.
     :param wavelet_level: Wavelet decomposition depth.
-        Used only by ``'wavelet'``.
+        Used only by ``"wavelet"``.
     :param wavelet_threshold: Hard override for the soft-threshold value.
         When ``None`` the universal threshold σ√(2 ln N) is estimated
         from the finest detail coefficients via the MAD estimator.
-        Used only by ``'wavelet'``.
+        Used only by ``"wavelet"``.
     :param median_kernel: Length of the 1-D median-filter window in samples.
         Must be a positive odd integer; even values are silently incremented by 1.
-        Used only by ``'median'``.
+        Used only by ``"median"``.
     :param savgol_window: Length of the Savitzky–Golay filter window in samples.
         Must be odd and strictly greater than *savgol_order*.
-        Used only by ``'savgol'``.
+        Used only by ``"savgol"``.
     :param savgol_order: Polynomial order for the Savitzky–Golay fit.
         Must be less than *savgol_window*.
-        Used only by ``'savgol'``.
+        Used only by ``"savgol"``.
 
     :returns: Denoised 1-D signal with the same shape (n,) and dtype ``float64``
         as *signal*.
@@ -239,4 +239,4 @@ def _wavelet_denoise_1d(
     coeffs_thresh = [coeffs[0]] + [
         pywt.threshold(c, thr, mode="soft") for c in coeffs[1:]
     ]
-    return pywt.waverec(coeffs_thresh, wavelet)[:len(signal)]
+    return pywt.waverec(coeffs_thresh, wavelet)[:len(signal)]   

@@ -8,12 +8,27 @@ class BaseObjectiveFunction:
     Subclasses should implement the ``__call__`` method to compute a scalar loss that quantifies
     the mismatch between predicted and target spectra. Lower values indicate better agreement.
     """
+    LOSS_PROPORTIONAL_TO_MSE: bool = False
 
     def __init__(self):
         pass
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
         pass
+
+    def covariance_scale(
+        self,
+        *,
+        pred: torch.Tensor,
+        target: torch.Tensor,
+        n_params: int,
+    ) -> float:
+        """
+        Return the variance computed from residuals. That is sigma^2 = 2 * sum{(P_i - T_i) ** 2} / (N-k)
+        """
+        raise NotImplementedError(
+            "For the used Objective function the covariance is not supported. Use should define it yourself"
+        )
 
 
 class MSEObjective(BaseObjectiveFunction):
@@ -22,9 +37,26 @@ class MSEObjective(BaseObjectiveFunction):
     Computes the average squared difference between simulated and
     experimental spectra.
     """
+    LOSS_PROPORTIONAL_TO_MSE: bool = True
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
         return torch.nn.functional.mse_loss(pred, target)
+
+    def covariance_scale(
+        self,
+        *,
+        pred: torch.Tensor,
+        target: torch.Tensor,
+        n_params: int,
+    ) -> float:
+        """
+        Return the variance computed from residuals. That is sigma^2 = 2 * sum{(P_i - T_i) ** 2} / (N-k)
+        """
+        n = int(target.numel())
+        rss = torch.sum((pred - target) ** 2).item()
+        dof = max(n - n_params, 1)
+        sigma2_hat = rss / dof
+        return 2.0 * sigma2_hat / n
 
 
 class MAEObjective(BaseObjectiveFunction):
@@ -35,6 +67,7 @@ class MAEObjective(BaseObjectiveFunction):
     suitable when minor spectral distortions or noise should not
     dominate the optimization.
     """
+    LOSS_PROPORTIONAL_TO_MSE: bool = False
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
         return torch.nn.functional.l1_loss(pred, target)
@@ -48,6 +81,7 @@ class CrossCorrelation(BaseObjectiveFunction):
     the two spectra are maximally correlated. It can be used when relative shape matters more
     than absolute intensity scaling.
     """
+    LOSS_PROPORTIONAL_TO_MSE: bool = False
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
         vx = pred - pred.mean(dim=-1, keepdim=True)
@@ -66,6 +100,7 @@ class CosineSimilarity(BaseObjectiveFunction):
     alignment in signal space, making it insensitive to overall amplitude differences.
     Particularly helpful when only the spectral profile - not its magnitude - should guide fitting.
     """
+    LOSS_PROPORTIONAL_TO_MSE: bool = False
 
     def __call__(self, pred: torch.Tensor, target: torch.Tensor):
         cos_sim = torch.nn.functional.cosine_similarity(pred, target, dim=-1)

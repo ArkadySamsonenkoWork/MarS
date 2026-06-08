@@ -305,8 +305,8 @@ def kronecker_multiplication_coupling_managers(contexts: tp.Sequence[Context]) -
         if manager is None:
             continue
 
-        left_dim = np.prod(dims[:idx]) if idx > 0 else 0
-        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 0
+        left_dim = np.sum(dims[:idx]) if idx > 0 else 0
+        right_dim = np.sum(dims[idx + 1:]) if idx < len(dims) - 1 else 0
         manager.expand_kronecker(left_dim, right_dim)
 
     return combine_coupling_managers(managers)
@@ -2118,6 +2118,8 @@ class Context(TransformedContext):
             if init_populations is None:
                 return None
             elif init_populations is not None:
+                if isinstance(init_populations, torch.Tensor):
+                    return init_populations.to(device=device, dtype=dtype)
                 return torch.tensor(init_populations, dtype=dtype, device=device)
         else:
             return init_populations

@@ -73,7 +73,7 @@ class CrystalMesh(BaseMesh):
     Stores precomputed rotation matrices derived from Euler angles for deterministic
     orientation sampling.
     """
-    def __init__(self, euler_angles: torch.Tensor, convention: str = "zyz",
+    def __init__(self, euler_angles: tp.Union[torch.Tensor, tp.List[float]], convention: str = "zyz",
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """Initialize crystal mesh from Euler angles.
 
@@ -90,6 +90,8 @@ class CrystalMesh(BaseMesh):
         :type dtype: torch.dtype
         """
         super().__init__(device=device, dtype=dtype)
+        if isinstance(euler_angles, list):
+            euler_angles = torch.tensor([euler_angles], dtype=dtype, device=device)
         if euler_angles.dim() == 1:
             euler_angles = euler_angles.unsqueeze(0)
         self.register_buffer("_rotation_matrices",

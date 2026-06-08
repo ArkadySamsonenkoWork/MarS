@@ -100,7 +100,7 @@ def correct_baseline_als(y_vals: np.ndarray, mask: np.ndarray, lam=1e6, p=0.01, 
     return y_vals - z, z
 
 
-def _percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
+def percentile_baseline(x_vals, y_vals, window_size=None, percentile=10,
                          proximity_threshold=0.15):
     """Detect baseline using local percentile analysis.
 
@@ -159,7 +159,7 @@ def correct_baseline(x_vals: np.ndarray, y_vals: np.ndarray,
         y_corrected, baseline = correct_baseline_saturation(y_vals, sat_last_indexes=sat_last_indexes)
     else:
         if baseline_areas is None:
-            mask = _percentile_baseline(x_vals, y_vals)
+            mask = percentile_baseline(x_vals, y_vals)
         else:
             mask = create_baseline_mask(x_vals, baseline_areas)
         if method == "poly":

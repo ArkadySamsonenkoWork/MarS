@@ -32,12 +32,27 @@ class BasePopulator(nn.Module):
     def __init__(self,
                  context: tp.Optional[contexts.BaseContext] = None,
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
+                 energy_shifts: tp.Optional[tp.Union[torch.Tensor, tp.List]] = None,
                  device: torch.device = torch.device("cpu"),
                  dtype: torch.dtype = torch.float32):
         super().__init__()
         self.register_buffer(
             "init_temperature", torch.tensor(init_temperature, device=device, dtype=dtype)
         )
+        if isinstance(energy_shifts, torch.Tensor):
+            self.register_buffer(
+                "energy_shifts", energy_shifts.to(device=device, dtype=dtype)
+            )
+        elif isinstance(energy_shifts, list):
+            self.register_buffer(
+                "energy_shifts", torch.tensor(energy_shifts, device=device, dtype=dtype)
+            )
+        elif energy_shifts is None:
+            self.register_buffer(
+                "energy_shifts", energy_shifts
+            )
+        else:
+            raise TypeError("energy_shift should be None or tensor")
         self._context = None
         self.set_context(context)
 
@@ -186,6 +201,7 @@ class BaseTimeDepPopulator(BasePopulator):
                  tr_matrix_generator_cls: tp.Type[matrix_generators.BaseGenerator],
                  solver: tp.Optional[tr_utils.EvolutionSolver] = None,
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
+                 energy_shifts: tp.Optional[tp.Union[torch.Tensor, tp.List]] = None,
                  difference_out: bool = False,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
@@ -207,6 +223,8 @@ class BaseTimeDepPopulator(BasePopulator):
 
         :param init_temperature: initial temperature. In default case it is used to find initial population
 
+        :param energy_shifts: The additional energy shift added to the spin energies. For example, the factor TS
+
         :param difference_out: If True, the output intensity is expressed as the difference relative
                to the initial signal:
                        intensity(t) = intensity(t) - intensity(t=0).
@@ -214,7 +232,7 @@ class BaseTimeDepPopulator(BasePopulator):
 
         :param device: device to compute (cpu / gpu)
         """
-        super().__init__(context, init_temperature, device, dtype)
+        super().__init__(context, init_temperature, energy_shifts, device, dtype)
         self.solver = self.init_solver(solver)
         self.tr_matrix_generator_cls = tr_matrix_generator_cls
         self.difference_out = difference_out

@@ -29,6 +29,7 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
                  = matrix_generators.LevelBasedGenerator,
                  solver: tp.Optional[tr_utils.EvolutionSolver] = None,
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
+                 energy_shifts: tp.Optional[tp.Union[torch.Tensor, tp.List]] = None,
                  difference_out: bool = False,
                  device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32):
         """
@@ -50,6 +51,9 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
             If solver is None than it will be initialized as odeint solver or stationary solver according to the context
 
         :param init_temperature: initial temperature. In default case it is used to find initial population
+
+        :param energy_shifts: The additional energy shift added to the spin energies. For example, the factor TS
+
         :param difference_out: If True, the output intensity is expressed as the difference relative
                to the initial signal:
                        intensity(t) = intensity(t) - intensity(t=0).
@@ -57,7 +61,9 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
 
         :param device: device to compute (cpu / gpu)
         """
-        super().__init__(context, tr_matrix_generator_cls, solver, init_temperature, difference_out, device, dtype)
+        super().__init__(
+            context, tr_matrix_generator_cls, solver, init_temperature, energy_shifts, difference_out, device, dtype
+        )
 
     def init_solver(self, solver: tp.Optional[tp.Callable]) -> tp.Callable:
         if solver is not None:

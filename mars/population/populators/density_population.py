@@ -49,6 +49,7 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
                  matrix_generators.DensityRWAGenerator,
                  solver: tp.Optional[tr_utils.EvolutionSolver] = None,
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
+                 energy_shifts: tp.Optional[tp.Union[torch.Tensor, tp.List]] = None,
                  difference_out: bool = False,
                  disordered: bool = True,
                  angle_average_steps: int = 4,
@@ -79,6 +80,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
             If solver is None than it will be initialized as odeint solver or stationary solver according to the context
         :param init_temperature: initial temperature. In default case it is used to find initial population
 
+        :param energy_shifts: The additional energy shift added to the spin energies. For example, the factor TS
+
         :param difference_out: If True, the output intensity is expressed as the difference relative
            to the initial signal:
                    intensity(t) = intensity(t) - intensity(t=0).
@@ -94,7 +97,8 @@ class RWADensityPopulator(core.BaseTimeDepPopulator):
         :param device: device to compute (cpu / gpu)
         :param dtype: dtype of computation
         """
-        super().__init__(context, tr_matrix_generator_cls, solver, init_temperature, difference_out, device, dtype)
+        super().__init__(
+            context, tr_matrix_generator_cls, solver, init_temperature, energy_shifts, difference_out, device, dtype)
         self.register_buffer(
             "two_pi", torch.tensor(math.pi * 2, device=device, dtype=dtype)
         )
@@ -664,6 +668,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
                  matrix_generators.DensityPropagatorGenerator,
                  solver: tp.Optional[tr_utils.EvolutionSolver] = tr_utils.EvolutionPropagatorSolver(),
                  init_temperature: tp.Union[float, torch.Tensor] = 293.0,
+                 energy_shifts: tp.Optional[tp.Union[torch.Tensor, tp.List]] = None,
                  difference_out: bool = False,
                  disordered: bool = True,
                  angle_average_steps: int = 4,
@@ -696,6 +701,7 @@ class PropagatorDensityPopulator(RWADensityPopulator):
 
             If solver is None than it will be initialized as odeint solver or stationary solver according to the context
         :param init_temperature: initial temperature. In default case it is used to find initial population
+        :param energy_shifts: The additional energy shift added to the spin energies. For example, the factor TS
 
         :param difference_out: If True, the output intensity is expressed as the difference relative
            to the initial signal:
@@ -717,7 +723,8 @@ class PropagatorDensityPopulator(RWADensityPopulator):
         """
         super().__init__(
             b1_field, context, tr_matrix_generator_cls, solver,
-            init_temperature, difference_out, disordered, angle_average_steps, device, dtype
+            init_temperature, energy_shifts,
+            difference_out, disordered, angle_average_steps, device, dtype
         )
         measurement_time =\
             torch.tensor(measurement_time, dtype=dtype, device=device)\

@@ -30,12 +30,9 @@ def concat_coupling_managers(contexts: tp.Sequence[Context]) -> CouplingChannelM
     for idx, manager in enumerate(managers):
         if manager is None:
             continue
-
-        left_dim = np.prod(dims[:idx]) if idx > 0 else 0
-        right_dim = np.prod(dims[idx + 1:]) if idx < len(dims) - 1 else 0
-
+        left_dim = np.sum(dims[:idx]) if idx > 0 else 0
+        right_dim = np.sum(dims[idx + 1:]) if idx < len(dims) - 1 else 0
         manager.expand_zeros(left_dim, right_dim)
-
     return combine_coupling_managers(managers)
 
 

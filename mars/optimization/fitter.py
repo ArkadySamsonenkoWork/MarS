@@ -1,6 +1,9 @@
 import copy
 import os
 import json
+import warnings
+
+from tqdm.auto import tqdm
 
 import pathlib
 from dataclasses import dataclass
@@ -9,8 +12,6 @@ import math
 from abc import ABC, abstractmethod
 
 import numpy as np
-from scipy.spatial.distance import cdist
-from sklearn.preprocessing import StandardScaler
 import torch
 
 import nevergrad as ng
@@ -18,6 +19,8 @@ import optuna
 
 from ..spectra_processing import normalize_spectrum, normalize_spectrum2d
 from . import objectives
+from . import penalty_computations
+from . import recreate_samplers
 from optuna_dashboard import run_server
 
 
@@ -244,38 +247,54 @@ class NevergradTrial:
 class TrialsTracker:
     def __init__(self):
         self.trials = []
-        self.losses = []
+        self._penalized_losses = []
+        self._raw_losses = []
         self.step = 0
 
     def __call__(self, optimizer: ng.optimization.Optimizer,
                  candidate: ng.p.Instrumentation, loss: float):
         """Callback function called after each evaluation."""
         self.trials.append(candidate.value[0])
-        self.losses.append(loss)
+        self._penalized_losses.append(loss)
         self.step += 1
 
         # Optional: print progress
         if self.step % 10 == 0:
             print(f"Step {self.step}: Loss = {loss:.6f}")
 
+    def override_last_raw_loss(self, raw_loss: float) -> None:
+        """Call after __call__ to record the true loss for the most recent trial."""
+        if len(self._raw_losses) < len(self.trials):
+            self._raw_losses.append(raw_loss)
+        elif self._raw_losses:
+            self._raw_losses[-1] = raw_loss
+
+    def _get_losses_for_output(self) -> list[float]:
+        """Return raw losses if fully populated, else fall back to penalized."""
+        if self._raw_losses and len(self._raw_losses) == len(self.trials):
+            return self._raw_losses
+        return self._penalized_losses
+
     def get_best_trial(self):
         """Get the trial with the lowest loss."""
-        best_idx = np.argmin(self.losses)
+        losses = self._get_losses_for_output()
+        best_idx = np.argmin(losses)
         return {
             '_trial_id': best_idx + 1,
             'params': self.trials[best_idx],
-            'value': self.losses[best_idx]
+            'value': losses[best_idx]
         }
 
     def get_all_trials(self):
         """Get all trials as a list of dictionaries."""
+        losses = self._get_losses_for_output()
         return [
             {
                 '_trial_id': i + 1,
                 'params': trial,
                 'value': loss
             }
-            for i, (trial, loss) in enumerate(zip(self.trials, self.losses))
+            for i, (trial, loss) in enumerate(zip(self.trials, losses))
         ]
 
 
@@ -625,6 +644,9 @@ class ParameterSpace:
             out[s.name] = s.apply(val)
         return out
 
+    def get_optuna_distributions(self) -> tp.Dict[str, optuna.distributions.FloatDistribution]:
+        return {s.name: optuna.distributions.FloatDistribution(*s.bounds) for s in self._varying_specs}
+
     def instrument_nevergrad(self) -> ng.p.Instrumentation:
         params = []
         for s in self._varying_specs:
@@ -662,6 +684,73 @@ class ParameterSpace:
         with open(path, "r") as f:
             data = json.load(f)
         return cls.from_json_dict(data)
+
+
+def convert_backend_kwargs(
+    backend: str,
+    kwargs: tp.Dict[str, tp.Any]
+) -> tp.Dict[str, tp.Any]:
+    """Converts common keyword arguments between optimization backends and filters out incompatible ones.
+
+    :param backend: Target backend name ('optuna' or 'nevergrad').
+    :param kwargs: Dictionary of keyword arguments to process.
+    :return: A cleaned dictionary containing only parameters valid for the target backend.
+        Equivalent parameters are automatically renamed. Parameters specific to the
+        alternate backend or unrecognized by both are removed and a warning is issued.
+    """
+    target = backend.lower().replace("ng", "nevergrad")
+    source = "nevergrad" if target == "optuna" else "optuna"
+
+    _OPTUNA_KWARGS = {
+        "sampler", "pruner", "n_trials", "timeout", "n_jobs",
+        "callbacks", "show_progress_bar", "max_concurrent_trials"
+    }
+    _NEVERGRAD_KWARGS = {
+        "optimizer", "budget", "num_workers", "timeout",
+        "callback", "executor", "with_progress", "batch_mode"
+    }
+
+    _KNOWN = {"optuna": _OPTUNA_KWARGS, "nevergrad": _NEVERGRAD_KWARGS}
+    _CONVERSION_MAP = {
+        "optuna": {
+            "n_trials": "budget",
+            "sampler": "optimizer",
+            "n_jobs": "num_workers",
+            "show_progress_bar": "with_progress",
+            "callbacks": "callback"
+        },
+        "nevergrad": {
+            "budget": "n_trials",
+            "optimizer": "sampler",
+            "num_workers": "n_jobs",
+            "with_progress": "show_progress_bar",
+            "callback": "callbacks"
+        }
+    }
+
+    target_known = _KNOWN[target]
+    source_known = _KNOWN[source]
+    mapping = _CONVERSION_MAP[source]
+
+    converted = {}
+    dropped = []
+
+    for key, value in kwargs.items():
+        if key in target_known:
+            converted[key] = value
+        elif key in source_known and key in mapping:
+            converted[mapping[key]] = value
+        else:
+            dropped.append(key)
+
+    if dropped:
+        warnings.warn(
+            f"Removed {len(dropped)} keyword argument(s) specific to '{source}' or unrecognized for '{target}': {dropped}",
+            UserWarning,
+            stacklevel=2
+        )
+
+    return converted
 
 
 class CWSpectraSimulator:
@@ -713,6 +802,7 @@ class BaseSpectrumFitter(ABC):
         norm_mode: str = "integral",
         objective=objectives.MSEObjective(),
         weights: tp.Optional[list[float]] = None,
+        penalty: penalty_computations.RepulsivePenalty = penalty_computations.RepulsivePenalty(),
         device: torch.device = torch.device("cpu"),
         dtype: torch.dtype = torch.float32,
     ):
@@ -722,6 +812,7 @@ class BaseSpectrumFitter(ABC):
         :param norm_mode: Norm mode to fit data. 'integral' / 'max'
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
         :param weights: The weights for multi-spectra fit. Default is None
+        :param penalty: The Class to manage penalty for the repulsion from the local minima
         :param device: Device for computation
         """
         self.norm_mode = norm_mode
@@ -729,11 +820,14 @@ class BaseSpectrumFitter(ABC):
         self.param_space = param_space
         self._objective = objective
 
+        self.penalty = penalty
         self.x_exp = None
         self.y_exp = None
         self.multisample = False
         self.weights = None
         self._loss_normalization = None
+        self._n_data_points = None
+        self._proportional_to_mse = False
 
     @abstractmethod
     def _set_experimental(self, *args, **kwargs):
@@ -758,6 +852,18 @@ class BaseSpectrumFitter(ABC):
         :return: List of normalized simulated spectra
         """
         pass
+
+    @property
+    def device(self):
+        return self.y_exp.device if hasattr(self.y_exp, "device") else self.y_exp[0].device
+
+    @property
+    def dtype(self):
+        return self.y_exp.dtype if hasattr(self.y_exp, "dtype") else self.y_exp[0].dtype
+
+    @property
+    def proportional_to_mse(self):
+        return self._proportional_to_mse
 
     def _get_loss_norm(self):
         if self.multisample:
@@ -799,10 +905,46 @@ class BaseSpectrumFitter(ABC):
             if self.multisample:
                 models = self._simulate_spectral_set(params, **kwargs)
                 loss = sum(self.weights[idx] * self._loss_normalization[idx] * self._objective(
-                    models[idx], self.y_exp[idx]) for idx in range(len(models))) / len(models)
+                    models[idx], self.y_exp[idx]) for idx in range(len(models)))
             else:
                 model = self._simulate_single_spectrum(params, **kwargs)
                 loss = self._loss_normalization * self._objective(model, self.y_exp)
+            return loss
+
+    def _loss_from_params_random(
+        self,
+        params: tp.Dict[str, float],
+        rng: tp.Optional[torch.Generator] = None,
+        **kwargs
+    ) -> tp.Union[torch.Tensor, tp.List[torch.Tensor]]:
+
+        device = self.device
+        dtype = self.dtype
+
+        if rng is None:
+            rng = torch.Generator(device=device).manual_seed(42)
+
+        with torch.no_grad():
+            if self.multisample:
+                models = self._simulate_spectral_set(params, **kwargs)
+                loss = torch.tensor(0, dtype=dtype, device=device)
+                for model_idx in range(len(models)):
+                    sample_idx = torch.randint(
+                        0, len(self.y_exp[model_idx]), (len(self.y_exp[model_idx]),),
+                        generator=rng, device=device, dtype=dtype
+                    )
+
+                    loss += self.weights[model_idx] * self._loss_normalization[model_idx] * self._objective(
+                    models[model_idx][sample_idx], self.y_exp[model_idx][sample_idx]
+                    )
+            else:
+                sample_idx = torch.randint(
+                    0, len(self.y_exp), (len(self.y_exp),), generator=rng,
+                    device=device, dtype=dtype
+                )
+
+                model = self._simulate_single_spectrum(params, **kwargs)
+                loss = self._loss_normalization * self._objective(model[sample_idx], self.y_exp[sample_idx])
             return loss
 
     def _tracker_to_trials(self, trials_tracker: TrialsTracker) -> list[NevergradTrial]:
@@ -870,9 +1012,8 @@ class BaseSpectrumFitter(ABC):
             return_best_spectrum: bool,
 
             budget: int = 200,
-            optimizer_name: str = "TwoPointsDE",
+            optimizer: str = "TwoPointsDE",
             track_trials: bool = True,
-
             **kwargs,
     ) -> FitResult:
         """Fit spectra using Nevergrad (if installed)."""
@@ -882,7 +1023,7 @@ class BaseSpectrumFitter(ABC):
         instr = self.param_space.instrument_nevergrad()
         if seed is not None:
             ng.optimizers.registry.seed(seed)
-        opt = ng.optimizers.registry[optimizer_name](parametrization=instr, budget=budget)
+        opt = ng.optimizers.registry[optimizer](parametrization=instr, budget=budget)
 
         def _loss_from_tuple(*args):
             params = self.param_space.vector_to_dict(args)
@@ -911,7 +1052,415 @@ class BaseSpectrumFitter(ABC):
 
         return FitResult(
             best_params, self._loss_from_params({**self.param_space.fixed_params, **best_params}), best_spec,
-            {"backend": "nevergrad", "optimizer": optimizer_name, "trials": trials}
+            {"backend": "nevergrad", "optimizer": optimizer, "trials": trials}
+        )
+
+    def _get_raw_loss_from_vector(self, vec: tp.Sequence[float]) -> float:
+        """Compute raw (unpenalized) loss from optimizer vector."""
+        params = self.param_space.vector_to_dict(vec)
+        return self._loss_from_params(params).item()
+
+    def _compute_penalty_for_vector(self, vec: tp.Sequence[float], penalty_force: float) -> float:
+        """Compute penalty for a single parameter vector using self.penalty."""
+        X = np.asarray(vec).reshape(1, -1)
+        penalty_val = self.penalty.compute_penalty(X)
+        if isinstance(penalty_val, np.ndarray):
+            return float(penalty_val.item()) * penalty_force
+        return float(penalty_val) * penalty_force
+
+    def _update_penalty_state(self, X_history: np.ndarray,
+                              losses: np.ndarray,
+                              param_dicts: list[dict[str, float]]) -> None:
+        """Update internal penalty state using historical raw losses."""
+        self.penalty.update(X_history, losses, param_dicts)
+
+    def _warmstart_study_optuna(
+            self,
+            study: optuna.study.Study,
+            param_dicts: list[dict[str, float]],
+            raw_losses: list[float],
+            penalty_idx: np.ndarray,
+            penalty_force: float = 1.0,
+            use_penalty: bool = True
+    ) -> None:
+        """Replay historical trials on a fresh Optuna study with updated penalized losses."""
+        if not param_dicts:
+            return
+        param_names = param_dicts[0].keys()
+        X_history = np.array([
+            [params[name] for name in param_names] for params in param_dicts
+        ])[:, penalty_idx]
+        distributions = self.param_space.get_optuna_distributions()
+        if use_penalty:
+            penalties = self.penalty.compute_penalty(X_history).flatten() * penalty_force
+            for params, raw_loss, penalty in zip(param_dicts, raw_losses, penalties):
+                loss = raw_loss + float(penalty)
+                trial = optuna.trial.create_trial(
+                    params=params,
+                    value=loss,
+                    distributions=distributions
+                )
+                trial.set_user_attr("raw_loss", raw_loss)
+                study.add_trial(trial)
+        else:
+            for params, raw_loss in zip(param_dicts, raw_losses):
+                loss = raw_loss
+                trial = optuna.trial.create_trial(
+                    params=params,
+                    value=loss,
+                    distributions=distributions
+                )
+                trial.set_user_attr("raw_loss", raw_loss)
+                study.add_trial(trial)
+
+    def _warmstart_optimizer_ng(
+            self,
+            optimizer: ng.optimizers.base.Optimizer,
+            parametrization: ng.p.Parameter,
+            param_vectors: list[tp.Sequence[float]],
+            raw_losses: list[float],
+            penalty_idx: np.ndarray,
+            penalty_force: float = 1.0,
+    ) -> None:
+        """Replay historical trials on a fresh optimizer with updated penalized losses."""
+        if not param_vectors:
+            return
+        X_history = np.array([np.asarray(v).flatten() for v in param_vectors])[:, penalty_idx]
+        penalties = self.penalty.compute_penalty(X_history)
+
+        penalties = penalties.flatten() * penalty_force
+
+        for params_vec, raw_loss, penalty in zip(param_vectors, raw_losses, penalties):
+            candidate = parametrization.spawn_child()
+            candidate.value = (tuple(params_vec), {})
+            optimizer.tell(candidate, raw_loss + float(penalty))
+
+    def fit_nevergrad_penalty(
+            self,
+            show_progress: bool,
+            seed: tp.Optional[int],
+            return_best_spectrum: bool,
+            budget: int = 200,
+            optimizer: str = "TwoPointsDE",
+            track_trials: bool = True,
+
+            penalty_names: tp.Optional[list[str]] = None,
+            update_penalty_every: int = 20,
+            restart_every: int = 60,
+            penalty_force: float = 1.0,
+            **kwargs,
+    ) -> FitResult:
+        """
+        Fit spectra using Nevergrad with dynamic penalty updates.
+
+        The penalty is updated periodically using historical raw losses,
+        and the optimizer is warm-started with recomputed penalized losses.
+        Final results report RAW losses (not penalized).
+
+        :param show_progress: If True, show a progress bar via Nevergrad callback.
+        :param seed: Random seed for the Nevergrad optimizer.
+        :param return_best_spectrum: If True, simulate and return the spectrum
+            at the best parameters.
+        :param budget: Total number of function evaluations (optimization budget).
+        :param optimizer: Name of the Nevergrad optimizer to use
+            (e.g., "TwoPointsDE", "NGOpt").
+        :param track_trials: If True, record all trials for later analysis.
+        :param penalty_names: The name os parameters which should add penalty for the local minima.
+            That is this defines the dimensions for penalty loss. Default is all variable names
+
+        :param update_penalty_every: Recompute the penalty state every N evaluations.
+        :param restart_every: Create a fresh optimizer and warm-start it every N evaluations.
+        :param penalty_force: Multiplier applied to the penalty term.
+        :param kwargs: Extra arguments passed to `simulate_spectroscopic_data`.
+        :return: FitResult containing best parameters, raw loss, optional spectrum,
+            and additional info.
+        """
+        if ng is None:
+            raise RuntimeError("Nevergrad is required for fit_nevergrad_penalty but not installed")
+        if penalty_names is None:
+            penalty_names = self.param_space.varying_names
+            penalty_idx = np.arange(0, len(penalty_names))
+        else:
+            varying_names = self.param_space.varying_names
+            penalty_idx = np.array([idx for idx in range(len(varying_names)) if varying_names[idx] in penalty_names])
+
+        instr = self.param_space.instrument_nevergrad()
+        if seed is not None:
+            ng.optimizers.registry.seed(seed)
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+        raw_losses: list[float] = []
+        param_vectors: list[tp.Sequence[float]] = []
+
+        trials_tracker = TrialsTracker() if track_trials else None
+        progress_bar = ng.callbacks.ProgressBar() if show_progress else None
+        if progress_bar:
+            progress_bar.update_frequency = 25
+
+        opt = ng.optimizers.registry[optimizer](parametrization=instr, budget=budget)
+        if trials_tracker:
+            opt.register_callback("tell", trials_tracker)
+        if progress_bar:
+            opt.register_callback("tell", progress_bar)
+
+        for step in range(budget):
+            candidate = opt.ask()
+            param_vec = np.array(candidate.value[0])
+
+            raw_loss = self._get_raw_loss_from_vector(param_vec)
+
+            penalty_val = self._compute_penalty_for_vector(param_vec[penalty_idx], penalty_force)
+            penalized_loss = raw_loss + penalty_val
+
+            opt.tell(candidate, penalized_loss)
+
+            raw_losses.append(raw_loss)
+            param_vectors.append(param_vec)
+
+            if trials_tracker:
+                trials_tracker.override_last_raw_loss(raw_loss)
+
+            if (step + 1) % update_penalty_every == 0 and step + 1 < budget:
+                X_hist = np.array([np.asarray(v).flatten() for v in param_vectors])
+                losses_hist = np.array(raw_losses, dtype=float)
+                param_dicts = [self.param_space.vector_to_dict(v) for v in param_vectors]
+                self._update_penalty_state(X_hist[:, penalty_idx], losses_hist, param_dicts)
+
+            if (step + 1) % restart_every == 0 and step + 1 < budget:
+                opt = ng.optimizers.registry[optimizer](parametrization=instr, budget=budget)
+                self._warmstart_optimizer_ng(opt, instr, param_vectors, raw_losses, penalty_idx, penalty_force)
+                if trials_tracker:
+                    opt.register_callback("tell", trials_tracker)
+                if progress_bar:
+                    opt.register_callback("tell", progress_bar)
+
+        if raw_losses:
+            best_idx = int(np.argmin(raw_losses))
+            best_params = self.param_space.varying_vector_to_dict(param_vectors[best_idx])
+            best_raw_loss = raw_losses[best_idx]
+        else:
+            best_params = dict(self.param_space.varying_params)
+            best_raw_loss = float('inf')
+
+        best_spec = None
+        if return_best_spectrum:
+            best_spec = self.simulate_spectroscopic_data(
+                {**self.param_space.fixed_params, **best_params}, **kwargs)
+
+        trials = None
+        if track_trials and trials_tracker:
+            trials = self._tracker_to_trials(trials_tracker)
+
+        self.penalty.clear()
+        return FitResult(
+            best_params, best_raw_loss, best_spec,
+            {
+                "backend": "nevergrad",
+                "optimizer": optimizer,
+                "trials": trials,
+                "update_penalty_every": update_penalty_every,
+                "restart_every": restart_every,
+                "eval_count": len(raw_losses)
+            }
+        )
+
+    def fit_optuna_penalty(
+            self,
+            show_progress: bool,
+            seed: tp.Optional[int],
+            return_best_spectrum: bool,
+            n_trials: int = 300,
+
+            n_jobs: int = 1,
+            sampler: tp.Optional[optuna.samplers.BaseSampler] = None,
+            study_name: tp.Optional[str] = None,
+            run_dashboard: bool = True,
+
+            penalty_names: tp.Optional[list[str]] = None,
+            update_penalty_every: int = 20,
+            restart_every: int = 60,
+            penalty_force: float = 1.0,
+            **kwargs,
+    ) -> FitResult:
+        """
+        Fit spectra using Optuna with dynamic penalty updates.
+
+        The penalty is updated periodically using historical raw losses,
+        and the study is warm‑started with recomputed penalized losses.
+        Final results report RAW losses (not penalized).
+
+        :param show_progress: If True, show a tqdm progress bar.
+        :param seed: Random seed for the sampler (if the sampler supports it).
+        :param return_best_spectrum: If True, simulate and return the spectrum
+            at the best parameters.
+        :param n_trials: Total number of Optuna trials (evaluation budget).
+        :param n_jobs: Number of parallel jobs. Currently only n_jobs=1 is supported
+            (no parallelism). A warning is raised if n_jobs > 1.
+        :param sampler: Optuna sampler (e.g., TPESampler). Defaults to
+            TPESampler(multivariate=True, seed=seed).
+        :param study_name: Name of the Optuna study (passed to `create_study`).
+        :param run_dashboard: If True, launch the Optuna dashboard after optimization.
+            Requires `optuna-dashboard` installed.
+
+        :param penalty_names: The name os parameters which should add penalty for the local minima.
+            That is this defines the dimensions for penalty loss. Default is all variable names
+        :param update_penalty_every: Recompute the penalty state every N trials.
+        :param restart_every: Create a fresh study and warm-start it every N trials.
+        :param penalty_force: Multiplier applied to the penalty term.
+        :param kwargs: Extra arguments passed to `simulate_spectroscopic_data`.
+        :return: FitResult containing best parameters, raw loss, optional spectrum,
+            and additional info (including the final study and raw losses).
+        """
+        if optuna is None:
+            raise RuntimeError("Optuna is required for fit_optuna_penalty but not installed")
+
+        if n_jobs != 1:
+            raise NotImplementedError("For the loss with penalty, Optuna supports only one job")
+
+        def _suggest_optuna(study: optuna.Study, **kwargs):
+            trial = study.ask()
+            params = self.param_space.suggest_optuna(trial)
+            raw_loss = self._loss_from_params(params, **kwargs).item()
+            items = list(params.items())
+            start = len(self.param_space.fixed_params)
+
+            params = dict(
+                items[start:]
+            )
+            return trial, params, raw_loss
+
+        def _create_study(sampler: optuna.samplers.BaseSampler):
+            if show_progress:
+                storage = optuna.storages.InMemoryStorage()
+                study = optuna.create_study(
+                    direction="minimize",
+                    sampler=sampler,
+                    study_name=study_name,
+                    load_if_exists=True,
+                    storage=storage,
+                )
+            else:
+                study = optuna.create_study(
+                    direction="minimize",
+                    sampler=sampler,
+                    study_name=study_name,
+                    load_if_exists=True,
+                )
+            return study
+
+        def _restart_study(study: optuna.Study):
+            sampler = study.sampler
+            sampler = recreate_samplers.recreate_sampler_without_history(sampler)
+            study_name = study.study_name
+            if show_progress:
+                storage = study._storage
+                optuna.delete_study(study_name=study_name, storage=storage)
+                study = optuna.create_study(
+                    direction="minimize",
+                    sampler=sampler,
+                    study_name=study_name,
+                    storage=storage,
+                )
+            else:
+                study = optuna.create_study(
+                    direction="minimize",
+                    sampler=sampler,
+                    study_name=study_name,
+                )
+
+            study.sampler = sampler
+            return study
+
+        if sampler is None:
+            sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
+        else:
+            if seed is not None and hasattr(sampler, "seed"):
+                sampler.seed = seed
+
+        if penalty_names is None:
+            penalty_names = self.param_space.varying_names
+            penalty_idx = np.arange(0, len(penalty_names))
+        else:
+            varying_names = self.param_space.varying_names
+            penalty_idx = np.array([idx for idx in range(len(varying_names)) if varying_names[idx] in penalty_names])
+
+        raw_losses: list[float] = []
+        param_dicts: list[dict[str, float]] = []
+        param_vectors: list[np.ndarray] = []
+
+        pbar = None
+
+        study = _create_study(sampler)
+        if show_progress:
+            pbar = tqdm(total=n_trials, desc="Optuna penalty optimization")
+
+        for step in range(n_trials):
+            trial, params, raw_loss = _suggest_optuna(study, **kwargs)
+            vec = self.param_space.dict_to_vector(params)
+            penalty_val = self._compute_penalty_for_vector(vec[penalty_idx], penalty_force)
+            penalized_loss = raw_loss + penalty_val
+
+            study.tell(trial, penalized_loss)
+
+            raw_losses.append(raw_loss)
+            param_dicts.append(params)
+            param_vectors.append(vec)
+
+            if pbar:
+                pbar.update(1)
+                line = f"best trial: {np.argmin(raw_losses)}; best_rwa_loss: {min(raw_losses)}"
+                pbar.set_postfix_str(line)
+
+            if (step + 1) % update_penalty_every == 0 and step + 1 < n_trials:
+                X_hist = np.array([v.flatten() for v in param_vectors])
+                losses_hist = np.array(raw_losses, dtype=float)
+                self._update_penalty_state(X_hist[:, penalty_idx], losses_hist, param_dicts)
+
+            if (step + 1) % restart_every == 0 and step + 1 < n_trials:
+                new_study = _restart_study(study)
+
+                self._warmstart_study_optuna(new_study, param_dicts, raw_losses, penalty_idx, penalty_force)
+                study = new_study
+
+        if pbar:
+            pbar.close()
+
+        if raw_losses:
+            best_idx = int(np.argmin(raw_losses))
+            best_params = param_dicts[best_idx]
+            best_raw_loss = raw_losses[best_idx]
+        else:
+            best_params = dict(self.param_space.varying_params)
+            best_raw_loss = float("inf")
+
+        best_spec = None
+        if return_best_spectrum:
+            best_spec = self.simulate_spectroscopic_data(
+                {**self.param_space.fixed_params, **best_params}, **kwargs
+            )
+
+        new_study = _restart_study(study)
+        self._warmstart_study_optuna(new_study, param_dicts, raw_losses, penalty_idx, penalty_force, use_penalty=False)
+        study = new_study
+
+        if run_dashboard:
+            run_server(study._storage)
+
+        self.penalty.clear()
+        return FitResult(
+            best_params,
+            best_raw_loss,
+            best_spec,
+            {
+                "backend": "optuna",
+                "study": study,
+                "raw_losses": raw_losses,
+                "param_dicts": param_dicts,
+                "update_penalty_every": update_penalty_every,
+                "restart_every": restart_every,
+                "eval_count": len(raw_losses),
+            },
         )
 
     def fit(
@@ -920,6 +1469,14 @@ class BaseSpectrumFitter(ABC):
             seed: tp.Optional[int] = None,
             show_progress: bool = True,
             return_best_spectrum: bool = True,
+
+            use_penalty: bool = False,
+
+            penalty_names: tp.Optional[list[str]] = None,
+            update_penalty_every: int = 20,
+            restart_every: int = 60,
+            penalty_force: float = 1.0,
+
             **backend_kwargs,
     ) -> FitResult:
         """All fitting methods can be viewed in
@@ -931,6 +1488,28 @@ class BaseSpectrumFitter(ABC):
             After the initial fitting process it is recommended to reduce
             the bounds and continue fitting with any method of convex optimization from Nevergrad:
             For example, with COBYLA.
+
+        :param seed: Random seed for the optimizer/sampler.
+
+        :param show_progress: If True, display a progress bar.
+
+        :param return_best_spectrum: If True, simulate and return the spectrum at the best
+            parameters.
+
+        :param use_penalty: If True, use the penalty‑based variant of the optimizer.
+            This enables dynamic penalty updates and warm‑restarts.
+
+        :param penalty_names: The name os parameters which should add penalty for the local minima.
+            That is this defines the dimensions for penalty loss. Default is all variable names
+
+        :param penalty_force: Multiplier applied to the penalty term (only when
+            ``use_penalty=True``).
+
+        :param update_penalty_every: Recompute penalty state every N evaluations (only when
+            ``use_penalty=True``).
+
+        :param restart_every: Create a fresh optimizer/study every N evaluations and
+            warm‑start it with historical data (only when ``use_penalty=True``).
 
         :param backend_kwargs: The kwargs of fit settings described in optuna / nevergrad library
             NOTE! Optuna and Nevergrad have different backend parameters.
@@ -947,14 +1526,45 @@ class BaseSpectrumFitter(ABC):
         :return: None
         """
         method = backend.lower()
+        backend_kwargs = convert_backend_kwargs(backend, backend_kwargs)
         if method == "optuna":
-            return self.fit_optuna(seed=seed, show_progress=show_progress,
-                                   return_best_spectrum=return_best_spectrum, **backend_kwargs
-                                   )
+            if use_penalty:
+                return self.fit_optuna_penalty(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    penalty_names=penalty_names,
+                    penalty_force=penalty_force,
+                    update_penalty_every=update_penalty_every,
+                    restart_every=restart_every,
+                    **backend_kwargs,
+                )
+            else:
+                return self.fit_optuna(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    **backend_kwargs,
+                )
         if method in ("nevergrad", "ng"):
-            return self.fit_nevergrad(seed=seed, show_progress=show_progress,
-                                      return_best_spectrum=return_best_spectrum, **backend_kwargs
-                                      )
+            if use_penalty:
+                return self.fit_nevergrad_penalty(
+                    seed=seed,
+                    show_progress=show_progress,
+                    penalty_names=penalty_names,
+                    return_best_spectrum=return_best_spectrum,
+                    penalty_force=penalty_force,
+                    update_penalty_every=update_penalty_every,
+                    restart_every=restart_every,
+                    **backend_kwargs,
+                )
+            else:
+                return self.fit_nevergrad(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    **backend_kwargs,
+                )
         raise ValueError(f"Unknown fit method: {method}")
 
     def save_state(self, path: tp.Union[str, pathlib.Path]) -> None:
@@ -1029,6 +1639,7 @@ class SpectrumFitter(BaseSpectrumFitter):
             norm_mode: str = "integral",
             objective=objectives.MSEObjective(),
             weights: tp.Optional[tp.List[float]] = None,
+            penalty: penalty_computations.RepulsivePenalty = penalty_computations.RepulsivePenalty(),
             device: torch.device = torch.device("cpu"),
             dtype: torch.dtype = torch.float32,
     ) -> None:
@@ -1061,17 +1672,27 @@ class SpectrumFitter(BaseSpectrumFitter):
         :param device: Device for computation
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
         :param weights: The weights for multi-data fit. Default is None
+        :param penalty: The Class to manage penalty for the repulsion from the local minima
         """
-        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device, dtype)
+        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, penalty, device, dtype)
+
         self.x_exp, self.y_exp, self.multisample = self._set_experimental(x_exp, y_exp, device, dtype)
 
         if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x_exp), dtype=dtype, device=device)
+            self.weights = torch.ones(len(self.x_exp), dtype=dtype, device=device) / len(self.x_exp)
         elif weights is not None:
             self.weights = torch.tensor(weights, dtype=dtype, device=device)
+            self.weights = self.weights / self.weights.sum()
         else:
             self.weights = None
         self._loss_normalization = self._get_loss_norm()
+
+        if self.multisample:
+            self._n_data_points = sum(len(x) for x in self.x_exp)
+            self._proportional_to_mse = False
+        else:
+            self._n_data_points = len(self.x_exp)
+            self._proportional_to_mse = self._objective.LOSS_PROPORTIONAL_TO_MSE
 
     def _set_experimental(
             self, x_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
@@ -1100,7 +1721,6 @@ class SpectrumFitter(BaseSpectrumFitter):
             y_exp = torch.tensor(y_exp, dtype=dtype, device=device)
             y_exp = normalize_spectrum(x_exp, y_exp, mode=self.norm_mode)
             multisample = False
-
         return x_exp, y_exp, multisample
 
     def _simulate_single_spectrum(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
@@ -1188,6 +1808,7 @@ class Spectrum2DFitter(BaseSpectrumFitter):
             norm_mode: str = "integral",
             objective=objectives.MSEObjective(),
             weights: list[float] = None,
+            penalty: penalty_computations.RepulsivePenalty = penalty_computations.RepulsivePenalty(),
             device: torch.device = torch.device("cpu"),
             dtype: torch.dtype = torch.float32,
     ):
@@ -1223,19 +1844,30 @@ class Spectrum2DFitter(BaseSpectrumFitter):
         :param device: Device for computation
         :param objective: Used objective function. It should be an inheritor of objectives.BaseObjective
         :param weights: The weights for multi-data fit. Default is None
+        :param penalty: The Class to manage penalty for the repulsion from the local minima
         """
-        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, device)
+        super().__init__(param_space, spectra_simulator, norm_mode, objective, weights, penalty, device, dtype)
         self.x1_exp, self.x2_exp, self.y_exp, self.multisample = self._set_experimental(
             x1_exp, x2_exp, y_exp, device, dtype)
 
         if self.multisample and (weights is None):
-            self.weights = torch.ones(len(self.x1_exp), dtype=dtype, device=device)
+            self.weights = torch.ones(len(self.x1_exp), dtype=dtype, device=device) / len(self.x1_exp)
         elif weights is not None:
             self.weights = torch.tensor(weights, dtype=dtype, device=device)
+            self.weights = self.weights / self.weights.sum()
         else:
             self.weights = None
 
         self._loss_normalization = self._get_loss_norm()
+
+        if self.multisample:
+            self._n_data_points = sum(len(x) for x in self.x1_exp)
+            self._proportional_to_mse = False
+
+        else:
+            self._n_data_points = len(self.x1_exp)
+            self._proportional_to_mse = self._objective.LOSS_PROPORTIONAL_TO_MSE
+
 
     def _set_experimental(
             self, x1_exp: tp.Union[tp.Union[np.ndarray, torch.Tensor], list[tp.Union[np.ndarray, torch.Tensor]]],
@@ -1404,6 +2036,22 @@ class SpectrumCompositeFitter:
                 )
             self.weights = list(weights)
 
+        self._n_data_points = sum(fitter._n_data_points for fitter in fitters)
+        self._proportional_to_mse = False
+
+    @property
+    def device(self):
+        return self.fitters[0].device
+
+    @property
+    def dtype(self):
+        return self.fitters[0].dtype
+
+    @property
+    def proportional_to_mse(self):
+        return self._proportional_to_mse
+
+
     def _loss_from_params(self, params: tp.Dict[str, float], **kwargs) -> torch.Tensor:
         """
         Compute the combined loss from all sub‑fitters.
@@ -1415,20 +2063,24 @@ class SpectrumCompositeFitter:
         :param kwargs: Additional keyword arguments forwarded to each sub‑fitter.
         :return: Scalar loss tensor.
         """
-        device = torch.device("cpu")
-        dtype = torch.float32
-        if hasattr(self.fitters[0], "x_exp"):
-            x = self.fitters[0].x_exp
-            if isinstance(x, list):
-                device = x[0].device if x else device
-                dtype = x[0].dtype if x else dtype
-            elif isinstance(x, torch.Tensor):
-                device = x.device
-                dtype = x.dtype
 
-        total_loss = torch.tensor(0.0, device=device, dtype=dtype)
+        total_loss = torch.tensor(0.0, device=self.device, dtype=self.dtype)
         for fitter, w in zip(self.fitters, self.weights):
             total_loss = total_loss + w * fitter._loss_from_params(params, **kwargs)
+        return total_loss
+
+    def _loss_from_params_random(
+            self,
+            params: tp.Dict[str, float],
+            rng: tp.Optional[np.random.Generator] = None,
+            **kwargs
+    ) -> tp.Union[torch.Tensor, tp.List[torch.Tensor]]:
+        if rng is None:
+            rng = torch.Generator(device=self.device).manual_seed(42)
+
+        total_loss = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+        for fitter, w in zip(self.fitters, self.weights):
+            total_loss = total_loss + w * fitter._loss_from_params_random(params, rng, **kwargs)
         return total_loss
 
     def _tracker_to_trials(self, trials_tracker: TrialsTracker) -> tp.List[NevergradTrial]:
@@ -1451,57 +2103,110 @@ class SpectrumCompositeFitter:
         return ng_trials
 
     def fit(
-        self,
-        backend: str = "optuna",
-        seed: tp.Optional[int] = None,
-        show_progress: bool = True,
-        return_best_spectrum: bool = True,
-        **backend_kwargs,
+            self,
+            backend: str = "optuna",
+            seed: tp.Optional[int] = None,
+            show_progress: bool = True,
+            return_best_spectrum: bool = True,
+
+            use_penalty: bool = False,
+
+            penalty_names: tp.Optional[list[str]] = None,
+            update_penalty_every: int = 20,
+            restart_every: int = 60,
+            penalty_force: float = 1.0,
+
+            **backend_kwargs,
     ) -> FitResult:
-        """
-        Run the optimisation using the selected backend.
+        """All fitting methods can be viewed in
+        ''SpectrumFitter.__available_optimizer__.''
 
-        The behaviour mirrors that of :meth:`BaseSpectrumFitter.fit`. The
-        combined loss is minimised, and the best parameters are returned
-        together with optional simulated spectra from each sub‑fitter.
+        :param backend: optuna / nevergrad. Sets which library should be used to fit data.
+            Optuna supports not as many methods as nevergrad but they are quite powerful. Default fitting method is TPE.
+            TPE has quite high exploration abilities and not as dramatic speed of work as Bayesian models.
+            After the initial fitting process it is recommended to reduce
+            the bounds and continue fitting with any method of convex optimization from Nevergrad:
+            For example, with COBYLA.
 
-        :param backend: Optimisation library to use. Allowed values are
-            ``"optuna"`` or ``"nevergrad"`` (``"ng"`` is also accepted).
-        :param seed: Random seed for reproducibility.
-        :param show_progress: If ``True``, display a progress bar during
-            optimisation.
-        :param return_best_spectrum: If ``True``, the returned :class:`FitResult`
-            will contain the simulated spectra for the best parameters. For a
-            composite fitter this is a list of spectra, one per sub‑fitter.
-        :param backend_kwargs: Additional arguments passed to the backend‑specific
-            fit method. For Optuna these include ``n_trials``, ``timeout``,
-            ``n_jobs``, ``sampler``, etc. For Nevergrad they include ``budget``,
-            ``optimizer_name``, ``track_trials``.
-        :return: A :class:`FitResult` object containing the best parameters, loss
-            value, best spectra (if requested), and backend‑specific metadata.
-        :raises ValueError: If an unknown backend is requested.
-        :raises RuntimeError: If Nevergrad is selected but the library is not
-            installed.
+        :param seed: Random seed for the optimizer/sampler.
+
+        :param show_progress: If True, display a progress bar.
+
+        :param return_best_spectrum: If True, simulate and return the spectrum at the best
+            parameters.
+
+        :param use_penalty: If True, use the penalty‑based variant of the optimizer.
+            This enables dynamic penalty updates and warm‑restarts.
+
+        :param penalty_names: The name os parameters which should add penalty for the local minima.
+            That is this defines the dimensions for penalty loss. Default is all variable names
+
+        :param update_penalty_every: Recompute penalty state every N evaluations (only when
+            ``use_penalty=True``).
+
+        :param restart_every: Create a fresh optimizer/study every N evaluations and
+            warm‑start it with historical data (only when ``use_penalty=True``).
+
+        :param penalty_force: Multiplier applied to the penalty term (only when
+            ``use_penalty=True``).
+
+        :param backend_kwargs: The kwargs of fit settings described in optuna / nevergrad library
+            NOTE! Optuna and Nevergrad have different backend parameters.
+            We have saved the initial naming from these libraries
+
+            Key differences:
+                                        optuna                                   nevergrad
+            ----------------------------------------------------------------------------------------------------
+            method type          optuna.samplers.BaseSampler                    str object
+            ----------------------------------------------------------------------------------------------------
+            number of iterations      n_trials                                    budget
+            ----------------------------------------------------------------------------------------------------
+
+        :return: None
         """
         method = backend.lower()
+        backend_kwargs = convert_backend_kwargs(backend, backend_kwargs)
         if method == "optuna":
-            return self._fit_optuna(
-                seed=seed,
-                show_progress=show_progress,
-                return_best_spectrum=return_best_spectrum,
-                **backend_kwargs,
-            )
-        elif method in ("nevergrad", "ng"):
-            return self._fit_nevergrad(
-                seed=seed,
-                show_progress=show_progress,
-                return_best_spectrum=return_best_spectrum,
-                **backend_kwargs,
-            )
-        else:
-            raise ValueError(f"Unknown fit method: {method}")
+            if use_penalty:
+                raise NotImplementedError("Complex Fitter doesn't support penalty parameters")
+                return self.fit_optuna_penalty(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    penalty_force=penalty_force,
+                    update_penalty_every=update_penalty_every,
+                    restart_every=restart_every,
+                    **backend_kwargs,
+                )
+            else:
+                return self.fit_optuna(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    **backend_kwargs,
+                )
+        if method in ("nevergrad", "ng"):
+            if use_penalty:
+                raise NotImplementedError("Complex Fitter doesn't support penalty parameters")
+                return self.fit_nevergrad_penalty(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    penalty_force=penalty_force,
+                    update_penalty_every=update_penalty_every,
+                    restart_every=restart_every,
+                    **backend_kwargs,
+                )
+            else:
+                return self.fit_nevergrad(
+                    seed=seed,
+                    show_progress=show_progress,
+                    return_best_spectrum=return_best_spectrum,
+                    **backend_kwargs,
+                )
+        raise ValueError(f"Unknown fit method: {method}")
 
-    def _fit_optuna(
+    def fit_optuna(
         self,
         show_progress: bool,
         seed: tp.Optional[int],
@@ -1530,8 +2235,6 @@ class SpectrumCompositeFitter:
         :param kwargs: Additional arguments passed to the loss function.
         :return: :class:`FitResult`
         """
-        import optuna
-
         def loss_function(trial):
             p = self.param_space.suggest_optuna(trial)
             return self._loss_from_params(p, **kwargs).item()
@@ -1557,7 +2260,6 @@ class SpectrumCompositeFitter:
                 n_jobs=n_jobs,
                 show_progress_bar=show_progress,
             )
-            from optuna_dashboard import run_server
             run_server(storage)
         else:
             study = optuna.create_study(
@@ -1587,13 +2289,13 @@ class SpectrumCompositeFitter:
             {"backend": "optuna", "study": study},
         )
 
-    def _fit_nevergrad(
+    def fit_nevergrad(
         self,
         show_progress: bool,
         seed: tp.Optional[int],
         return_best_spectrum: bool,
         budget: int = 200,
-        optimizer_name: str = "TwoPointsDE",
+        optimizer: str = "TwoPointsDE",
         track_trials: bool = True,
         **kwargs,
     ) -> FitResult:
@@ -1604,21 +2306,16 @@ class SpectrumCompositeFitter:
         :param seed: Random seed.
         :param return_best_spectrum: Whether to return best spectra.
         :param budget: Number of function evaluations.
-        :param optimizer_name: Name of the Nevergrad optimizer.
+        :param optimizer: Name of the Nevergrad optimizer.
         :param track_trials: Whether to record trial history.
         :param kwargs: Additional arguments passed to the loss function.
         :return: :class:`FitResult`
         :raises RuntimeError: If Nevergrad is not installed.
         """
-        try:
-            import nevergrad as ng
-        except ImportError:
-            raise RuntimeError("Nevergrad is required for fit_nevergrad but not installed.")
-
         instr = self.param_space.instrument_nevergrad()
         if seed is not None:
             ng.optimizers.registry.seed(seed)
-        opt = ng.optimizers.registry[optimizer_name](parametrization=instr, budget=budget)
+        opt = ng.optimizers.registry[optimizer](parametrization=instr, budget=budget)
 
         def _loss_from_tuple(*args):
             params = self.param_space.vector_to_dict(args)
@@ -1651,7 +2348,7 @@ class SpectrumCompositeFitter:
             best_params,
             self._loss_from_params({**self.param_space.fixed_params, **best_params}, **kwargs).item(),
             best_spec,
-            {"backend": "nevergrad", "optimizer": optimizer_name, "trials": trials},
+            {"backend": "nevergrad", "optimizer": optimizer, "trials": trials},
         )
 
     def save_state(self, path: str) -> None:
@@ -1711,163 +2408,3 @@ class SpectrumCompositeFitter:
             fitters.append(fitter)
 
         return cls(fitters, weights=meta["weights"])
-
-
-class SpaceSearcher:
-    """For some cases not only the best fitting parameters are useful but all
-    'good' parameters.
-
-    Space searcher try to catch 'good' parameters that are far from the
-    best fit parameters.
-    """
-    def __init__(
-        self,
-        loss_rel_tol: float = 1.0,
-        top_k: int = 5,
-        distance_fraction: float = 0.2,
-    ):
-        """
-        :param loss_rel_tol: loss_trial / loss_best: cutoff parameter.
-
-            that sets the acceptable loss of trial. Default is 1
-        :param top_k: Returns only top_k lowest-loss trials.
-        :param distance_fraction: Among all 'good' trials with low loss it
-            accepts only trials with Euclidean distance in scaled (-1, 1) parameters > distance_fraction * max_distance
-
-            To compute distance the parameters are scaled to (-1, 1)
-        """
-        self.loss_rel_tol = float(loss_rel_tol)
-        self.top_k = int(top_k)
-        self.distance_fraction = float(distance_fraction)
-
-    def _parse_trials(self, trials: list[tp.Union[NevergradTrial, optuna.Trial]], param_names: list[str]):
-        param_rows = []
-        losses = []
-        trial_ids = []
-        for t in trials:
-            if t.value is None:
-                continue
-            vals = []
-            for name in param_names:
-                if name not in t.params:
-                    vals = None
-                    break
-                vals.append(float(t.params[name]))
-            if vals is None:
-                continue
-            param_rows.append(vals)
-            losses.append(float(t.value))
-            trial_ids.append(t._trial_id)
-        if len(param_rows) == 0:
-            return np.zeros((0, 0)), np.array([]), []
-        P = np.asarray(param_rows, dtype=float)
-        L = np.asarray(losses, dtype=float)
-        return P, L, np.asarray(trial_ids, dtype=np.int32)
-
-    def _extract_trials_from_fit(self, fit_result: FitResult,
-                                   param_names: tp.Optional[list[str]] = None):
-        """
-        Return arrays: (param_matrix, losses, trial_indices).
-
-        param_matrix shape: (n_trials, n_varying_params)
-        losses: array of length n_trials (float)
-        trial_indices: list of optuna trial numbers corresponding to rows
-        """
-        backend = fit_result.optimizer_info["backend"]
-        opt_info = fit_result.optimizer_info
-
-        if backend == "nevergrad":
-            trials = opt_info.get("trials", [])
-        elif backend == "optuna":
-            if "study" in opt_info:
-                trials = [t for t in opt_info["study"].trials if t.state.is_finished()]
-            elif "trials" in opt_info:
-                trials = [t for t in opt_info["trials"] if t.get("state") == "COMPLETE"]
-            else:
-                trials = []
-        else:
-            raise KeyError(f"Unknown backend: {backend}")
-
-        if len(trials) == 0:
-            return np.zeros((0, 0)), np.array([]), []
-
-        if param_names is None:
-            first = trials[0]
-            p_dict = first.params if hasattr(first, "params") else first.get("params", {})
-            param_names = list(p_dict.keys())
-
-        return trials, param_names
-
-    def __call__(self, fit_result: FitResult, param_names: tp.Optional[tp.List[str]] = None) ->\
-            tp.List[tp.Dict[str, tp.Any]]:
-        """
-        :param fit_result: The output of fitter.
-
-        :param param_names: The names of parameters that should be included in search procedure.
-        Default value is None means that all spec (varying) parameters should be included.
-        :return: The results of fitting searching
-        """
-        trials, param_names = self._extract_trials_from_fit(fit_result, param_names)
-        P, L, trial_numbers = self._parse_trials(trials, param_names)
-        best_params = fit_result.best_params
-
-        if P.size == 0 or L.size == 0:
-            return []
-
-        scaler = StandardScaler()
-        P_scaled = scaler.fit_transform(P)
-
-        best_loss = float(L.min())
-        loss_cutoff = best_loss * (1.0 + self.loss_rel_tol)
-        good_mask = L <= loss_cutoff
-        if not np.any(good_mask):
-            return []
-
-        P_good = P_scaled[good_mask]
-        L_good = L[good_mask]
-        trials_good = trial_numbers[good_mask]
-
-        best_idx_in_good = int(np.argmin(L_good))
-        best_vector = P_good[best_idx_in_good].reshape(1, -1)
-
-        distances = cdist(best_vector, P_good, metric="euclidean").flatten()
-
-        sorted_idx = np.argsort(distances)
-        sorted_idx = sorted_idx[sorted_idx != best_idx_in_good][::-1]
-
-        max_dist = max(distances)
-        if self.distance_fraction > 0:
-            thresh = self.distance_fraction * max_dist
-            within_thresh = [i for i in sorted_idx if distances[i] >= thresh]
-            if within_thresh:
-                chosen_idx = within_thresh[: self.top_k]
-            else:
-                chosen_idx = sorted_idx[: self.top_k]
-        else:
-            chosen_idx = sorted_idx[: self.top_k]
-
-        results: tp.List[tp.Dict[str, tp.Any]] = []
-
-        trial_map = {getattr(t, "number", getattr(t, "_trial_id", None)): t for t in trials}
-
-        for idx in chosen_idx:
-            tn = int(trials_good[idx])
-            t_obj = trial_map.get(tn)
-            params = getattr(t_obj, "params", {}) if t_obj is not None else {}
-
-            delta = {}
-            for key, value in params.items():
-                value_best = best_params.get(key, None)
-                delta_value = value - value_best
-                delta[key] = delta_value
-
-            results.append(
-                {
-                    "trial_number": tn,
-                    "params": params,
-                    "delta": delta,
-                    "loss": float(L_good[idx]),
-                    "distance": float(distances[idx]),
-                }
-            )
-        return results
