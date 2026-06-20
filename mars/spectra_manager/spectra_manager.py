@@ -1,4 +1,3 @@
-import math
 import typing as tp
 from functools import wraps
 from dataclasses import dataclass
@@ -61,7 +60,6 @@ class PostSpectraProcessing(nn.Module):
         return spec
 
     def _broading_fabric(self, gauss: torch.Tensor, lorentz: torch.Tensor) -> torch.Tensor:
-        # Check if all values are zero (not just any)
         gauss_zero = (gauss == 0).all()
         lorentz_zero = (lorentz == 0).all()
 
@@ -1114,7 +1112,7 @@ class Broadener(nn.Module):
                 )
         ).square().sum(dim=-2)
 
-    def add_hamiltonian_straine(self, sample: spin_model.MultiOrientedSample, squared_width: torch.Tensor) ->\
+    def add_hamiltonian_strain(self, sample: spin_model.MultiOrientedSample, squared_width: torch.Tensor) ->\
             torch.Tensor:
         """Adds residual broadening due to unresolved interactions.
 
@@ -1126,7 +1124,8 @@ class Broadener(nn.Module):
         return (squared_width + hamiltonian_width).sqrt()
 
     def forward(self, sample: spin_model.MultiOrientedSample,
-                 vector_down: torch.Tensor, vector_up: torch.Tensor, B_trans: torch.Tensor) -> torch.Tensor:
+                vector_down: torch.Tensor, vector_up: torch.Tensor,
+                B_trans: torch.Tensor) -> torch.Tensor:
         """Compute total Gaussian linewidth (FWHM) for each transition by
         combining:
 
@@ -1152,7 +1151,7 @@ class Broadener(nn.Module):
         for strained_data in sample.build_zero_field_strain():
             result += self._compute_field_free_strain_square(strained_data, vector_down, vector_up)
 
-        return self.add_hamiltonian_straine(sample, result)
+        return self.add_hamiltonian_strain(sample, result)
 
 
 class BaseIntensityCalculator(nn.Module, ABC):
@@ -2262,7 +2261,6 @@ class BaseResSpectra(BaseSpectra):
         else:
             return context is not None
 
-
     def _cashed_resfield(self, sample: spin_model.MultiOrientedSample,
                                 B_low: torch.Tensor, B_high: torch.Tensor,
                                 F: torch.Tensor, Gz: torch.Tensor):
@@ -2762,7 +2760,7 @@ class StationarySpectra(BaseResSpectra):
                                   populator: tp.Optional[tp.Union[BasePopulator, str]],
                                   context: tp.Optional[contexts.BaseContext],
                                   computational_details: ComputationalDetails,
-                                  device: torch.device, dtype: torch.dtype):
+                                  device: torch.device, dtype: torch.dtype) -> BaseIntensityCalculator:
         """Instantiate or return the intensity calculator for transition strengths.
 
         :param intensity_calculator: Pre-configured calculator; if None, one is created.

@@ -37,7 +37,7 @@ def concat_coupling_managers(contexts: tp.Sequence[Context]) -> CouplingChannelM
 
 
 def _normalize_to_components(
-        contexts: tp.List[tp.Union[Context, SummedContext]]
+        contexts: tp.Sequence[tp.Union[Context, SummedContext]]
 ) -> tp.Tuple[tp.List[tp.List[Context]], tp.List[int], tp.List[int], tp.List[int], torch.device, torch.dtype]:
     """
     Normalize input contexts into uniform component lists with metadata.
@@ -190,7 +190,7 @@ def _group_components_by_position(
 
 
 def organize_contexts_for_concatenation(
-        contexts: tp.List[tp.Union[Context, SummedContext]]
+        contexts: tp.Sequence[tp.Union[Context, SummedContext]]
 ) -> tp.Tuple[tp.List[tp.Sequence[Context]], torch.device, torch.dtype]:
     """Organize contexts into homogeneous basis groups with minimal zero padding.
 
@@ -228,7 +228,8 @@ def organize_contexts_for_concatenation(
         component_lists, num_with_basis, num_none_basis, spin_system_dim, device, dtype), device, dtype
 
 
-def concat_contexts(contexts: tp.List[tp.Union[Context, SummedContext]]) -> tp.Union[Context, SummedContext]:
+def concat_contexts(contexts: tp.Sequence[tp.Union[Context, SummedContext]],
+                    mode: str = "direct_sum") -> tp.Union[Context, SummedContext]:
     """Concatenates multiple contexts (either Context or SummedContext objects) into a single Composite context.
 
     Concatenates multiple contexts into a single context representing the direct sum of spin systems.
@@ -264,6 +265,9 @@ def concat_contexts(contexts: tp.List[tp.Union[Context, SummedContext]]) -> tp.U
         A single Context object if all subsystems share the same basis type,
         or a SummedContext containing two contexts (non-eigenbasis and eigenbasis groups).
     """
+    if mode != "direct_sum":
+        raise NotImplementedError("Current version of 'concat_contexts'"
+                                  "supports only direct_sum concatenation")
     groups, device, dtype = organize_contexts_for_concatenation(contexts)
     time_dimension = groups[0][0].time_dimension
     results = [_concat_homogeneous_contexts(group, device, dtype, time_dimension) for group in groups]

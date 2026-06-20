@@ -5,6 +5,7 @@ from ... import constants
 from . import core
 from .. import contexts
 
+import torch.nn as nn
 
 class StationaryPopulator(core.BasePopulator):
     """COmputes the population-dependent part of the transition intensity for
@@ -60,3 +61,51 @@ class StationaryPopulator(core.BasePopulator):
         if self.context is not None:
             self.context.close_context()
         return self._out_population_difference(populations, lvl_down, lvl_up)
+
+
+class StationaryPopulatorExpanded(StationaryPopulator):
+    """
+    Extended version of `StationaryPopulator` that supports multiple independent
+    temperature values and/or additional batch dimensions.
+
+    In the base `StationaryPopulator`, the `init_temperature` is a scalar used
+    for all energy levels across all samples. In this expanded version,
+    `init_temperature` can have its own batch dimensions (e.g., multiple temperature
+    points per structure). These are broadcasted correctly against the energy tensor.
+
+    **Key differences**:
+    - `_temp_dependant_init_population` reshapes `self.init_temperature` to have a
+      leading batch dimension followed by ones to align with the energy tensor
+      dimensions, using `reshape`. This allows
+      temperature to vary across different independent configurations (e.g., different
+      sample points or different mean iterations).
+
+    The temperature should have dimensions: [temp_dimension, *batch_dimensions]
+    The output has shape: [temp_dimension, *bathc_dimensions, spin_system_dimensions]
+    """
+    def _temp_dependant_init_population(self,
+                energies: torch.Tensor,
+                lvl_down: torch.Tensor,
+                lvl_up: torch.Tensor,
+                full_system_vectors: tp.Optional[torch.Tensor],
+                *args, **kwargs):
+        """
+        Returns the populations defined as stationary population at temperature 'init_temperature'.
+        """
+        new_shape = self.init_temperature.shape + (1,) * (energies.dim() - 1)
+        temperature = self.init_temperature.reshape(new_shape)
+        return nn.functional.softmax(
+            -constants.unit_converter(energies, "Hz_to_K") / temperature, dim=-1
+        )
+
+    def _context_dependant_init_population(self,
+                energies: torch.Tensor,
+                lvl_down: torch.Tensor,
+                lvl_up: torch.Tensor,
+                full_system_vectors: tp.Optional[torch.Tensor],
+                *args, **kwargs):
+        """
+        Returns the populations defined as polarized and given by the population defined at context
+        """
+        return self.context.get_transformed_init_populations(full_system_vectors, normalize=False)
+

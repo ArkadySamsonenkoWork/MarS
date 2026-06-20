@@ -89,8 +89,7 @@ def rotation_matrix_to_euler_angles(R: torch.Tensor, convention: str = "zyz"):
 
 def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
     """
-    :param euler_angles: torch.Tensor of shape (..., 3) containing Euler angles in radians.
-
+    :param angles: torch.Tensor of shape (..., 3) containing Euler angles in radians.
     :param convention: str, rotation convention (default 'zyz')
                    Supported: 'zyz', 'xyz', 'xzy', 'yxz', 'yzx', 'zxy', 'zyx'
     :return: torch.Tensor of shape (..., 3, 3) containing rotation matrices
@@ -105,7 +104,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
     cx, cy, cz = cos_angles[:, 0], cos_angles[:, 1], cos_angles[:, 2]
     sx, sy, sz = sin_angles[:, 0], sin_angles[:, 1], sin_angles[:, 2]
 
-    if convention == 'zyz':
+    if convention == "zyz":
         # R = Rz2 * Ry * Rz1
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cx * cy * cz - sx * sz
@@ -118,7 +117,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sy * sz
         R[:, 2, 2] = cy
 
-    elif convention == 'xyz':
+    elif convention == "xyz":
         # R = Rz * Ry * Rx
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz
@@ -131,7 +130,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sx * cz + cx * sy * sz
         R[:, 2, 2] = cx * cy
 
-    elif convention == 'zyx':
+    elif convention == "zyx":
         # R = Rx * Ry * Rz
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz
@@ -144,7 +143,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sx * cy
         R[:, 2, 2] = cx * cy
 
-    elif convention == 'xzy':
+    elif convention == "xzy":
         # R = Ry * Rz * Rx
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz
@@ -157,7 +156,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sx * cz
         R[:, 2, 2] = cx * cy + sx * sy * sz
 
-    elif convention == 'yxz':
+    elif convention == "yxz":
         # R = Rz * Rx * Ry
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz + sx * sy * sz
@@ -170,7 +169,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sy * sz + sx * cy * cz
         R[:, 2, 2] = cx * cy
 
-    elif convention == 'yzx':
+    elif convention == "yzx":
         # R = Rx * Rz * Ry
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz
@@ -183,7 +182,7 @@ def euler_angles_to_matrix(angles: torch.Tensor, convention: str = "zyz"):
         R[:, 2, 1] = sx * cy + cx * sy * sz
         R[:, 2, 2] = cx * cy - sx * sy * sz
 
-    elif convention == 'zxy':
+    elif convention == "zxy":
         # R = Ry * Rx * Rz
         R = torch.zeros(angles.shape[0], 3, 3, device=angles.device, dtype=angles.dtype)
         R[:, 0, 0] = cy * cz - sx * sy * sz
@@ -243,6 +242,22 @@ def get_canonical_orientations(angles: torch.Tensor):
     return rotation_matrix_to_euler_angles(new_Rs)
 
 
+def get_canonical_orientations_(angles: torch.Tensor) -> torch.Tensor:
+    """
+    Compute Canonical angles for set of angles using SVD mean projection in-place.
+    """
+    Rs = euler_angles_to_matrix(angles)
+    R_mean = mean_rotation_svd(Rs)
+    R_mean.transpose_(-2, -1)
+    n = Rs.shape[-3]
+    batch_shape = R_mean.shape[:-2]
+    expand_shape = batch_shape + (n, 3, 3)
+    R_align_expanded = R_mean.unsqueeze(-3).expand(expand_shape)
+    torch.matmul(R_align_expanded, Rs, out=Rs)
+    angles.copy_(rotation_matrix_to_euler_angles(Rs))
+    return angles
+
+
 def float_to_complex_dtype(dtype: torch.dtype):
     if dtype is torch.float16:
         return torch.complex32
@@ -253,3 +268,27 @@ def float_to_complex_dtype(dtype: torch.dtype):
     else:
         raise NotImplementedError("dtype must be float")
 
+
+def are_optional_tensors_close(first_tensor: tp.Optional[torch.Tensor],
+                               second_tensor: tp.Optional[torch.Tensor],
+                               rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+    """
+    Compare two optional tensors for numerical equality, handling ``None`` values gracefully.
+
+    This method safely checks if two tensors are equivalent. It first verifies that both
+    tensors share the same ``None`` state. If both are tensors, it evaluates their numerical
+    closeness
+
+    :param first_tensor: The first tensor to compare. Can be ``None``.
+    :param second_tensor: The second tensor to compare. Can be ``None``.
+    :return: ``True`` if both tensors are ``None``, or if both are tensors and their values
+             are close
+             Returns ``False`` if one is ``None`` and the other is not, or if the tensors
+             differ.
+    """
+    if (first_tensor is None) != (second_tensor is None):
+        return False
+    if first_tensor is not None:
+        if not torch.allclose(first_tensor, second_tensor, rtol=rtol, atol=atol):
+            return False
+    return True

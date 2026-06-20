@@ -1,4 +1,5 @@
 from .spectra_manager import *
+from .spectra_manager_expanded import StationarySpectraExpanded
 from .wave_calculator import *
 from .direct_managers import *
 

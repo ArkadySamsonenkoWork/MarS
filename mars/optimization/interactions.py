@@ -792,7 +792,7 @@ class SampleVary:
                     g_tensor,  fixed_parameters, base_name_local
                 )
 
-    def _process_interaction_type(self, spin_system_data, vary_data, interaction_type,
+    def _process_interaction_type(self, serialized_spin_system, vary_data, interaction_type,
                                   vary_parameters: list[ParamSpec], fixed_parameters: dict[str, float]):
         dicted_vary = {}
         if vary_data is not None:
@@ -800,7 +800,7 @@ class SampleVary:
                 key = (entry[0], entry[1])
                 dicted_vary[key] = entry[2]
 
-        for entry in spin_system_data:
+        for entry in serialized_spin_system:
             i, j, interaction = entry[0], entry[1], entry[2]
 
             base_name_local = f"{interaction_type}_{i}_{j}" if j is not None else f"{interaction_type}_{i}"

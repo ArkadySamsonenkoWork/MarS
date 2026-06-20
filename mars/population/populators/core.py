@@ -134,6 +134,9 @@ class BasePopulator(nn.Module):
                 lvl_up: torch.Tensor,
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
+        """
+        Returns the populations defined as stationary population at temperature 'init_temperature'.
+        """
         return nn.functional.softmax(
             -constants.unit_converter(energies, "Hz_to_K") / self.init_temperature, dim=-1
         )
@@ -144,6 +147,9 @@ class BasePopulator(nn.Module):
                 lvl_up: torch.Tensor,
                 full_system_vectors: tp.Optional[torch.Tensor],
                 *args, **kwargs):
+        """
+        Returns the populations defined as polarized and given by the
+        """
         return self.context.get_transformed_init_populations(full_system_vectors, normalize=False)
 
     def _out_population_difference(self, populations: torch.Tensor, lvl_down: torch.Tensor, lvl_up: torch.Tensor):

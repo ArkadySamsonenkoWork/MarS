@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 from abc import ABC, abstractmethod
 import typing as tp
 from matplotlib import pyplot as plt
@@ -66,6 +69,46 @@ class BaseMesh(nn.Module, ABC):
         """
         pass
 
+    def is_equivalent(self, other: BaseMesh, rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+        """Check if two meshes are structurally and numerically equivalent.
+
+        :param other: Another BaseMesh instance to compare against.
+        :param rtol: Relative tolerance for tensor comparison.
+        :param atol: Absolute tolerance for tensor comparison.
+        :return: True if both meshes have the same properties and rotation matrices.
+        """
+        if not isinstance(other, BaseMesh):
+            return False
+        if type(self) is not type(other):
+            return False
+        if self.disordered != other.disordered:
+            return False
+        if self.axial != other.axial:
+            return False
+        if self.initial_size != other.initial_size:
+            return False
+
+        self_rot = self.rotation_matrices
+        other_rot = other.rotation_matrices
+
+        if (self_rot is None) != (other_rot is None):
+            return False
+
+        if self_rot is not None:
+            if not torch.allclose(self_rot, other_rot, rtol=rtol, atol=atol):
+                return False
+        return True
+
+
+
+    def to_json_dict(self) -> tp.Dict:
+        """Return a JSON-serializable dict that describes this mesh and references its tensors.
+        The returned dict must contain at least:
+          - `"type"`: str, the class name (e.g. "CrystalMesh", "DelaunayMesh").
+        All constructor arguments that are tensors should be replaced by string keys.
+        """
+        raise NotImplementedError("add 'to_json_dict' to make mesh serializable")
+
 
 class CrystalMesh(BaseMesh):
     """Mesh representation for single-crystal samples with fixed orientation.
@@ -90,14 +133,20 @@ class CrystalMesh(BaseMesh):
         :type dtype: torch.dtype
         """
         super().__init__(device=device, dtype=dtype)
+
+        self.convention = convention
         if isinstance(euler_angles, list):
-            euler_angles = torch.tensor([euler_angles], dtype=dtype, device=device)
+            self._euler_angles_list = euler_angles
+            euler_angles = torch.tensor(euler_angles, dtype=dtype, device=device)
+        else:
+            self._euler_angles_list = euler_angles.tolist()
+
         if euler_angles.dim() == 1:
             euler_angles = euler_angles.unsqueeze(0)
+
         self.register_buffer("_rotation_matrices",
                              utils.euler_angles_to_matrix(euler_angles.to(device=device, dtype=dtype), convention)
                              )
-
     @property
     def rotation_matrices(self) -> torch.Tensor:
         """Precomputed rotation matrices for crystal orientations.
@@ -134,6 +183,34 @@ class CrystalMesh(BaseMesh):
         :rtype: bool
         """
         return True
+
+    def to_json_dict(self) -> dict:
+        """Serialize crystal mesh to a dictionary."""
+        return {
+            "type": "CrystalMesh",
+            "euler_angles": self._euler_angles_list,
+            "convention": self.convention,
+        }
+
+    @classmethod
+    def from_json_dict(
+            cls, data: dict[str, tp.Any], device: torch.device = torch.device("cpu"),
+            dtype: torch.dtype = torch.float32) -> CrystalMesh:
+        """Reconstruct a crystal mesh from a dictionary.
+
+        :param data: Dictionary as produced by :meth:`to_json_dict`.
+        :param device: Computation device.
+        :param dtype: Floating point precision.
+        :return: A new :class:`CrystalMesh` instance.
+        """
+        euler_angles = data.get("euler_angles", [[0.0, 0.0, 0.0]])
+        convention = data.get("convention", "zyz")
+        return cls(
+            euler_angles=euler_angles,
+            convention=convention,
+            device=device,
+            dtype=dtype
+        )
 
 
 class BaseMeshPowder(BaseMesh):

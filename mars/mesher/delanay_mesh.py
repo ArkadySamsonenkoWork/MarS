@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import abc
 import numpy as np
 import math
@@ -1058,6 +1061,10 @@ class DelaunayMesh(BaseMeshPowder):
         self.register_buffer("_initial_grid", initial_grid)
         self.register_buffer("_post_grid", post_grid)
         self.register_buffer("_post_simplices", post_simplices)
+
+        self._interpolator_name = interpolator if isinstance(interpolator, str) else interpolator.value
+        self._interpolator_kwargs = interpolator_kwargs or {}
+
         self.to(device)
 
     def create_initial_cache_data(self, device: torch.device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -1116,6 +1123,43 @@ class DelaunayMesh(BaseMeshPowder):
         :rtype: torch.Tensor
         """
         return self.mesh_processor(f_init)
+
+    def to_json_dict(self) -> dict:
+        return {
+            "type": "DelaunayMesh",
+            "eps": self.eps,
+            "phi_limits": self.phi_limit,
+            "initial_grid_frequency": self.initial_grid_frequency,
+            "interpolation_grid_frequency": self.interpolation_grid_frequency,
+            "boundaries_cond": None,
+            "interpolate": (self.interpolation_grid_frequency > self.initial_grid_frequency),
+            "interpolator": self._interpolator_name,
+            "interpolator_kwargs": self._interpolator_kwargs,
+        }
+
+    @classmethod
+    def from_json_dict(
+            cls, data: dict[str, tp.Any],
+            device: torch.device = torch.device("cpu"), dtype: torch.dtype = torch.float32) -> DelaunayMesh:
+        """Reconstruct a Delaunay mesh from a dictionary.
+
+        :param data: Dictionary as produced by :meth:`to_json_dict`.
+        :param device: Computation device.
+        :param dtype: Floating point precision.
+        :return: A new :class:`DelaunayMesh` instance.
+        """
+        return cls(
+            eps=data.get("eps", 1e-7),
+            phi_limits=tuple(data.get("phi_limits", (0.0, 2 * math.pi))),
+            initial_grid_frequency=data.get("initial_grid_frequency", 20),
+            interpolation_grid_frequency=data.get("interpolation_grid_frequency", 40),
+            boundaries_cond=data.get("boundaries_cond"),
+            interpolate=data.get("interpolate", False),
+            interpolator=data.get("interpolator", InterpolatorsName.RBF.value),
+            interpolator_kwargs=data.get("interpolator_kwargs"),
+            device=device,
+            dtype=dtype
+        )
 
 
 class DelaunayMeshFullSphere(DelaunayMesh):

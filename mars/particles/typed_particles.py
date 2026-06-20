@@ -4,6 +4,7 @@ import os
 import pickle
 import torch
 import math
+import threading
 
 
 @dataclass(frozen=True)
@@ -108,17 +109,25 @@ class Nucleus(Particle):
     database."""
     _isotope_data = None
     _data_loaded = False  # To load data only one time
+    _load_lock = threading.Lock()   # Ensures thread-safe lazy loading
 
     def __init__(self, nucleus_str: str, device: torch.device, complex_dtype: torch.dtype):
         self.nucleus_str = nucleus_str
-        if not Nucleus._data_loaded:
-            data_path = self._get_data_path("nuclei_db", "nuclear_data.pkl")
-            Nucleus._load_isotope_data(data_path)
+        self._ensure_data_loaded()
         spin, g_factor = self._parse_nucleus_str(nucleus_str)
         super().__init__(spin, device, complex_dtype)
         self.g_factor = torch.tensor(
             g_factor, device=device,
             dtype=torch.float64 if complex_dtype == torch.complex128 else torch.float32)
+
+    @classmethod
+    def _ensure_data_loaded(cls) -> None:
+        """Thread-safe lazy loading of the isotope database (Double-Checked Locking)."""
+        if not cls._data_loaded:
+            with cls._load_lock:
+                if not cls._data_loaded:
+                    data_path = cls._get_data_path("nuclei_db", "nuclear_data.pkl")
+                    cls._load_isotope_data(data_path)
 
     @classmethod
     def _load_isotope_data(cls, data_path: str):
@@ -131,16 +140,35 @@ class Nucleus(Particle):
             raise FileNotFoundError(
                 f"Isotope data file '{data_path}' not found.")
 
-    def _get_data_path(self,  *parts: str) -> str:
+    @staticmethod
+    def _get_data_path(*parts: str) -> str:
         """Get the absolute path to the data file, relative to the location of
         this class."""
         class_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(class_dir, *parts)
 
+    @classmethod
+    def _get_nucleus_data(cls, nucleus_str: str) -> tp.Dict[str, tp.Any]:
+        """Internal helper to fetch nucleus data, ensuring the database is loaded."""
+        cls._ensure_data_loaded()
+        if cls._isotope_data is None:
+            raise RuntimeError("Isotope data failed to load.")
+        data = cls._isotope_data.get(nucleus_str)
+        if data is None:
+            raise KeyError(f"No data found for nucleus: '{nucleus_str}'")
+        return data
+
     def _parse_nucleus_str(self, nucleus_str: str) -> tuple[float, float]:
-        """Extract nucleons and symbol from the nucleus string (e.g., '14N' ->
-        (14, 'N'))."""
-        data = Nucleus._isotope_data.get(nucleus_str)
-        if not data:
-            raise KeyError(f"No data found for nucleus: {self.nucleus_str}")
-        return (data["spin"], data["gn"])
+        """Extract spin and g-factor of a given nucleus."""
+        data = self._get_nucleus_data(nucleus_str)
+        return float(data["spin"]), float(data["gn"])
+
+    @staticmethod
+    def get_spin(nucleus_str: str) -> float:
+        """Fast lookup of nuclear spin from the cached isotope database."""
+        return float(Nucleus._get_nucleus_data(nucleus_str)["spin"])
+
+    @staticmethod
+    def get_g_factor(nucleus_str: str) -> float:
+        """Fast lookup of nuclear g-factor from the cached isotope database."""
+        return float(Nucleus._get_nucleus_data(nucleus_str)["gn"])

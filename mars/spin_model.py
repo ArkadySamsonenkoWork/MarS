@@ -17,6 +17,10 @@ from . import particles
 from . import utils
 from .mesher import BaseMesh
 
+if tp.TYPE_CHECKING:
+    from .serialization.serialization import SerializedSample, SerializedSpinSystem
+    from .serialization.graph_representation import GraphSample, GraphSpinSystem
+
 
 # Подумать над изменением логики.
 def kronecker_product(matrices: list) -> torch.Tensor:
@@ -82,7 +86,7 @@ def transform_tensor_components(tensor_components: torch.Tensor, transformation_
     return torch.einsum("...ij,...jkl->...ikl", transformation_matrix, tensor_components)
 
 
-def concat_spin_systems(systems: list[SpinSystem]) -> SpinSystem:
+def concat_spin_systems(systems: tp.Sequence[SpinSystem], mode: str = "direct_sum") -> SpinSystem:
     """
     Concatenate multiple independent spin systems into a single block-diagonal system.
 
@@ -117,6 +121,9 @@ def concat_spin_systems(systems: list[SpinSystem]) -> SpinSystem:
         - `is_concatenated = True`.
     :raises ValueError: If input systems differ in `device` or `dtype`.
     """
+    if mode != "direct_sum":
+        raise NotImplementedError("Current version of 'concat_spin_systems' supports only direct_sum concatenation")
+
     ref_sys = systems[0]
     device = ref_sys.device
     dtype = ref_sys.dtype
@@ -205,7 +212,8 @@ def concat_spin_systems(systems: list[SpinSystem]) -> SpinSystem:
     )
 
 
-def concat_multioriented_samples(samples: tp.Sequence[MultiOrientedSample]) -> MultiOrientedSample:
+def concat_multioriented_samples(samples: tp.Sequence[MultiOrientedSample], mode: str = "direct_sum") ->\
+        MultiOrientedSample:
     """
     Concatenate multiple powder-averaged spin samples into a single block-diagonal sample.
 
@@ -232,6 +240,10 @@ def concat_multioriented_samples(samples: tp.Sequence[MultiOrientedSample]) -> M
     :return: A new `MultiOrientedSample` containing the concatenated, lab-frame-aligned spin system.
     :raises ValueError: If broadening parameters or meshes differ across samples.
     """
+    if mode != "direct_sum":
+        raise NotImplementedError("Current version of 'concat_multioriented_samples'"
+                                  "supports only direct_sum concatenation")
+
     ref_sample = samples[0]
 
     for i, sample in enumerate(samples[1:], 1):
@@ -269,8 +281,8 @@ def concat_multioriented_samples(samples: tp.Sequence[MultiOrientedSample]) -> M
 # Возможно, стоит переделать логику работы расчёта тензоров через тенорное произведение. Сделать отдельный тип данных.
 # Сейчас каждый спин даёт матрицу [K, K] и расчёт взаимодействией не оптимальный
 def init_tensor(
-        components: tp.Union[torch.Tensor, tp.Sequence[float], float],  device: torch.device, dtype: torch.dtype
-):
+        components: tp.Union[torch.Tensor, tp.Sequence[float], float],
+        device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     """
     Initialize a 3-component tensor of principal values (e.g., Dx, Dy, Dz).
 
@@ -327,8 +339,8 @@ def init_tensor(
 
 
 def init_de_tensor(
-        components: tp.Union[torch.Tensor, tp.Sequence[float], float],  device: torch.device, dtype: torch.dtype
-):
+        components: tp.Union[torch.Tensor, tp.Sequence[float], float],
+        device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     """Initialize a zero-field splitting (ZFS) tensor from D and E parameters.
 
     Converts standard ZFS parameters (D, E) into principal components:
@@ -381,14 +393,12 @@ def init_de_tensor(
             Dy = - value / 3
             Dz = 2 * value / 3
             return torch.tensor([Dx, Dy, Dz], device=device, dtype=dtype)
-
         elif len(components) == 2:
             D, E = components[0], components[1]
             Dx = - D / 3 + E
             Dy = - D / 3 - E
             Dz = 2 * D / 3
             return torch.tensor([Dx, Dy, Dz], device=device, dtype=dtype)
-
         elif len(components) == 3:
             return torch.tensor(components, device=device, dtype=dtype)
         else:
@@ -399,13 +409,12 @@ def init_de_tensor(
         Dy = - components / 3
         Dz = 2 * components / 3
         return torch.tensor([Dx, Dy, Dz], device=device, dtype=dtype)
-
     else:
         raise TypeError(f"components must be a tensor, list, tuple, or scalar, got {type(components)}")
 
 
 def init_strain(strain: tp.Union[torch.Tensor, tp.Sequence, float],
-                device: torch.device, dtype: torch.dtype):
+                device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     """Initialize strain parameters as independent broadening on Dx, Dy, Dz.
 
     Strain here represents the full width at half maximum (FWHM) of Gaussian
@@ -425,7 +434,7 @@ def init_strain(strain: tp.Union[torch.Tensor, tp.Sequence, float],
 
 
 def init_de_strain(strain: tp.Union[torch.Tensor, tp.Sequence, float],
-                  device: torch.device, dtype: torch.dtype):
+                  device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     """Initialize strain for D/E-based zero-field splitting interactions.
 
        Strain is specified in terms of D and E parameters:
@@ -468,7 +477,7 @@ def init_de_strain(strain: tp.Union[torch.Tensor, tp.Sequence, float],
             D, E = strain[0], strain[1]
             return torch.tensor([D, E], device=device, dtype=dtype)
         else:
-            return ValueError(f"List must have 1, or  2 elements, got {len(strain)}")
+            raise ValueError(f"List must have 1, or  2 elements, got {len(strain)}")
 
     elif isinstance(strain, (int, float)):
         D = strain
@@ -718,7 +727,7 @@ class Interaction(BaseInteraction):
         self.to(dtype)
 
     def _init_strain_tensor(self, strain: tp.Optional[tp.Union[torch.Tensor, tp.Sequence, float]],
-                            device: torch.device, dtype: torch.dtype):
+                            device: torch.device, dtype: torch.dtype) -> tp.Optional[torch.Tensor]:
         """Initialize strain tensor from scalar, sequence, or tensor input.
 
         Strain values represent FWHM of Gaussian distributions for principal components (Dx, Dy, Dz).
@@ -812,7 +821,7 @@ class Interaction(BaseInteraction):
         self.register_buffer("_frame", _frame)
         self.register_buffer("_rot_matrix", _rot_matrix)
 
-    def euler_to_rotmat(self, euler_angles: torch.Tensor):
+    def euler_to_rotmat(self, euler_angles: torch.Tensor) -> torch.Tensor:
         """Convert ZYZ' Euler angles to rotation matrix.
 
         Uses the standard ZYZ' convention: R = R_z(α) R_y(β) R_z(γ).
@@ -822,7 +831,7 @@ class Interaction(BaseInteraction):
         """
         return utils.euler_angles_to_matrix(euler_angles)
 
-    def _tensor(self):
+    def _tensor(self) -> torch.Tensor:
         """
         :return: the tensor in the spin system axis.
 
@@ -866,17 +875,17 @@ class Interaction(BaseInteraction):
             return torch.einsum("...ik, ...jk->...kij", self._rot_matrix, self._rot_matrix)
 
     @property
-    def tensor(self):
+    def tensor(self) -> torch.Tensor:
         """:return: the full tensor of interaction with shape [..., 3, 3] with applied rotation."""
         return self._tensor()
 
     @property
-    def strain(self):
+    def strain(self) -> tp.Optional[torch.Tensor]:
         """:return: None or tensor with shape [..., K]., where K is number of strain parameters"""
         return self._strain
 
     @property
-    def strained_derivatives(self):
+    def strained_derivatives(self) -> tp.Optional[torch.Tensor]:
         """Return the tensor derivative with respect to strain parameters.
 
         Used in lineshape modeling to compute how small changes in Hamiltonian
@@ -892,22 +901,22 @@ class Interaction(BaseInteraction):
         return self._get_strained_derivatives()
 
     @property
-    def config_shape(self):
+    def config_shape(self) -> torch.Size:
         """Interaction configureation shape. It is ..."""
         return self.shape[:-1]
 
     @property
-    def components(self):
+    def components(self) -> torch.Tensor:
         """:return: tensor with shape [..., 3] - the principle components of a tensor."""
         return self._components
 
     @property
-    def frame(self):
+    def frame(self) -> tp.Optional[torch.Tensor]:
         """:return: angles with ZYZ' notation."""
         return self._frame
 
     @frame.setter
-    def frame(self, frame):
+    def frame(self, frame: tp.Optional[torch.Tensor]) -> None:
         """Set new frame for computations"""
         if frame is None:
             self._frame = torch.tensor(
@@ -916,7 +925,7 @@ class Interaction(BaseInteraction):
         self._rot_matrix = self.euler_to_rotmat(self._frame)
 
     @property
-    def strain_correlation(self):
+    def strain_correlation(self) -> torch.Tensor:
         """In some cases the components of the interaction can correlate.
 
         To implement this correlation the strain_correlation matrix is used. For example, in the case of D/E interaction
@@ -925,7 +934,7 @@ class Interaction(BaseInteraction):
         """
         return self._strain_correlation
 
-    def __add__(self, other):
+    def __add__(self, other: Interaction) -> Interaction:
         if not isinstance(other, Interaction):
             raise TypeError("Can only add Interaction objects together")
 
@@ -992,6 +1001,30 @@ class Interaction(BaseInteraction):
         )
         interaction.set_strain(new_strain, correlation_matrix)
         return interaction
+
+    def is_equivalent(self, other: Interaction, rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+        """Check if two interactions have numerically equivalent parameters.
+
+        :param other: Another Interaction instance.
+        :param rtol: Relative tolerance for tensor comparison.
+        :param atol: Absolute tolerance for tensor comparison.
+        :return: True if all internal tensors are numerically close.
+        """
+        if not isinstance(other, Interaction):
+            return False
+        if self.shape != other.shape:
+            return False
+        if not torch.allclose(self._components, other._components, rtol=rtol, atol=atol):
+            return False
+        if not torch.allclose(self._rot_matrix, other._rot_matrix, rtol=rtol, atol=atol):
+            return False
+        if (self._strain is None) != (other._strain is None):
+            return False
+        if self._strain is not None and not torch.allclose(self._strain, other._strain, rtol=rtol, atol=atol):
+            return False
+        if not torch.allclose(self._strain_correlation, other._strain_correlation, rtol=rtol, atol=atol):
+            return False
+        return True
 
     def get_rotation_derivative_along_axis(self, axis: tp.Union[torch.Tensor, list[float]]) -> torch.Tensor:
         """
@@ -1444,7 +1477,6 @@ class SpinSystem(nn.Module):
             if isinstance(item, particles.Nucleus):
                 return item
             raise TypeError(f"Expected Nucleus or str, got {type(item).__name__}")
-
         return [_convert(n) for n in nuclei]
 
     @property
@@ -1466,9 +1498,8 @@ class SpinSystem(nn.Module):
         return utils.float_to_complex_dtype(self.dtype)
 
     @property
-    def config_shape(self) -> tp.Iterable:
+    def config_shape(self) -> torch.Size:
         """Get the batch configuration shape of the spin system.
-
         This describes parameter broadcasting dimensions (e.g., for ensembles),
         Hilbert space axes.
 
@@ -1482,7 +1513,6 @@ class SpinSystem(nn.Module):
     @property
     def spin_system_dim(self) -> int:
         """Get the dimension of the total Hilbert space.
-
         Computed as the dimension of spin-operators in Hilbert Space
 
         :return: An integer representing the size of the full spin basis (e.g., 4 for two spin-1/2 particles).
@@ -1492,7 +1522,6 @@ class SpinSystem(nn.Module):
     @property
     def electron_nuclei(self):
         """Get electron–nucleus hyperfine interactions as indexed tuples.
-
         :return: A list of tuples (electron_index, nucleus_index, interaction_tensor).
         """
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.en_indices, self.electron_nuclei_interactions)]
@@ -1504,7 +1533,6 @@ class SpinSystem(nn.Module):
     @property
     def electron_electron(self):
         """Get electron–electron interactions as indexed tuples.
-
         :return: A list of tuples (electron_index_1, electron_index_2, interaction_tensor).
         """
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.ee_indices, self.electron_electron_interactions)]
@@ -1516,7 +1544,6 @@ class SpinSystem(nn.Module):
     @property
     def nuclei_nuclei(self):
         """Get nucleus–nucleus interactions as indexed tuples.
-
         :return: A list of tuples (nucleus_index_1, nucleus_index_2, interaction_tensor).
         """
         return [(idx[0], idx[1], inter) for idx, inter in zip(self.nn_indices, self.nuclei_nuclei_interactions)]
@@ -1528,24 +1555,67 @@ class SpinSystem(nn.Module):
     @property
     def operator_cache(self) -> torch.Tensor:
         """Get precomputed spin operators for all particles in the full Hilbert space.
-
         Shape: [n_particles, 3, spin_dim, spin_dim], where:
           - n_particles = number of electrons + nuclei
           - 3 = x, y, z components
           - spin_dim = total Hilbert space dimension
-
         :return: A complex-valued tensor of spin operators.
         """
         return torch.complex(self._operator_cache_real, self._operator_cache_imag)
 
+    def is_equivalent(self, other: SpinSystem, rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+        """Check equality of two spin systems.
+
+        Compares particles, interaction tensors (including batched ones),
+        index mappings, and global parameters.
+
+        :param other: Another SpinSystem instance.
+        :return: True if both systems are structurally and numerically identical.
+        """
+        if not isinstance(other, SpinSystem):
+            return False
+        if self.is_artificial != other.is_artificial:
+            return False
+        if len(self.electrons) != len(other.electrons) or len(self.nuclei) != len(other.nuclei):
+            return False
+
+        for e1, e2 in zip(self.electrons, other.electrons):
+            if type(e1) is not type(e2) or e1.spin != e2.spin:
+                return False
+
+        for n1, n2 in zip(self.nuclei, other.nuclei):
+            if type(n1) is not type(n2) or n1.spin != n2.spin:
+                return False
+
+        if len(self.g_tensors) != len(other.g_tensors):
+            return False
+        for g1, g2 in zip(self.g_tensors, other.g_tensors):
+            if not g1.is_equivalent(g2, rtol, atol):
+                return False
+
+        for inter_self, inter_other, idx_self, idx_other in [
+            (self.electron_nuclei_interactions, other.electron_nuclei_interactions,
+             self.en_indices, other.en_indices),
+            (self.electron_electron_interactions, other.electron_electron_interactions,
+             self.ee_indices, other.ee_indices),
+            (self.nuclei_nuclei_interactions, other.nuclei_nuclei_interactions,
+             self.nn_indices, other.nn_indices)
+        ]:
+            if len(inter_self) != len(inter_other) or idx_self != idx_other:
+                return False
+            for i1, i2 in zip(inter_self, inter_other):
+                if not i1.is_equivalent(i2, rtol, atol):
+                    return False
+
+        if not torch.allclose(self.energy_shift, other.energy_shift, rtol=rtol, atol=atol):
+            return False
+        return True
+
     def apply_rotation(self, rotation_matrix: torch.Tensor):
         """
         This method change the frame for each interaction in the spin system.
-
         new_frame = rotation_matrix @ old_frame
-
         Update each interaction frame and rotation_matrix (or tensor for multi oriented interactions)
-
         :param rotation_matrix: [..., 3, 3] rotation matrix.
         :return: None
         """
@@ -1735,7 +1805,6 @@ class SpinSystem(nn.Module):
                     f"Two-spin-1/2 basis requires spin=1/2 electrons, "
                     f"got spin={electron.spin} for electron {i}"
                 )
-
         sqrt2 = math.sqrt(2)
         Tx = torch.tensor([-1.0 / sqrt2, 0.0, 0.0, 1.0 / sqrt2],
                           dtype=self.complex_dtype, device=self.device)
@@ -1818,7 +1887,6 @@ class SpinSystem(nn.Module):
             Tx, Ty, Tz, S = T[:, 0], T[:, 1], T[:, 2], T[:, 3]
         """
         n = len(self.electrons)
-
         if n == 1 and self.electrons[0].spin == 1.0:
             return self._get_xyz_basis_triplet()
 
@@ -1936,6 +2004,22 @@ class SpinSystem(nn.Module):
         self.to(self.device)
         self.to(self.dtype)
 
+    @classmethod
+    def from_serialized_spin_system(cls, serialized_spin_system: SerializedSpinSystem) -> SpinSystem:
+        return serialized_spin_system.to_mars_spin_system()
+
+    def to_serialized_spin_system(self) -> SerializedSpinSystem:
+        from .serialization.serialization import SerializedSpinSystem
+        return SerializedSpinSystem.from_mars_spin_system(self)
+
+    @classmethod
+    def from_graph_spin_system(cls, graph_spin_system: GraphSpinSystem) -> SpinSystem:
+        return graph_spin_system.to_mars_spin_system()
+
+    def to_graph_spin_system(self) -> GraphSpinSystem:
+        from .serialization.graph_representation import GraphSpinSystem
+        return GraphSpinSystem.from_mars_spin_system(self)
+
     def __repr__(self):
         lines = ["=" * 60]
         lines.append("SPIN SYSTEM SUMMARY")
@@ -2046,7 +2130,6 @@ class SpinSystemOrientator:
             rotation_matrices: torch.Tensor
     ) -> tp.Tuple[torch.Tensor, tp.List[tp.Optional[torch.Tensor]], tp.List[torch.Tensor]]:
         """Precompute rotated tensors and strain derivatives for multiple orientations."""
-        # Vectorized rotation of all interaction tensors
         oriented_tensors = torch.stack([
             utils.apply_expanded_rotations(rotation_matrices, interaction.tensor)
             for interaction in interactions
@@ -2252,7 +2335,7 @@ class BaseSample(nn.Module):
         return self.modified_spin_system.spin_system_dim
 
     @property
-    def config_shape(self):
+    def config_shape(self) -> torch.Size:
         """Get the batch configuration shape of the spin system including orientations
 
         This describes parameter broadcasting dimensions (e.g., for ensembles),
@@ -2345,6 +2428,28 @@ class BaseSample(nn.Module):
         :return: rotation matrix for the spin system
         """
         return self._spin_system_rot_matrix
+
+    def is_equivalent(self, other: BaseSample, rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+        """Check equality of two BaseSample instances.
+
+        Compares the base and modified spin systems, broadening parameters,
+        strain, and frame configurations using appropriate numerical tolerances.
+
+        :param other: Another BaseSample instance.
+        :return: True if all parameters match within numerical tolerances.
+        """
+        if type(self) is not type(other):
+            return False
+
+        if not self.base_spin_system.is_equivalent(other.base_spin_system, rtol, atol):
+            return False
+
+        return all([
+            utils.are_optional_tensors_close(self.base_ham_strain, other.base_ham_strain, rtol, atol),
+            utils.are_optional_tensors_close(self.gauss, other.gauss, rtol, atol),
+            utils.are_optional_tensors_close(self.lorentz, other.lorentz, rtol, atol),
+            utils.are_optional_tensors_close(self._spin_system_frame, other._spin_system_frame, rtol, atol),
+        ])
 
     def update(self,
                g_tensors: list[BaseInteraction] = None,
@@ -2513,7 +2618,7 @@ class BaseSample(nn.Module):
         return (electron_contrib * (constants.BOHR / constants.PLANCK) +
             nuclei_contrib * (constants.NUCLEAR_MAGNETRON / constants.PLANCK)).squeeze(dim=-1)
 
-    def get_hamiltonian_terms(self) -> tuple:
+    def get_hamiltonian_terms(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns F, Gx, Gy, Gz.
 
         F is the magnetic field-independent part of the spin Hamiltonian.
@@ -2587,9 +2692,8 @@ class BaseSample(nn.Module):
 
         return F0, Gx, Gy, Gz
 
-    def build_field_dep_strain(self):
+    def build_field_dep_strain(self) -> tp.Generator[tuple[torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
         """Calculate electron Zeeman field dependant strained part.
-
         :return:
         """
         operator_cache = self.modified_spin_system.operator_cache
@@ -2764,8 +2868,8 @@ class BaseSample(nn.Module):
             ham_str = self.base_ham_strain.flatten(0, -2)[0]
             ham_components = [f"{val:.4e}" if abs(val) >= 1e4 else f"{val:.4f}"
                               for val in ham_str.tolist()]
-            ham_dim = self.base_ham_strain.shape[1:]
-            lines.append(f"ham_str (dim={ham_dim}): {ham_components} Hz")
+            ham_dim = self.base_ham_strain.shape
+            lines.append(f"ham_str (dim={ham_dim}): {ham_components} Hz - first example components")
         else:
             lines.append(f"lorentz: {self.lorentz.item():.5f} T")
             lines.append(f"gauss: {self.gauss.item():.5f} T")
@@ -2777,6 +2881,22 @@ class BaseSample(nn.Module):
         if self._spin_system_frame is not None:
             lines.append(f"spin system frame: {self._spin_system_frame.tolist()} rad")
         return '\n'.join(lines)
+
+    @classmethod
+    def from_serialized_sample(cls, serialized_sample: SerializedSample) -> BaseSample:
+        return serialized_sample.to_mars_sample()
+
+    def to_serialized_sample(self) -> SerializedSample:
+        from .serialization.serialization import SerializedSample
+        return SerializedSample.from_mars_sample(self)
+
+    @classmethod
+    def from_graph_sample(cls, graph_sample: GraphSample) -> BaseSample:
+        return graph_sample.to_mars_sample()
+
+    def to_graph_sample(self) -> GraphSample:
+        from .serialization.graph_representation import GraphSample
+        return GraphSample.from_mars_sample(self)
 
 
 class LimitedDict(collections.OrderedDict):
@@ -2996,6 +3116,26 @@ class MultiOrientedSample(BaseSample):
         if self._spin_system_frame is not None:
             rotation_matrices = torch.matmul(rotation_matrices, self._spin_system_rot_matrix)
         return rotation_matrices
+
+    def is_equivalent(self, other: BaseSample, rtol: float = 1e-5, atol: float = 1e-6) -> bool:
+        """Check equality of two MultiOrientedSample instances.
+
+        In addition to all BaseSample checks, this also verifies that the
+        orientation mesh is identical.
+
+        :param other: Another MultiOrientedSample instance.
+        :return: True if all parameters and the mesh match.
+        """
+        if type(self) is not type(other):
+            return False
+
+        if not super().is_equivalent(other, rtol, atol):
+            return False
+
+        if not self.mesh.is_equivalent(other.mesh):
+            return False
+
+        return True
 
     def build_ham_strain(self) -> torch.Tensor:
         """Constructs the zero-field strained part of Hamiltonian."""
@@ -3358,7 +3498,6 @@ class MultiOrientedSample(BaseSample):
             torch.stack([-ny, nx, zeros], dim=-1)
         ], dim=-2)
 
-        operator_cache = self.modified_spin_system.operator_cache
         config_shape = self.config_shape
         dim = self.spin_system_dim
         device = self.device
@@ -3392,5 +3531,24 @@ class MultiOrientedSample(BaseSample):
                 dQ_dtheta, el_idx)
 
         return O_static, O_dependent[..., -1, :, :]
+
+
+class MultiOrientedSampleExpandedStrain(MultiOrientedSample):
+    """
+    Extension of MultiOrientedSample that allows to define additional batche for hamiltonian strain.
+
+    Compare to spin_system.MultiOrientedSample it allows to set the hamiltonian strain as an
+    additional batch for the system. That is, ham_strain.shape can be any
+    """
+    def _init_ham_str(
+            self, ham_strain: tp.Optional[tp.Union[torch.Tensor, float]],
+            device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+        if ham_strain is None:
+            ham_strain = torch.zeros(
+                (*self.base_spin_system.config_shape, 3), device=device, dtype=dtype
+            )
+        else:
+            ham_strain = init_tensor(ham_strain, device=device, dtype=dtype)
+        return ham_strain
 
 

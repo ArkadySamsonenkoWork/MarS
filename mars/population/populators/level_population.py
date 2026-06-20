@@ -147,7 +147,6 @@ class LevelBasedPopulator(core.BaseTimeDepPopulator):
                 *args, **kwargs) -> torch.Tensor:
         """
         :param time:
-
             Time points of measurements. The shape is [T], where T is number of time-steps
 
         :param res_fields:

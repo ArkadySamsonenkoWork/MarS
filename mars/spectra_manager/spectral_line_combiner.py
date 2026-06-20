@@ -41,7 +41,6 @@ def _compute_group_assignments(should_merge: torch.Tensor) -> torch.Tensor:
             else:
                 current_group += 1
                 group_ids[b, i] = current_group
-
     return group_ids
 
 
