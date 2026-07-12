@@ -45,7 +45,7 @@ class PostSpectraProcessing(nn.Module):
     :param lorentz: Lorentzian FWHM (in same units as magnetic_field).
         Shape [] or [*batch_dims]
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, eps: float = 1e-7, *args, **kwargs):
         """
         :param gauss: The gauss parameter.
 
@@ -53,7 +53,7 @@ class PostSpectraProcessing(nn.Module):
         :param lorentz: The lorentz parameter. The shape is [batch_size] or []
         """
         super().__init__()
-        pass
+        self.register_buffer("eps", torch.tensor(1e-7))
 
     def _skip_broader(self, gauss: torch.Tensor, lorentz: torch.Tensor,
                       magnetic_fields: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
@@ -109,19 +109,27 @@ class PostSpectraProcessing(nn.Module):
         """
         dH = magnetic_field[..., 1] - magnetic_field[..., 0]
         N = magnetic_field.shape[-1]
-        idx = torch.arange(N, device=magnetic_field.device) - N // 2
+        device = magnetic_field.device
 
-        # Reshape for broadcasting: idx -> [1, ..., 1, N]
+        idx = torch.arange(N, device=device) - N // 2
+
         batch_dims = magnetic_field.dim() - 1
         idx_shape = [1] * batch_dims + [N]
         idx = idx.view(*idx_shape)
 
-        # dH and fwhm_lorentz -> [*batch_dims, 1]
         dH = dH.unsqueeze(-1)
         gamma = (fwhm_lorentz.unsqueeze(-1) / 2)
 
         x = idx * dH
-        L = (gamma / torch.pi) / (x ** 2 + gamma ** 2)
+
+        mask = (gamma == 0)
+        safe_gamma = gamma.masked_fill(mask, 1.0)
+        L = (safe_gamma / torch.pi) / (x ** 2 + safe_gamma ** 2)
+
+        delta = torch.zeros_like(L)
+        delta[..., N // 2] = 1.0
+        L = torch.where(mask, delta, L)
+
         return L
 
     def _build_gauss_kernel(self, magnetic_field: torch.Tensor, fwhm_gauss: torch.Tensor) -> torch.Tensor:
@@ -133,19 +141,25 @@ class PostSpectraProcessing(nn.Module):
         """
         dH = magnetic_field[..., 1] - magnetic_field[..., 0]
         N = magnetic_field.shape[-1]
-        idx = torch.arange(N, device=magnetic_field.device) - N // 2
+        device = magnetic_field.device
 
-        # Reshape for broadcasting: idx -> [1, ..., 1, N]
+        idx = torch.arange(N, device=device) - N // 2
+
         batch_dims = magnetic_field.dim() - 1
         idx_shape = [1] * batch_dims + [N]
         idx = idx.view(*idx_shape)
 
-        # dH and fwhm_gauss -> [*batch_dims, 1]
         dH = dH.unsqueeze(-1)
-        sigma = fwhm_gauss.unsqueeze(-1) / (2 * (2 * torch.log(torch.tensor(2.0, device=magnetic_field.device))) ** 0.5)
-
+        sigma = fwhm_gauss.unsqueeze(-1) / (2 * (2 * torch.log(torch.tensor(2.0, device=device))) ** 0.5)
         x = idx * dH
-        G = torch.exp(-0.5 * (x / sigma) ** 2) / (sigma * (2 * torch.pi) ** 0.5)
+
+        mask = (sigma == 0)
+        safe_sigma = sigma.masked_fill(mask, 1.0)
+        G = torch.exp(-0.5 * (x / safe_sigma) ** 2) / (safe_sigma * (2 * torch.pi) ** 0.5)
+
+        delta = torch.zeros_like(G)
+        delta[..., N // 2] = 1.0
+        G = torch.where(mask, delta, G)
         return G
 
     def _build_voigt_kernel(self,
@@ -168,7 +182,6 @@ class PostSpectraProcessing(nn.Module):
 
         Vf = Gf * Lf
         V = torch.fft.fftshift(fft.irfft(Vf, n=N, dim=-1), dim=-1)
-        V = V / V.sum(dim=-1, keepdim=True)
         return V
 
     def _apply_convolution(self, spec: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
