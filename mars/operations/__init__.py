@@ -3,6 +3,7 @@ from .stack import stack
 from .flatten import flatten
 from .expand import expand
 from .repeat import repeat
+from .mask import mask
 
 from .unsqueeze import unsqueeze
 from .squeeze import squeeze
@@ -17,5 +18,6 @@ __all__ = [
     "repeat",
     "unsqueeze",
     "squeeze",
-    "transpose"
+    "transpose",
+    "mask",
 ]

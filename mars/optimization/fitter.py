@@ -703,7 +703,7 @@ def convert_backend_kwargs(
 
     _OPTUNA_KWARGS = {
         "sampler", "pruner", "n_trials", "timeout", "n_jobs",
-        "callbacks", "show_progress_bar", "max_concurrent_trials"
+        "callbacks", "show_progress_bar", "max_concurrent_trials", "run_dashboard"
     }
     _NEVERGRAD_KWARGS = {
         "optimizer", "budget", "num_workers", "timeout",
@@ -733,7 +733,7 @@ def convert_backend_kwargs(
     mapping = _CONVERSION_MAP[source]
 
     converted = {}
-    dropped = []
+    unrecognized = []
 
     for key, value in kwargs.items():
         if key in target_known:
@@ -741,15 +741,15 @@ def convert_backend_kwargs(
         elif key in source_known and key in mapping:
             converted[mapping[key]] = value
         else:
-            dropped.append(key)
+            converted[key] = value
+            unrecognized.append(key)
 
-    if dropped:
+    if unrecognized:
         warnings.warn(
-            f"Removed {len(dropped)} keyword argument(s) specific to '{source}' or unrecognized for '{target}': {dropped}",
+            f"Unrecognized {len(unrecognized)} keyword argument(s) specific to: {unrecognized}",
             UserWarning,
             stacklevel=2
         )
-
     return converted
 
 

@@ -30,6 +30,8 @@ class GraphSpinSystem:
     :param angles: Node features representing Euler angles for each node.
                    Shape: [..., num_nodes, 3].
     :param spins: Spin quantum numbers for each node. Shape: [..., num_nodes]. For interaction nodes spin is set as 0.0
+    :param nucleus_labels: Optional list of nucleus isotope strings (e.g., ["14N", "1H"]).
+                           Preserves nucleus identities during graph serialization/deserialization.
     :param node_types: Integer type identifiers for each node (0=Electron, 1=Nucleus, 2=Interaction).
                        Shape: [..., num_nodes].
     """
@@ -39,6 +41,7 @@ class GraphSpinSystem:
     angles: torch.Tensor
     spins: torch.Tensor
     node_types: torch.Tensor
+    nucleus_labels: tp.Optional[tp.List[str]] = None
 
     ELECTRON_TYPE: tp.ClassVar[int] = 0
     NUCLEI_TYPE: tp.ClassVar[int] = 1
@@ -188,13 +191,16 @@ class GraphSpinSystem:
         spins = spins.view(view_shape).expand(expand_shape)
         types = types.view(view_shape).expand(expand_shape)
 
+        nucleus_labels = [nucleus.nucleus_str for nucleus in base_spin_system.nuclei]
+
         return {
             "source": source_tensor,
             "destination": destination_tensor,
             "components": components,
             "angles": angles,
             "spins": spins,
-            "node_types": types
+            "node_types": types,
+            "nucleus_labels": nucleus_labels
         }
 
     @classmethod
@@ -270,12 +276,14 @@ class GraphSpinSystem:
                 destination.extend([e1, e2])
             current_node += n_dip
 
-        if inter.nuclear_coupling_components is not None:
+        n_nn = len(meta.nucleus_nucleus_pairs or [])
+        if n_nn > 0:
             components_list.append(inter.nuclear_coupling_components)
             angles_list.append(inter.nuclear_coupling_orientations)
             for i, (n1, n2) in enumerate(meta.nucleus_nucleus_pairs):
                 source.extend([current_node + i] * 2)
                 destination.extend([n1 + num_el, n2 + num_el])
+            current_node += n_nn
 
         components = torch.concat(components_list, dim=-2)
         angles = torch.concat(angles_list, dim=-2)
@@ -290,8 +298,10 @@ class GraphSpinSystem:
         spins = torch.tensor(spins_list, device=device, dtype=dtype).unsqueeze(0).expand(*expand_shape)
         node_types = torch.tensor(node_types_list, device=device, dtype=torch.long).unsqueeze(0).expand(*expand_shape)
 
+        nucleus_labels = meta.nucleus_labels if meta.nucleus_labels else None
+
         return cls(source=source_tensor, destination=destination_tensor, components=components,
-                   angles=angles, spins=spins, node_types=node_types)
+                   angles=angles, spins=spins, node_types=node_types, nucleus_labels=nucleus_labels)
 
     def to_serialized_spin_system(self) -> serialization.SerializedSpinSystem:
         """
@@ -363,9 +373,14 @@ class GraphSpinSystem:
         el_spins = [spins_1d[i] for i in el_indices]
         nuc_spins = [spins_1d[i] for i in nuc_indices]
 
+        if self.nucleus_labels is not None and len(self.nucleus_labels) == len(nuc_indices):
+            final_nucleus_labels = self.nucleus_labels
+        else:
+            final_nucleus_labels = [f"Nucl_{i}" for i in range(len(nuc_indices))]
+
         meta = serialization.SpinSystemMetaData(
             electron_spins=el_spins,
-            nucleus_labels=[f"Nucl_{i}" for i in range(len(nuc_indices))],
+            nucleus_labels=final_nucleus_labels,
             nuclear_spins=nuc_spins,
             electron_nucleus_pairs=hfc_p,
             electron_electron_pairs=zfs_p + dip_p,

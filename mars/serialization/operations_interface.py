@@ -472,3 +472,47 @@ def transpose(
     """
     trans_func = _get_transform_func(item)
     return trans_func(item, op=torch.transpose, dim0=dim0, dim1=dim1)
+
+
+@tp.overload
+def mask(item: serialization.SerializedSpinSystem, mask: torch.Tensor) -> serialization.SerializedSpinSystem: ...
+@tp.overload
+def mask(item: serialization.SerializedSample, mask: torch.Tensor) -> serialization.SerializedSample: ...
+@tp.overload
+def mask(item: graph_representation.GraphSpinSystem, mask: torch.Tensor) -> graph_representation.GraphSpinSystem: ...
+@tp.overload
+def mask(item: graph_representation.GraphSample, mask: torch.Tensor) -> graph_representation.GraphSample: ...
+@tp.overload
+def mask(item: serialization.ExperimentalParameters, mask: torch.Tensor) -> serialization.ExperimentalParameters: ...
+@tp.overload
+def mask(item: serialization.PolarizationParameters, mask: torch.Tensor) -> serialization.PolarizationParameters: ...
+@tp.overload
+def mask(item: serialization.TimeParameters, mask: torch.Tensor) -> serialization.TimeParameters: ...
+@tp.overload
+def mask(item: serialization.CWSpectralData, mask: torch.Tensor) -> serialization.CWSpectralData: ...
+@tp.overload
+def mask(item: serialization.SerializedSampleWidth, mask: torch.Tensor) -> serialization.SerializedSampleWidth: ...
+
+
+def mask(item: serialized_item_type, mask: torch.Tensor) -> serialized_item_type:
+    """
+    Apply a boolean mask to the batch dimensions of a serialized or graph MarS item.
+
+    The mask's shape must exactly match the batch dimensions of the item
+    (i.e. all dimensions except the protected system tail). All batch
+    dimensions are collapsed into a single leading dimension of size
+    ``mask.sum()``. Protected tail dimensions are preserved untouched.
+
+    :param item: A single serialized or graph MARS object.
+    :param mask: Boolean tensor whose shape equals the batch shape of ``item``.
+    :return: A new object with masked batch dimensions.
+    :raises RuntimeError: If ``mask.shape`` does not match the batch shape
+        (raised by PyTorch during ``tensor[mask]``).
+    """
+    if mask.dtype != torch.bool:
+        raise TypeError(
+            f"`mask` must be a boolean tensor, got dtype={mask.dtype}. "
+            "For integer-based indexing, use a different operation."
+        )
+    trans_func = _get_transform_func(item)
+    return trans_func(item, op=lambda t, m: t[m], m=mask)

@@ -450,7 +450,7 @@ def init_de_strain(strain: tp.Union[torch.Tensor, tp.Sequence, float],
     if isinstance(strain, torch.Tensor):
         tensor = strain.to(device=device, dtype=dtype)
         if tensor.shape:
-            if tensor.shape[-1] == 2:
+            if tensor.shape[-1] > 2:
                 raise ValueError(f"DE Tensor Strain must have shape [..., 2] or [1] or [2], got {tensor.shape}")
             elif tensor.shape[-1] == 2:
                 return tensor
