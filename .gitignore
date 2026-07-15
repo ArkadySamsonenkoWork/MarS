@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
