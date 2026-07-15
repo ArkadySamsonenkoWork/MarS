@@ -1,12 +1,18 @@
 Metadata-Version: 2.4
 Name: mars-epr
-Version: 0.0.3b2
+Version: 0.0.4
 Summary: A library for computation CW and time resolved spectra
 Author-email: Arkady Samsonenko <a.samsonenko@tomo.nsc.ru>, Ivan Kurganskii <kurgansky@tomo.nsc.ru>
 License-Expression: MIT
 Project-URL: Homepage, https://github.com/ArkadySamsonenkoWork/MarS
 Project-URL: Telegram, https://t.me/Arkady_Samsonenko
 Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
 Classifier: Operating System :: OS Independent
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
